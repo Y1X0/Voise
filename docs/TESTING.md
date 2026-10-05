@@ -33,7 +33,7 @@ Status vocabulary used throughout:
 | Male / female voices | VERIFIED (synthetic + real) | see tables |
 | Arabic speech | PARTIALLY VERIFIED | only synthetic *Arabic-like* phoneme sequences (incl. pharyngeals ħ/ʕ, q). No real Arabic recording was available in the build environment. Run `voiceanon_eval` on your own recordings. |
 | English speech | VERIFIED | synthetic + 5 real recordings (CMU ARCTIC, MS-SNSD, SpeechBrain sample) |
-| Android APK builds | see §5 (CI) | GitHub Actions `android` job |
+| Android APK builds (NDK + Oboe + Compose) | VERIFIED (CI) | GitHub Actions run 37346192231: `assembleDebug` + `testDebugUnitTest` passed, `voice-anonymizer-debug-apk` artifact produced |
 | App runs on a phone, mic → headphones in real time | NOT VERIFIED | no physical device / emulator audio available in the build environment |
 | ON / OFF | PARTIALLY VERIFIED | service/engine start-stop code compiled; behaviour on a device NOT VERIFIED |
 | Termux CLI | PARTIALLY VERIFIED | 17 CLI checks pass against an emulated `am`; real Termux + Android NOT VERIFIED |
@@ -114,6 +114,11 @@ was written, so the APK is built by GitHub Actions (`android` job:
 `./gradlew assembleDebug testDebugUnitTest`). The native code was additionally
 syntax-checked locally against the real Oboe 1.9.0 headers, and the pure-Kotlin
 logic was compiled and its 17 tests run locally on the JVM.
+
+Result: CI run [37346192231](https://github.com/Y1X0/Voise/actions/runs/37346192231)
+passed both jobs (DSP tests/benchmark/evaluations/CLI tests, and APK build +
+Android JVM unit tests). The debug APK is downloadable as a run artifact.
+"APK builds" is VERIFIED; "APK runs correctly on a phone" is still NOT VERIFIED.
 
 ## 6. How to verify on a phone (manual checklist)
 
