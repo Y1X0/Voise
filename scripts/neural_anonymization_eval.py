@@ -222,7 +222,9 @@ class Ge2e:
             # gives a constant embedding that would fake perfect matches. Embed the
             # untrimmed audio instead and record the failure.
             self.vad_failures.add(path)
-            w = self.pre(path, trim_silence=False)
+            import librosa
+            from resemblyzer.audio import normalize_volume
+            w = normalize_volume(librosa.load(path, sr=16000)[0], -30, increase_only=True)
         e = self.enc.embed_utterance(w)
         return e / np.linalg.norm(e)
 
