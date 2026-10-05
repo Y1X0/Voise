@@ -19,3 +19,4 @@ eval-corpus/
 eval-corpus-src/
 eval-experiments/
 eval-neural/
+__pycache__/
