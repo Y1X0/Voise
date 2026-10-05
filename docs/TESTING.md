@@ -1,5 +1,9 @@
 # Testing, measurements and verification status
 
+> Real-device / emulator validation, listening-test tooling, speaker-embedding
+> results and the call-app analysis are in
+> [REAL_DEVICE_VALIDATION.md](REAL_DEVICE_VALIDATION.md).
+
 Status vocabulary used throughout:
 
 * **VERIFIED**: demonstrated by an automated test or measurement that ran and passed.
@@ -29,12 +33,13 @@ Status vocabulary used throughout:
 | Intelligibility preserved | PARTIALLY VERIFIED (proxy) | syllabic envelope correlation 0.90–0.99; no ASR/human test was run |
 | "Not robotic" | PARTIALLY VERIFIED (proxy) | intonation correlation 0.94–0.999 (melody kept, not monotone); bounded shifts; no MOS listening test |
 | Measurable change of speaker characteristics | VERIFIED (acoustic) | F0 ±1.7/2.9/4.2 st, formant ×0.87–1.16, LTAS distance 1.3–4.6 dB |
-| Anonymity against speaker-recognition systems | NOT VERIFIED | No ASV (e.g. ECAPA-TDNN EER) evaluation; see limitations |
+| Speaker similarity with a speaker-embedding model | PARTIALLY VERIFIED | GE2E d-vectors, 5 English speakers: similarity to the original fell from 0.79 to 0.69/0.64/0.60 (Natural/Balanced/Strong), but stayed above the different-speaker mean of 0.50, and processed clips remain linkable to each other (see REAL_DEVICE_VALIDATION.md) |
+| Anonymity against speaker-recognition systems | NOT VERIFIED | No EER-style evaluation; the result above shows the system is NOT unrecognisable to an embedding model |
 | Male / female voices | VERIFIED (synthetic + real) | see tables |
 | Arabic speech | PARTIALLY VERIFIED | only synthetic *Arabic-like* phoneme sequences (incl. pharyngeals ħ/ʕ, q). No real Arabic recording was available in the build environment. Run `voiceanon_eval` on your own recordings. |
 | English speech | VERIFIED | synthetic + 5 real recordings (CMU ARCTIC, MS-SNSD, SpeechBrain sample) |
 | Android APK builds (NDK + Oboe + Compose) | VERIFIED (CI) | GitHub Actions run 37346192231: `assembleDebug` + `testDebugUnitTest` passed, `voice-anonymizer-debug-apk` artifact produced |
-| App runs on a phone, mic → headphones in real time | NOT VERIFIED | no physical device / emulator audio available in the build environment |
+| App runs on a phone, mic → headphones in real time | NOT VERIFIED (phone) / VERIFIED (Android 14 emulator) | emulator: 9/9 instrumented checks; no physical phone was available |
 | ON / OFF | PARTIALLY VERIFIED | service/engine start-stop code compiled; behaviour on a device NOT VERIFIED |
 | Termux CLI | PARTIALLY VERIFIED | 17 CLI checks pass against an emulated `am`; real Termux + Android NOT VERIFIED |
 | IPC auth (token, rate limit, dispatch) | VERIFIED (JVM unit tests) | `IpcTest` |

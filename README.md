@@ -21,6 +21,9 @@ child effects) and it is **not encryption**.
 | `docs/ARCHITECTURE.md` | Approach comparison, chosen pipeline, latency budget, IPC & privacy design |
 | `docs/ANDROID_LIMITATIONS.md` | Call/app support table and every Android limitation |
 | `docs/TESTING.md` | Test suites, measured results, VERIFIED / NOT VERIFIED status of each capability |
+| `docs/REAL_DEVICE_VALIDATION.md` | Device/emulator validation, speaker-embedding results, call-app analysis, safety audit |
+| `docs/LISTENING_AND_ARABIC_PROTOCOL.md` | Blind A/B/C/D listening test and real Arabic recording protocol |
+| `scripts/device_validation.sh` | One-command validation on a phone via adb |
 | `docs/BUILD_AND_INSTALL.md` | Build, install, start/stop, Termux usage |
 
 ## Which apps can actually be processed
