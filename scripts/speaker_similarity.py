@@ -47,6 +47,9 @@ def main():
     ap.add_argument("original_dir")
     ap.add_argument("processed_dir")
     ap.add_argument("--presets", default="natural,balanced,strong")
+    ap.add_argument("--speaker-prefix", action="store_true",
+                    help="speaker id = file-name text before the first '_' (several recordings per speaker); "
+                         "different-speaker pairs are then only formed across speaker ids")
     args = ap.parse_args()
     presets = args.presets.split(",")
     enc, preprocess = load_encoder()
@@ -66,17 +69,21 @@ def main():
                 e = enc.embed_utterance(part)
                 emb[(name, v, i)] = e / np.linalg.norm(e)
 
+    def spk(n):
+        return n.split("_")[0] if args.speaker_prefix else n
+
     def cos(a, b):
         return float(np.dot(emb[a], emb[b]))
 
     same = [cos((n, "orig", 0), (n, "orig", 1)) for n in names]
-    diff = [cos((a, "orig", 0), (b, "orig", 1)) for a, b in itertools.permutations(names, 2)]
+    pairs = [(a, b) for a, b in itertools.permutations(names, 2) if spk(a) != spk(b)]
+    diff = [cos((a, "orig", 0), (b, "orig", 1)) for a, b in pairs]
     thr = (np.mean(same) + np.mean(diff)) / 2
 
     def stats(xs):
         return f"{np.mean(xs):.3f} (min {np.min(xs):.3f}, max {np.max(xs):.3f}, n={len(xs)})"
 
-    print(f"Speakers/recordings: {len(names)}  (small sample: indicative only)\n")
+    print(f"Recordings: {len(names)}, speakers: {len(set(map(spk, names)))}  (small sample: indicative only)\n")
     print("| comparison | cosine similarity | trials above threshold |")
     print("|---|---|---|")
     print(f"| same speaker, original vs original | {stats(same)} | {sum(s > thr for s in same)}/{len(same)} |")
@@ -84,7 +91,7 @@ def main():
     for p in presets:
         ign = [cos((n, "orig", 0), (n, p, 1)) for n in names]
         lazy = [cos((n, p, 0), (n, p, 1)) for n in names]
-        pdiff = [cos((a, p, 0), (b, p, 1)) for a, b in itertools.permutations(names, 2)]
+        pdiff = [cos((a, p, 0), (b, p, 1)) for a, b in pairs]
         print(f"| {p}: original vs processed (same speaker) | {stats(ign)} | {sum(s > thr for s in ign)}/{len(ign)} |")
         print(f"| {p}: processed vs processed (same speaker) | {stats(lazy)} | {sum(s > thr for s in lazy)}/{len(lazy)} |")
         print(f"| {p}: processed, different speakers | {stats(pdiff)} | {sum(s > thr for s in pdiff)}/{len(pdiff)} |")
