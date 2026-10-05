@@ -28,7 +28,7 @@ Evidence classes used below:
 | CPU | — | "ranchu" virtual SoC, 2 cores (x86_64 host, KVM) |
 | RAM | — | 2475 MB |
 | Audio route | — | built-in speaker only (no headphones/Bluetooth on an emulator); `FEATURE_AUDIO_LOW_LATENCY = false` |
-| Source | — | CI run [37349345685](https://github.com/Y1X0/Voise/actions/runs/37349345685), job "Emulator validation" |
+| Source | — | measurements: CI run [37349345685](https://github.com/Y1X0/Voise/actions/runs/37349345685); latest all-green run incl. exported-component check: [37350289185](https://github.com/Y1X0/Voise/actions/runs/37350289185) |
 
 ## DSP
 
