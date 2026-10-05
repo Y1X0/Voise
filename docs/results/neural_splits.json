@@ -1,0 +1,23 @@
+{
+ "train": [
+  "ami-FEE078",
+  "ami-FEE087",
+  "arctic-aew-male",
+  "mssnsd-clnsp1-male"
+ ],
+ "val": [
+  "ami-MEE009",
+  "pyannote-sample-speaker91"
+ ],
+ "test": [
+  "ami-FEE083",
+  "ami-FEO070",
+  "ami-MEE012",
+  "ami-MEE075",
+  "ami-M\u00c9O069",
+  "arctic-a0007-male",
+  "arctic-axb-female",
+  "pyannote-sample-speaker90",
+  "speechbrain-example1"
+ ]
+}
