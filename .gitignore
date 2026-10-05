@@ -1,0 +1,16 @@
+# Build outputs
+build/
+dsp/build/
+.gradle/
+app/build/
+app/.cxx/
+local.properties
+*.apk
+*.aab
+captures/
+.idea/
+*.iml
+.DS_Store
+# Evaluation audio is downloaded on demand, never committed
+eval-audio/
+eval-out/
