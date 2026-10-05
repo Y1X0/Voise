@@ -2,7 +2,8 @@
 
 > Real-device / emulator validation, listening-test tooling, speaker-embedding
 > results and the call-app analysis are in
-> [REAL_DEVICE_VALIDATION.md](REAL_DEVICE_VALIDATION.md).
+> [REAL_DEVICE_VALIDATION.md](REAL_DEVICE_VALIDATION.md); anonymization-quality experiments in
+> [ANONYMIZATION_EVALUATION.md](ANONYMIZATION_EVALUATION.md).
 
 Status vocabulary used throughout:
 
@@ -49,7 +50,7 @@ Status vocabulary used throughout:
 
 | Suite | Command | Count |
 |---|---|---|
-| DSP unit + scenario tests (C++) | `./dsp/build/voiceanon_tests` | 28 tests |
+| DSP unit + scenario tests (C++) | `./dsp/build/voiceanon_tests` | 29 tests |
 | Termux CLI (bash, fake `am`) | `bash termux/tests/test_cli.sh` | 17 checks |
 | Android JVM unit tests (Kotlin) | `./gradlew testDebugUnitTest` | 19 tests |
 | Performance benchmark | `./dsp/build/voiceanon_bench` | — |
