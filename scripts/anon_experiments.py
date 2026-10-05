@@ -77,6 +77,19 @@ CONFIGS = [
 ]
 
 
+def set_paths(corpus, out):
+    global CORPUS, OUT
+    CORPUS, OUT = corpus, out
+
+
+TYPES = ("conv", "read", "num", "names", "short", "fast", "slow")
+
+
+def speech_type(u):
+    rest = u.split("__", 1)[1] if "__" in u else ""
+    return next((t for t in TYPES if rest.startswith(t)), None)
+
+
 def utterances():
     files = sorted(glob.glob(os.path.join(CORPUS, "*.wav")))
     return [(os.path.basename(f)[:-4], f) for f in files]
@@ -180,6 +193,18 @@ def pair_lists(names, emb_a, emb_b, symmetric):
     return same, diff
 
 
+def same_pairs_names(names, symmetric):
+    """(enrolment, trial) utterance names in the same order pair_lists() emits same-speaker pairs."""
+    out = []
+    for i, u in enumerate(names):
+        for j, v in enumerate(names):
+            if i == j or (symmetric and j < i):
+                continue
+            if speaker(u) == speaker(v):
+                out.append((u, v))
+    return out
+
+
 def bootstrap(same, diff, n_boot, seed=7):
     spks = sorted({a for a, _, _ in same} | {a for a, _, _ in diff})
     rng = np.random.default_rng(seed)
@@ -269,7 +294,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--configs", default="")
     ap.add_argument("--boot", type=int, default=1000)
+    ap.add_argument("--corpus", default=CORPUS)
+    ap.add_argument("--out", default=OUT)
     args = ap.parse_args()
+    set_paths(args.corpus, args.out)
     utts = utterances()
     names = [n for n, _ in utts]
     os.makedirs(OUT, exist_ok=True)
@@ -321,6 +349,9 @@ def main():
             "rel_wer": edits / max(1, words), "estoi": estoi(orig_paths, proc_paths),
             "dnsmos_ovrl": mos[0], "dnsmos_ovrl_std": mos[1], "dnsmos_sig": mos[2],
             "rtf": rtf, "latencyMs": lat,
+            "by_type": {t: float(np.mean([sc for (a, b, sc), (u, v) in zip(same_op, same_pairs_names(names, False))
+                                          if speech_type(v) == t]))
+                        for t in TYPES if any(speech_type(n) == t for n in names)},
         }
         json.dump(results, open(os.path.join(OUT, "results.json"), "w"), indent=1)
     print_tables(results)
@@ -346,6 +377,13 @@ def print_tables(r):
         print(f"| {k} | {100*i['eer']:.1f} % [{100*i['eer_ci'][0]:.0f}-{100*i['eer_ci'][1]:.0f}] | {i['auc']:.3f} | "
               f"{100*i['ident_top1']:.0f} % | {100*l['eer']:.1f} % [{100*l['eer_ci'][0]:.0f}-{100*l['eer_ci'][1]:.0f}] | "
               f"{100*l['ident_top1']:.0f} % | {100*c['rel_wer']:.0f} % | {c['estoi']:.2f} | {c['dnsmos_ovrl']:.2f} | {c['rtf']:.4f} |")
+    types = sorted({t for c in r["configs"].values() for t in c.get("by_type", {})})
+    if types:
+        print("\nSame-speaker original→processed similarity by speech type (trial utterance type):")
+        print("| config | " + " | ".join(types) + " |")
+        print("|---|" + "---|" * len(types))
+        for k, c in r["configs"].items():
+            print(f"| {k} | " + " | ".join(f"{c['by_type'].get(t, float('nan')):.3f}" for t in types) + " |")
 
 
 if __name__ == "__main__":
