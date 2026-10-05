@@ -26,6 +26,11 @@ public:
 
     void setAmount(float amount);  // 0 (off) .. 1 (max ~20 dB attenuation)
 
+    // Optional fixed per-bin gain curve (bins() values) applied after the
+    // suppression gain; nullptr = none. Used for spectral-envelope reshaping.
+    void setShape(const float* gains);
+    int bins() const { return bins_; }
+
     // Processes exactly hop() samples. in and out may alias.
     void processHop(const float* in, float* out);
 
@@ -41,6 +46,8 @@ private:
     Fft fft_;
     std::vector<float> window_, frame_, ola_, tmp_;
     std::vector<float> re_, im_;
+    std::vector<float> shape_;
+    bool hasShape_ = false;
     std::vector<float> smooth_, minimum_, noise_, gain_, prevGain_, prevPost_, gainSmoothed_;
     std::vector<float> subMin_;    // bins_ * kSubWindows stored sub-window minima
     std::vector<float> actMin_;    // running minimum of the current sub-window

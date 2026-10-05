@@ -8,8 +8,11 @@
 //
 // Options: --preset natural|balanced|strong   --strength 0..1
 //          --pitch ST --formant PCT --intonation G --tilt DB --clarity C --noagc
+//          --reshape DB --drift ST --fjitter PCT --flatten X --seed N   (experimental dimensions)
+//          --tag NAME (output suffix)  --render-only (write WAV, print latency/RTF only)
 //          --direction auto|up|down           --ns 0..1     --block N
 //          --rate HZ (synthetic only)         --out DIR (write processed WAVs)
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -45,6 +48,7 @@ std::vector<float> runEngine(const std::vector<float>& x, double fs, const Param
 }
 
 std::string g_dumpDir;
+bool g_renderOnly = false;
 
 void dump(const std::string& name, const std::vector<float>& dry, const std::vector<float>& wet, double fs) {
     if (g_dumpDir.empty()) return;
@@ -133,6 +137,24 @@ int main(int argc, char** argv) {
             p.tiltDb = static_cast<float>(std::atof(next().c_str()));
         } else if (a == "--clarity") {
             p.clarity = static_cast<float>(std::atof(next().c_str()));
+        } else if (a == "--reshape") {
+            p.spectralReshapeDb = static_cast<float>(std::atof(next().c_str()));
+            preset = "custom";
+        } else if (a == "--drift") {
+            p.pitchDriftSemitones = static_cast<float>(std::atof(next().c_str()));
+            preset = "custom";
+        } else if (a == "--fjitter") {
+            p.formantJitterPercent = static_cast<float>(std::atof(next().c_str()));
+            preset = "custom";
+        } else if (a == "--flatten") {
+            p.dynamicsFlatten = static_cast<float>(std::atof(next().c_str()));
+            preset = "custom";
+        } else if (a == "--seed") {
+            p.variationSeed = static_cast<uint32_t>(std::atoi(next().c_str()));
+        } else if (a == "--tag") {
+            preset = next();
+        } else if (a == "--render-only") {
+            g_renderOnly = true;
         } else if (a == "--noagc") {
             p.agc = false;
         } else if (a == "--ns") {
@@ -203,8 +225,15 @@ int main(int argc, char** argv) {
             continue;
         }
         int latency = 0;
+        const auto t0 = std::chrono::steady_clock::now();
         const std::vector<float> wet = runEngine(dry, fs, p, block, &latency);
-        report(baseName(f) + "_" + preset, dry, wet, fs, latency);
+        const double secs = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+        if (g_renderOnly) {
+            std::printf("{\"name\":\"%s\",\"latencyMs\":%.2f,\"rtf\":%.5f}\n", (baseName(f) + "_" + preset).c_str(),
+                        1000.0 * latency / fs, secs * fs / dry.size());
+        } else {
+            report(baseName(f) + "_" + preset, dry, wet, fs, latency);
+        }
         if (!outDir.empty()) testing::writeWav(outDir + "/" + baseName(f) + "_" + preset + ".wav", wet, fs);
     }
     return 0;

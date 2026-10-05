@@ -440,3 +440,65 @@ TEST(engine_long_run_stability_and_speed) {
     CHECK_NEAR(lastDb, firstDb, 3.0);
     CHECK_LE(elapsed / seconds, 0.25);
 }
+
+TEST(engine_experimental_dimensions_are_safe) {
+    const double fs = 48000;
+    const std::vector<float> x =
+        testing::synthesizeSpeech(testing::arabicText() + " " + testing::englishText(), testing::maleVoice(), fs, 30, -20.0);
+    const Params base = fixedUp(Preset::Balanced);
+    const Run ref = runEngine(x, fs, base);
+    struct Dim {
+        const char* name;
+        void (*apply)(Params&);
+    };
+    const Dim dims[] = {
+        {"spectral reshape 6 dB", [](Params& p) { p.spectralReshapeDb = 6.0f; }},
+        {"pitch drift 1 st", [](Params& p) { p.pitchDriftSemitones = 1.0f; }},
+        {"formant jitter 4 %", [](Params& p) { p.formantJitterPercent = 4.0f; }},
+        {"dynamics flatten 1.0", [](Params& p) { p.dynamicsFlatten = 1.0f; }},
+        {"all combined", [](Params& p) {
+             p.spectralReshapeDb = 6.0f;
+             p.pitchDriftSemitones = 1.0f;
+             p.formantJitterPercent = 4.0f;
+             p.dynamicsFlatten = 1.0f;
+         }},
+    };
+    for (const Dim& d : dims) {
+        Params p = base;
+        d.apply(p);
+        p.variationSeed = 7;
+        const Run a = runEngine(x, fs, p, {192});
+        const Run b = runEngine(x, fs, p, {1, 1000, 37});
+        double maxDiff = 0;
+        for (size_t i = 0; i < a.raw.size(); ++i) maxDiff = std::max(maxDiff, static_cast<double>(std::fabs(a.raw[i] - b.raw[i])));
+        const analysis::Comparison c = analysis::compare(x.data(), a.wet.data(), static_cast<int>(x.size()), fs);
+        vt::note("%-22s latency %d (base %d), env.corr %.3f, dropouts %d, newClicks %d, peak %.3f", d.name, a.latency,
+                 ref.latency, c.envelopeCorrelation, c.dropouts, c.newClicks, c.wetPeak);
+        CHECK(allFinite(a.raw));
+        CHECK(a.latency == ref.latency);  // no added latency
+        CHECK(maxDiff == 0.0);            // still deterministic and block-size independent
+        CHECK_LE(peak(a.raw), 0.8913 + 1e-4);
+        CHECK(c.dropouts == 0);
+        CHECK_LE(c.newClicks, 2);
+    }
+    // Zero heap allocations with every experimental dimension active (and changing).
+    Engine e(fs);
+    Params p = base;
+    p.spectralReshapeDb = 6.0f;
+    p.pitchDriftSemitones = 1.0f;
+    p.formantJitterPercent = 4.0f;
+    p.dynamicsFlatten = 1.0f;
+    e.setParams(p);
+    e.reset();
+    std::vector<float> out(x.size());
+    const long before = vt::g_allocations.load();
+    for (size_t i = 0; i + 192 <= x.size(); i += 192) {
+        if (i % 48000 == 0) {
+            p.variationSeed += 1;
+            p.spectralReshapeDb = p.spectralReshapeDb > 5.0f ? 3.0f : 6.0f;
+            e.setParams(p);
+        }
+        e.process(&x[i], &out[i], 192);
+    }
+    CHECK(vt::g_allocations.load() - before == 0);
+}

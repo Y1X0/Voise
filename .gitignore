@@ -15,3 +15,6 @@ captures/
 eval-audio/
 eval-out/
 validation-out/
+eval-corpus/
+eval-corpus-src/
+eval-experiments/

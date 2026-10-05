@@ -45,6 +45,13 @@ struct Params {
     // to decide (e.g. the direction remembered from the previous session).
     // 0 = none (defaults to Up), +1 Up, -1 Down.
     int autoDirectionHint = 0;
+
+    // --- Experimental dimensions (all 0 = off; presets leave them off) ---------
+    float spectralReshapeDb = 0.0f;     // smooth random spectral-envelope reshaping, +-dB
+    float pitchDriftSemitones = 0.0f;   // slow random F0 offset (controlled prosody), +-st
+    float formantJitterPercent = 0.0f;  // slow random variation of the envelope warp over time, +-%
+    float dynamicsFlatten = 0.0f;       // 0..1 syllable-rate energy-contour compression
+    uint32_t variationSeed = 1;         // seed for the random processes above
 };
 
 struct Metrics {
@@ -110,6 +117,8 @@ private:
         std::atomic<bool> agc{true};
         std::atomic<int> direction{0};
         std::atomic<int> autoHint{0};
+        std::atomic<float> reshapeDb{0}, driftSt{0}, fjitterPct{0}, flatten{0};
+        std::atomic<uint32_t> seed{1};
     } ap_;
 
     struct AtomicMetrics {
@@ -153,6 +162,16 @@ private:
     int silentQuanta_ = 0;
     float lastInput_ = 0.0f;
     int fadeInRemaining_ = 0, fadeLen_;
+
+    // Experimental processes
+    void updateReshape(float db, uint32_t seed);
+    float nextRandom();  // uniform [-1, 1)
+    std::vector<float> shape_;
+    float shapeDb_ = 0.0f;
+    uint32_t shapeSeed_ = 0, rng_ = 1, rngSeed_ = 0;
+    float driftTarget_ = 0.0f, drift_ = 0.0f, fjTarget_ = 0.0f, fj_ = 0.0f;
+    int driftCountdown_ = 0, fjCountdown_ = 0;
+    float dynEnv_ = 0.0f;
 
     // Capture
     std::vector<float> capDry_, capWet_;

@@ -30,6 +30,7 @@ NoiseSuppressor::NoiseSuppressor(double sampleRate)
     prevGain_.assign(bins_, 1.0f);
     prevPost_.assign(bins_, 1.0f);
     gainSmoothed_.assign(bins_, 1.0f);
+    shape_.assign(bins_, 1.0f);
     const double binHz = fs_ / n_;
     binLo_ = std::max(1, static_cast<int>(300.0 / binHz));
     binHi_ = std::min(bins_ - 1, static_cast<int>(std::min(3000.0, 0.45 * fs_) / binHz));
@@ -42,6 +43,15 @@ NoiseSuppressor::NoiseSuppressor(double sampleRate)
 }
 
 void NoiseSuppressor::setAmount(float amount) { amount_ = std::min(std::max(amount, 0.0f), 1.0f); }
+
+void NoiseSuppressor::setShape(const float* gains) {
+    if (gains == nullptr) {
+        hasShape_ = false;
+        return;
+    }
+    std::copy(gains, gains + bins_, shape_.begin());  // pre-sized: no allocation
+    hasShape_ = true;
+}
 
 void NoiseSuppressor::reset() {
     std::fill(frame_.begin(), frame_.end(), 0.0f);
@@ -159,8 +169,9 @@ void NoiseSuppressor::processHop(const float* in, float* out) {
         }
     }
     for (int k = 0; k < bins_; ++k) {
-        re_[k] *= gainSmoothed_[k];
-        im_[k] *= gainSmoothed_[k];
+        const float g = hasShape_ ? gainSmoothed_[k] * shape_[k] : gainSmoothed_[k];
+        re_[k] *= g;
+        im_[k] *= g;
     }
 
     fft_.inverseReal(re_.data(), im_.data(), tmp_.data());

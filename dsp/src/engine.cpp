@@ -37,6 +37,7 @@ Engine::Engine(double sampleRate, int maxBlock)
     latency_ = (hop_ - 1) + dryDelayLen_;
     smoothCoef_ = static_cast<float>(1.0 - std::exp(-hop_ / (0.08 * fs_)));
     fadeLen_ = std::max(1, static_cast<int>(0.002 * fs_));
+    shape_.assign(ns_.bins(), 1.0f);
     reset();
 }
 
@@ -81,6 +82,71 @@ void Engine::reset() {
     fadeInRemaining_ = 0;
     eqTilt_ = eqClarity_ = 1e9f;
     updateEq(true);
+    rngSeed_ = p.variationSeed;
+    rng_ = p.variationSeed ? p.variationSeed * 2654435761u + 12345u : 12345u;
+    driftTarget_ = drift_ = fjTarget_ = fj_ = 0.0f;
+    driftCountdown_ = fjCountdown_ = 0;
+    dynEnv_ = 0.0f;
+    shapeDb_ = 0.0f;
+    shapeSeed_ = 0;
+    ns_.setShape(nullptr);
+    updateReshape(p.spectralReshapeDb, p.variationSeed);
+}
+
+float Engine::nextRandom() {
+    // xorshift32
+    rng_ ^= rng_ << 13;
+    rng_ ^= rng_ >> 17;
+    rng_ ^= rng_ << 5;
+    return static_cast<float>(rng_ & 0xFFFFFF) / static_cast<float>(0x800000) - 1.0f;
+}
+
+void Engine::updateReshape(float db, uint32_t seed) {
+    if (db == shapeDb_ && seed == shapeSeed_) return;
+    shapeDb_ = db;
+    shapeSeed_ = seed;
+    if (db <= 0.0f) {
+        ns_.setShape(nullptr);
+        return;
+    }
+    // Smooth random gain curve over a mel axis: 8 control points 150 Hz..min(7 kHz, fs/2),
+    // values in [-db, +db], cosine-interpolated, mean-normalised over the speech band.
+    uint32_t r = seed * 747796405u + 2891336453u;
+    auto rnd = [&r]() {
+        r ^= r << 13;
+        r ^= r >> 17;
+        r ^= r << 5;
+        return static_cast<float>(r & 0xFFFFFF) / static_cast<float>(0x800000) - 1.0f;
+    };
+    constexpr int kPoints = 8;
+    float ctrl[kPoints + 2];
+    for (int i = 0; i < kPoints + 2; ++i) ctrl[i] = rnd() * db;
+    ctrl[0] = ctrl[kPoints + 1] = 0.0f;  // no change at the extremes
+    auto mel = [](double f) { return 2595.0 * std::log10(1.0 + f / 700.0); };
+    const double lo = mel(150.0), hi = mel(std::min(7000.0, 0.45 * fs_));
+    const int bins = ns_.bins();
+    const double binHz = fs_ / (2.0 * (bins - 1));
+    double sum = 0.0;
+    int count = 0;
+    for (int k = 0; k < bins; ++k) {
+        const double m = (mel(k * binHz) - lo) / (hi - lo) * (kPoints + 1);
+        float g;
+        if (m <= 0.0) g = ctrl[0];
+        else if (m >= kPoints + 1) g = ctrl[kPoints + 1];
+        else {
+            const int i = static_cast<int>(m);
+            const double t = 0.5 - 0.5 * std::cos(M_PI * (m - i));
+            g = static_cast<float>(ctrl[i] * (1.0 - t) + ctrl[i + 1] * t);
+        }
+        shape_[k] = g;
+        if (k * binHz > 300.0 && k * binHz < 4000.0) {
+            sum += g;
+            ++count;
+        }
+    }
+    const float mean = count ? static_cast<float>(sum / count) : 0.0f;
+    for (int k = 0; k < bins; ++k) shape_[k] = std::pow(10.0f, (shape_[k] - mean) / 20.0f);
+    ns_.setShape(shape_.data());
 }
 
 void Engine::setParams(const Params& p) {
@@ -93,6 +159,11 @@ void Engine::setParams(const Params& p) {
     ap_.noiseSuppression.store(p.noiseSuppression, std::memory_order_relaxed);
     ap_.outputGainDb.store(p.outputGainDb, std::memory_order_relaxed);
     ap_.agc.store(p.agc, std::memory_order_relaxed);
+    ap_.reshapeDb.store(p.spectralReshapeDb, std::memory_order_relaxed);
+    ap_.driftSt.store(p.pitchDriftSemitones, std::memory_order_relaxed);
+    ap_.fjitterPct.store(p.formantJitterPercent, std::memory_order_relaxed);
+    ap_.flatten.store(p.dynamicsFlatten, std::memory_order_relaxed);
+    ap_.seed.store(p.variationSeed, std::memory_order_relaxed);
     ap_.autoHint.store(p.autoDirectionHint > 0 ? 1 : p.autoDirectionHint < 0 ? -1 : 0, std::memory_order_relaxed);
     ap_.direction.store(static_cast<int>(p.direction), std::memory_order_release);
 }
@@ -110,6 +181,11 @@ Params Engine::params() const {
     p.outputGainDb = ap_.outputGainDb.load(std::memory_order_relaxed);
     p.agc = ap_.agc.load(std::memory_order_relaxed);
     p.autoDirectionHint = ap_.autoHint.load(std::memory_order_relaxed);
+    p.spectralReshapeDb = ap_.reshapeDb.load(std::memory_order_relaxed);
+    p.pitchDriftSemitones = ap_.driftSt.load(std::memory_order_relaxed);
+    p.formantJitterPercent = ap_.fjitterPct.load(std::memory_order_relaxed);
+    p.dynamicsFlatten = ap_.flatten.load(std::memory_order_relaxed);
+    p.variationSeed = ap_.seed.load(std::memory_order_relaxed);
     return p;
 }
 
@@ -225,9 +301,30 @@ void Engine::updateSmoothedParams(bool voicedNow, float f0Now, bool vadNow) {
     if (sign < 0) r = 1.0f / r;
     const float targetFormant =
         std::log2(clampf(r, PsolaShifter::kMinFormantRatio, PsolaShifter::kMaxFormantRatio));
+    // Slow random processes (controlled prosody / micro-variation): a new random
+    // target every 0.4-0.8 s, approached with a ~0.25 s one-pole.
+    if (p.variationSeed != rngSeed_) {
+        rngSeed_ = p.variationSeed;
+        rng_ = p.variationSeed ? p.variationSeed * 2654435761u + 12345u : 12345u;
+    }
+    const int quantaPerSec = static_cast<int>(fs_ / hop_);
+    if (--driftCountdown_ <= 0) {
+        driftTarget_ = nextRandom();
+        driftCountdown_ = quantaPerSec * 2 / 5 + static_cast<int>((nextRandom() + 1.0f) * quantaPerSec / 5);
+    }
+    if (--fjCountdown_ <= 0) {
+        fjTarget_ = nextRandom();
+        fjCountdown_ = quantaPerSec * 2 / 5 + static_cast<int>((nextRandom() + 1.0f) * quantaPerSec / 5);
+    }
+    const float slow = static_cast<float>(1.0 - std::exp(-dt / 0.25));
+    drift_ += slow * (driftTarget_ - drift_);
+    fj_ += slow * (fjTarget_ - fj_);
+    const float driftLog2 = drift_ * clampf(p.pitchDriftSemitones, 0.0f, 3.0f) / 12.0f;
+    const float fjLog2 = std::log2(1.0f + fj_ * clampf(p.formantJitterPercent, 0.0f, 10.0f) / 100.0f);
+
     const float c = smoothCoef_;
-    sPitchLog2_ += c * (targetPitch - sPitchLog2_);
-    sFormantLog2_ += c * (targetFormant - sFormantLog2_);
+    sPitchLog2_ += c * (targetPitch + driftLog2 - sPitchLog2_);
+    sFormantLog2_ += c * (targetFormant + fjLog2 - sFormantLog2_);
     sIntonation_ += c * (clampf(p.intonation, 0.5f, 1.5f) - sIntonation_);
     sTilt_ += c * (sign * clampf(p.tiltDb, -6.0f, 6.0f) - sTilt_);
     sClarity_ += c * (clampf(p.clarity, 0.0f, 1.0f) - sClarity_);
@@ -257,6 +354,7 @@ void Engine::processQuantum(const float* in, float* out) {
     for (int i = 0; i < hop_; ++i) work_[i] = hpf_.process(in[i]);
     hpf_.flush();
     ns_.setAmount(clampf(p.noiseSuppression, 0.0f, 1.0f));
+    updateReshape(clampf(p.spectralReshapeDb, 0.0f, 12.0f), p.variationSeed);
     ns_.processHop(work_.data(), work_.data());
     const bool vad = ns_.voiceActive();
 
@@ -314,6 +412,20 @@ void Engine::processQuantum(const float* in, float* out) {
         const float t = static_cast<float>(i + 1) / hop_;
         const float g = (gateStart + t * (gateGain_ - gateStart)) * (outStart + t * (sOutGain_ - outStart));
         qIn_[i] *= g * agcLin;
+    }
+    // Energy-contour flattening: fast compressor (5 ms attack, 80 ms release)
+    // above -30 dBFS, ratio 1 + 3 * amount, no look-ahead (no added latency).
+    const float flatten = clampf(p.dynamicsFlatten, 0.0f, 1.0f);
+    if (flatten > 0.0f) {
+        const float att = static_cast<float>(1.0 - std::exp(-1.0 / (0.005 * fs_)));
+        const float rel = static_cast<float>(1.0 - std::exp(-1.0 / (0.080 * fs_)));
+        const float thr = 0.0316f;  // -30 dBFS
+        const float slope = 1.0f - 1.0f / (1.0f + 3.0f * flatten);
+        for (int i = 0; i < hop_; ++i) {
+            const float a = std::fabs(qIn_[i]);
+            dynEnv_ += (a > dynEnv_ ? att : rel) * (a - dynEnv_);
+            if (dynEnv_ > thr) qIn_[i] *= std::pow(thr / dynEnv_, slope);
+        }
     }
 
     limiter_.process(qIn_.data(), hop_);
