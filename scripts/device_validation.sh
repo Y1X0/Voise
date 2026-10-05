@@ -119,7 +119,8 @@ lines = ["# Device validation summary", "",
   f"SoC: {dev.get('socModel','?')}, cores {dev.get('cores','?')}, RAM {dev.get('ramMb','?')} MB, route: {dev.get('outputRoute','?')}",
   "", "Instrumented tests: " + (f"OK ({ok.group(1)} tests)" if ok else (f"run {fails.group(1)}, failures {fails.group(2)}" if fails else "see instrument.txt")),
   "", "| Metric | Value |", "|---|---|"]
-for k in ["sampleRate","framesPerCallback","algorithmicLatencyMs","inputStreamLatencyMs","outputStreamLatencyMs",
+for k in ["windowInputUnderruns","windowOutputXruns","windowConcealedFrames","secondsWithCallbackOverDeadline",
+          "sampleRate","framesPerCallback","algorithmicLatencyMs","inputStreamLatencyMs","outputStreamLatencyMs",
           "estimatedTotalLatencyMs","callbackLoadMeanPct","callbackLoadMaxPct","inputUnderruns","outputXruns",
           "concealedFrames","streamRestarts","pssKbEnd","nativeHeapKbEnd","charging"]:
     if k in rt: lines.append(f"| {k} | {rt[k]} |")
@@ -132,6 +133,11 @@ lines += ["", "CLI: " + open(os.path.join(out, "cli.txt")).read().strip().splitl
 open(os.path.join(out, "summary.md"), "w").write("\n".join(lines) + "\n")
 print("\n".join(lines))
 PY
+
+echo "== raw report"
+cat "$OUT/device_report.json" 2>/dev/null || true
+echo "== per-test status (code 0 = pass, -2 = failure, -4 = assumption skipped)"
+awk '/^INSTRUMENTATION_STATUS: test=/{t=$2} /^INSTRUMENTATION_STATUS_CODE: -?[0-9]+$/{c=$2; if (c!=1) print t, c}' "$OUT/instrument.txt"
 
 status=0
 grep -q "^OK (" "$OUT/instrument.txt" || { echo "instrumented validation reported failures (see instrument.txt)"; status=1; }
