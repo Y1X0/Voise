@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.voiceanon.app.engine.EngineStats
 import com.voiceanon.app.engine.NativeEngine
 import com.voiceanon.app.service.VoiceAnon
+import com.voiceanon.app.util.ListeningTest
 import com.voiceanon.app.util.ResourceMonitor
 import com.voiceanon.app.util.WavWriter
 import kotlinx.coroutines.Dispatchers
@@ -32,8 +33,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
+import java.security.SecureRandom
 
 private const val MEASURE_SECONDS = 8f
+private const val LT_SECONDS = 20f
 
 @Composable
 fun TestScreen(state: VoiceAnon.State) {
@@ -45,6 +48,8 @@ fun TestScreen(state: VoiceAnon.State) {
     var measuring by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<JSONObject?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
+    var ltBusy by remember { mutableStateOf(false) }
+    var ltMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(state.running) {
         var tick = 0
@@ -107,7 +112,7 @@ fun TestScreen(state: VoiceAnon.State) {
                 style = MaterialTheme.typography.bodySmall,
             )
             if (measuring) LinearProgressIndicator(progress = { stats.captureProgress }, modifier = Modifier.fillMaxWidth())
-            Button(enabled = state.running && !measuring, onClick = {
+            Button(enabled = state.running && !measuring && !ltBusy, onClick = {
                 measuring = true
                 result = null
                 message = null
@@ -122,6 +127,25 @@ fun TestScreen(state: VoiceAnon.State) {
                 help = "Off by default. Saves the measurement as WAV files in app-specific storage (deleted on uninstall).") { v ->
                 VoiceAnon.update { it.copy(debugRecordings = v) }
             }
+        }
+
+        Section("Blind listening test (A/B/C/D)") {
+            Text(
+                "Records ${LT_SECONDS.toInt()} s of your voice ONLY when you press the button. The first half is saved " +
+                    "as a known original reference; the second half is saved as A = original, B = Natural, " +
+                    "C = Balanced, D = Strong under random names sample_1..4. The answer key is a separate file " +
+                    "for the experimenter. Files go to app-specific storage; nothing is uploaded.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Button(enabled = state.running && !ltBusy && !measuring, onClick = {
+                ltBusy = true
+                ltMessage = "Recording - read a few sentences..."
+                scope.launch {
+                    ltMessage = recordListeningTest(context, stats.direction)
+                    ltBusy = false
+                }
+            }) { Text(if (ltBusy) "Working..." else "Record listening-test set") }
+            ltMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
         }
     }
 }
@@ -170,5 +194,34 @@ private suspend fun measure(context: Context, saveDebug: Boolean, onResult: (JSO
         File(dir, "measure_${stamp}_original.wav").outputStream().use { WavWriter.write(it, dry, rate) }
         File(dir, "measure_${stamp}_anonymized.wav").outputStream().use { WavWriter.write(it, wet, rate) }
         "Debug recording saved to ${dir.absolutePath}"
+    }
+}
+
+private suspend fun recordListeningTest(context: Context, direction: Int): String {
+    if (!NativeEngine.startCapture(LT_SECONDS)) return "Could not start recording (engine not running?)"
+    var waited = 0
+    while (NativeEngine.stats().captureProgress < 1f) {
+        delay(200)
+        waited += 200
+        if (waited > (LT_SECONDS * 1000 + 5000)) return "Recording timed out"
+        if (!NativeEngine.isRunning()) return "Engine stopped during recording"
+    }
+    val (dry, _, rate) = NativeEngine.readCapture() ?: return "No recording available"
+    return withContext(Dispatchers.Default) {
+        val half = dry.size / 2
+        val reference = dry.copyOfRange(0, half)
+        val test = dry.copyOfRange(half, dry.size)
+        val versions = mapOf(
+            "A_original" to test,
+            "B_natural" to NativeEngine.renderOffline(test, rate, 0.2f, direction),
+            "C_balanced" to NativeEngine.renderOffline(test, rate, 0.55f, direction),
+            "D_strong" to NativeEngine.renderOffline(test, rate, 0.9f, direction),
+        )
+        val rng = SecureRandom()
+        val id = (1..6).map { "abcdefghjkmnpqrstuvwxyz23456789"[rng.nextInt(31)] }.joinToString("")
+        val dir = withContext(Dispatchers.IO) {
+            ListeningTest.export(context.getExternalFilesDir(null)!!, id, reference, versions, rate, direction, rng)
+        }
+        "Saved to ${dir.absolutePath}\nCopy with: adb pull ${dir.absolutePath}"
     }
 }

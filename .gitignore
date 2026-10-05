@@ -14,3 +14,4 @@ captures/
 # Evaluation audio is downloaded on demand, never committed
 eval-audio/
 eval-out/
+validation-out/

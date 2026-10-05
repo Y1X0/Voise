@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blind Listening Test</title>
+<style>
+  :root { --bg:#fafafa; --fg:#1c1c1c; --muted:#666; --card:#fff; --line:#ddd; --accent:#2457a6; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#151515; --fg:#eee; --muted:#aaa; --card:#202020; --line:#383838; --accent:#7aa7ff; } }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.45 system-ui, sans-serif; }
+  main { max-width:760px; margin:0 auto; padding:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin:12px 0; }
+  h1 { font-size:1.4rem; } h2 { font-size:1.1rem; margin:0 0 8px; }
+  .muted { color:var(--muted); font-size:.9rem; }
+  audio { width:100%; margin:6px 0 10px; }
+  .q { display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; margin:6px 0; }
+  .q label.t { flex:1 1 260px; }
+  .scale { display:flex; gap:4px; }
+  .scale label { border:1px solid var(--line); border-radius:6px; padding:2px 9px; cursor:pointer; }
+  .scale input { display:none; } .scale input:checked + span { color:var(--accent); font-weight:700; }
+  button { background:var(--accent); color:#fff; border:0; border-radius:8px; padding:10px 16px; font-size:1rem; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:default; }
+  input[type=text] { padding:6px; font-size:1rem; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--fg); }
+  .err { color:#c62828; }
+</style>
+</head>
+<body>
+<main>
+<h1>Blind listening test</h1>
+<p class="muted">Works offline. Audio never leaves this computer. You will hear a <b>reference</b> recording of a speaker
+(their real voice, different words) and four clips in random order. One clip may be the unprocessed original;
+you are not told which.</p>
+
+<div class="card">
+  <h2>1. Setup</h2>
+  <div class="q"><label class="t">Your participant code (no real names):</label><input type="text" id="pid" maxlength="20" placeholder="e.g. P07"></div>
+  <div class="q"><label class="t">Do you personally know this speaker?</label>
+    <select id="knows"><option value="">choose…</option><option>no</option><option>yes</option></select></div>
+  <p class="muted">Choose the session folder (<code>listening-test-…</code>). Only <code>reference_original.wav</code> and
+  <code>sample_1.wav</code> … <code>sample_4.wav</code> are used; the KEY file is ignored and never read.</p>
+  <input type="file" id="files" webkitdirectory multiple>
+  <p id="loadErr" class="err"></p>
+</div>
+
+<div id="test" hidden>
+  <div class="card"><h2>Reference (the speaker's real voice)</h2><audio id="ref" controls preload="auto"></audio></div>
+  <div id="clips"></div>
+  <div class="card">
+    <h2>Which clip do you think is the unprocessed original voice?</h2>
+    <div class="scale" id="guess"></div>
+  </div>
+  <div class="card">
+    <button id="save" disabled>Download my answers (CSV)</button>
+    <p class="muted">Send the CSV to the experimenter. Answer every question to enable the button.</p>
+  </div>
+</div>
+
+<script>
+const QUESTIONS = [
+  ["intelligibility", "How easy is it to understand the words? (1 = very hard, 5 = very easy)"],
+  ["naturalness", "How natural / human does the voice sound? (1 = very unnatural, 5 = completely natural)"],
+  ["similarity", "How similar is this voice to the reference speaker? (1 = clearly a different person, 5 = clearly the same person)"],
+  ["artifacts", "How noticeable are processing artifacts (robotic, metallic, clicks)? (1 = very noticeable, 5 = none)"],
+  ["anonymity", "If you knew the reference speaker, could you recognise them in this clip? (1 = certainly, 5 = certainly not)"],
+];
+let order = [], session = "";
+
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+document.getElementById("files").addEventListener("change", (ev) => {
+  const err = document.getElementById("loadErr"); err.textContent = "";
+  const files = [...ev.target.files];
+  const ref = files.find(f => f.name === "reference_original.wav");
+  const samples = files.filter(f => /^sample_[1-4]\.wav$/.test(f.name));
+  if (!ref || samples.length !== 4) { err.textContent = "Select reference_original.wav and sample_1.wav … sample_4.wav."; return; }
+  session = (ref.webkitRelativePath || "").split("/")[0] || "";
+  document.getElementById("ref").src = URL.createObjectURL(ref);
+  order = shuffle(samples.slice());           // second shuffle per listener: page labels != file names
+  const box = document.getElementById("clips"); box.innerHTML = "";
+  const guess = document.getElementById("guess"); guess.innerHTML = "";
+  order.forEach((f, i) => {
+    const card = document.createElement("div"); card.className = "card";
+    card.innerHTML = `<h2>Clip ${i + 1}</h2><audio controls preload="auto" src="${URL.createObjectURL(f)}"></audio>` +
+      QUESTIONS.map(([k, q]) => `<div class="q"><label class="t">${q}</label><div class="scale">` +
+        [1,2,3,4,5].map(v => `<label><input type="radio" name="c${i}_${k}" value="${v}"><span>${v}</span></label>`).join("") +
+        `</div></div>`).join("");
+    box.appendChild(card);
+    guess.insertAdjacentHTML("beforeend", `<label><input type="radio" name="guess" value="${i}"><span>Clip ${i + 1}</span></label>`);
+  });
+  guess.insertAdjacentHTML("beforeend", `<label><input type="radio" name="guess" value="none"><span>Can't tell</span></label>`);
+  document.getElementById("test").hidden = false;
+  document.addEventListener("change", check);
+});
+
+function val(name) { const e = document.querySelector(`input[name="${name}"]:checked`); return e ? e.value : null; }
+function check() {
+  const ok = document.getElementById("pid").value.trim() && document.getElementById("knows").value &&
+    order.length === 4 && val("guess") !== null &&
+    order.every((_, i) => QUESTIONS.every(([k]) => val(`c${i}_${k}`) !== null));
+  document.getElementById("save").disabled = !ok;
+}
+document.getElementById("pid").addEventListener("input", check);
+
+document.getElementById("save").addEventListener("click", () => {
+  const pid = document.getElementById("pid").value.trim().replace(/[^\w-]/g, "");
+  const knows = document.getElementById("knows").value;
+  const g = val("guess");
+  const rows = [["participant", "knows_speaker", "session", "file", "presented_as", ...QUESTIONS.map(q => q[0]), "guessed_original"]];
+  order.forEach((f, i) => rows.push([pid, knows, session, f.name, `clip${i + 1}`, ...QUESTIONS.map(([k]) => val(`c${i}_${k}`)),
+    g === String(i) ? 1 : 0]));
+  const csv = rows.map(r => r.join(",")).join("\n") + "\n";
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+  a.download = `ratings_${pid}.csv`; a.click();
+});
+</script>
+</main>
+</body>
+</html>

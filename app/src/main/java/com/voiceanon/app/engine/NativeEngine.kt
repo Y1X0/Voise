@@ -32,6 +32,10 @@ object NativeEngine {
         return Triple(r[0], r[1], r[2][0].toInt())
     }
 
+    /** Offline render through a fresh engine; output aligned with [dry]. */
+    fun renderOffline(dry: FloatArray, sampleRate: Int, strength: Float, direction: Int): FloatArray =
+        nativeRenderOffline(dry, sampleRate, strength, direction)
+
     fun compare(dry: FloatArray, wet: FloatArray, sampleRate: Int): String = nativeCompare(dry, wet, sampleRate)
 
     private external fun nativeStart(sampleRate: Int, voiceComm: Boolean, inputDevice: Int, outputDevice: Int): Boolean
@@ -42,5 +46,6 @@ object NativeEngine {
     private external fun nativeGetStats(): FloatArray
     private external fun nativeStartCapture(seconds: Float): Boolean
     private external fun nativeReadCapture(): Array<FloatArray>?
+    private external fun nativeRenderOffline(dry: FloatArray, sampleRate: Int, strength: Float, direction: Int): FloatArray
     private external fun nativeCompare(dry: FloatArray, wet: FloatArray, sampleRate: Int): String
 }

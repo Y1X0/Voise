@@ -161,6 +161,32 @@ JNIEXPORT jobjectArray JNICALL Java_com_voiceanon_app_engine_NativeEngine_native
     return result;
 }
 
+// Renders `dry` through a fresh engine (same streaming code, 192-frame blocks)
+// with the given strength / direction; output is latency-aligned with the input.
+// Used by the blind listening-test recorder to make B/C/D from one take.
+JNIEXPORT jfloatArray JNICALL Java_com_voiceanon_app_engine_NativeEngine_nativeRenderOffline(
+    JNIEnv* env, jobject, jfloatArray dry, jint sampleRate, jfloat strength, jint direction) {
+    const jsize n = env->GetArrayLength(dry);
+    std::vector<float> in(n);
+    env->GetFloatArrayRegion(dry, 0, n, in.data());
+    voiceanon::Engine e(sampleRate);
+    Params p = voiceanon::paramsForStrength(strength);
+    p.direction = direction > 0 ? voiceanon::Direction::Up
+                  : direction < 0 ? voiceanon::Direction::Down : voiceanon::Direction::Auto;
+    e.setParams(p);
+    e.reset();
+    const int lat = e.latencySamples();
+    in.resize(static_cast<size_t>(n) + lat + 192, 0.0f);
+    std::vector<float> out(in.size(), 0.0f);
+    for (size_t i = 0; i < in.size(); i += 192) {
+        const int m = static_cast<int>(std::min<size_t>(192, in.size() - i));
+        e.process(&in[i], &out[i], m);
+    }
+    jfloatArray result = env->NewFloatArray(n);
+    env->SetFloatArrayRegion(result, 0, n, out.data() + lat);
+    return result;
+}
+
 // Offline comparison (same code as the host test-suite). Returns JSON.
 JNIEXPORT jstring JNICALL Java_com_voiceanon_app_engine_NativeEngine_nativeCompare(JNIEnv* env, jobject,
                                                                                   jfloatArray dry, jfloatArray wet,
