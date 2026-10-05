@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  dsp:
+    name: DSP engine (host tests, benchmark, evaluation) + Termux CLI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build DSP core and host tools
+        run: |
+          cmake -S dsp -B dsp/build -DCMAKE_BUILD_TYPE=Release
+          cmake --build dsp/build -j"$(nproc)"
+      - name: DSP unit and scenario tests
+        run: ./dsp/build/voiceanon_tests | tee dsp-tests.txt
+      - name: Performance benchmark (host CPU)
+        run: ./dsp/build/voiceanon_bench | tee bench.md
+      - name: Synthetic speech evaluation (all presets)
+        run: |
+          for p in natural balanced strong; do ./dsp/build/voiceanon_eval --synthetic --direction up --preset "$p"; done | tee synthetic-eval.jsonl
+      - name: Real speech evaluation (openly licensed recordings)
+        run: scripts/eval_real_speech.sh | tee real-eval.md
+      - name: Termux CLI tests
+        run: bash termux/tests/test_cli.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dsp-reports
+          path: |
+            dsp-tests.txt
+            bench.md
+            synthetic-eval.jsonl
+            real-eval.md
+            eval-out/*.wav
+
+  android:
+    name: Android APK + JVM unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build debug APK and run unit tests
+        run: ./gradlew --no-daemon --stacktrace assembleDebug testDebugUnitTest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: voice-anonymizer-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-unit-test-reports
+          path: app/build/reports/tests/

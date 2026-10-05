@@ -1,0 +1,108 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# voiceanon - control the Voice Anonymizer app from Termux (no root needed).
+#
+# Transport: `am broadcast` to the app's exported ControlReceiver, authenticated
+# with a pairing token shown in the app (Termux tab). `start` uses `am start`
+# because Android only lets a visible app begin capturing the microphone.
+#
+#   voiceanon pair <token>     store the pairing token (chmod 600)
+#   voiceanon status           print JSON status
+#   voiceanon start            start anonymization (opens the app briefly)
+#   voiceanon stop             stop anonymization
+#   voiceanon mode natural|balanced|strong
+#   voiceanon strength 0-100
+#   voiceanon unpair           delete the stored token
+set -u
+
+PKG="${VOICEANON_PACKAGE:-com.voiceanon.app}"
+CONF_DIR="${VOICEANON_CONFIG_DIR:-$HOME/.config/voiceanon}"
+TOKEN_FILE="$CONF_DIR/token"
+AM="${VOICEANON_AM:-am}"
+
+RESULT_OK=10
+RESULT_ERROR=11
+RESULT_UNAUTHORIZED=12
+RESULT_DISABLED=13
+RESULT_LOCKED=14
+
+die() { echo "voiceanon: $*" >&2; exit 1; }
+
+usage() {
+    sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+read_token() {
+    [ -r "$TOKEN_FILE" ] || die "not paired. Enable 'Termux control' in the app, then run: voiceanon pair <token>"
+    TOKEN="$(tr -d ' \n\r\t' < "$TOKEN_FILE")"
+    [ -n "$TOKEN" ] || die "token file is empty: $TOKEN_FILE"
+}
+
+# send <cmd> [arg]  -> prints JSON, returns 0 on success
+send() {
+    local cmd="$1" arg="${2:-}" out code data
+    if [ -n "$arg" ]; then
+        out="$("$AM" broadcast -n "$PKG/.ipc.ControlReceiver" -a "$PKG.action.CONTROL" \
+            --es token "$TOKEN" --es cmd "$cmd" --es arg "$arg" 2>&1)"
+    else
+        out="$("$AM" broadcast -n "$PKG/.ipc.ControlReceiver" -a "$PKG.action.CONTROL" \
+            --es token "$TOKEN" --es cmd "$cmd" 2>&1)"
+    fi
+    code="$(printf '%s\n' "$out" | sed -n 's/.*Broadcast completed: result=\(-\{0,1\}[0-9]*\).*/\1/p' | tail -n1)"
+    data="$(printf '%s\n' "$out" | sed -n 's/.*Broadcast completed: result=[-0-9]*, data="\(.*\)"$/\1/p' | tail -n1)"
+    if [ -z "$code" ]; then
+        die "could not run '$AM broadcast': $out"
+    fi
+    case "$code" in
+        "$RESULT_OK") printf '%s\n' "$data"; return 0 ;;
+        0) die "no answer from $PKG - is the app installed?" ;;
+        "$RESULT_DISABLED") die "Termux control is disabled in the app (Termux tab)" ;;
+        "$RESULT_UNAUTHORIZED") die "invalid token - copy the pair command from the app again" ;;
+        "$RESULT_LOCKED") die "too many failed attempts; wait a minute" ;;
+        "$RESULT_ERROR") printf '%s\n' "$data" >&2; return 2 ;;
+        *) die "unexpected result $code: $data" ;;
+    esac
+}
+
+is_running() {
+    send status 2>/dev/null | grep -q '"running":true'
+}
+
+[ $# -ge 1 ] || { usage; exit 1; }
+cmd="$1"; shift
+
+case "$cmd" in
+    help|-h|--help) usage ;;
+    pair)
+        [ $# -eq 1 ] || die "usage: voiceanon pair <token>"
+        printf '%s' "$1" | grep -Eq '^[0-9a-f]{32}$' || die "token must be 32 lowercase hex characters"
+        mkdir -p "$CONF_DIR" && chmod 700 "$CONF_DIR"
+        (umask 077 && printf '%s\n' "$1" > "$TOKEN_FILE")
+        chmod 600 "$TOKEN_FILE"
+        TOKEN="$1"
+        if (send status >/dev/null); then echo "paired"; else rm -f "$TOKEN_FILE"; exit 1; fi
+        ;;
+    unpair) rm -f "$TOKEN_FILE"; echo "unpaired" ;;
+    status) read_token; send status ;;
+    stop) read_token; send stop ;;
+    mode)
+        [ $# -eq 1 ] || die "usage: voiceanon mode natural|balanced|strong"
+        read_token; send mode "$1"
+        ;;
+    strength)
+        [ $# -eq 1 ] || die "usage: voiceanon strength 0-100"
+        read_token; send strength "$1"
+        ;;
+    start)
+        read_token
+        send status >/dev/null || exit 1  # validates pairing first
+        if is_running; then send status; exit 0; fi
+        "$AM" start -n "$PKG/.ui.MainActivity" -a "$PKG.action.CLI_START" --es token "$TOKEN" >/dev/null 2>&1 \
+            || die "could not open the app"
+        for _ in 1 2 3 4 5 6 7 8 9 10; do
+            if is_running; then send status; exit 0; fi
+            sleep 0.5
+        done
+        die "the app did not start - check it for a permission prompt or a 'connect headphones' message"
+        ;;
+    *) usage; exit 1 ;;
+esac

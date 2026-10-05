@@ -163,7 +163,7 @@ std::vector<float> averageEnvelopeDb(const float* x, int n, double fs, double ma
     int count = 0;
     std::vector<double> frame(win), r(order + 1), a;
     for (size_t fi = 0; fi < e.size(); ++fi) {
-        if (e[fi] < maxE * 1e-3 || e[fi] < 1e-10) continue;  // within 30 dB of the loudest frame
+        if (e[fi] < maxE * 1e-2 || e[fi] < 1e-10) continue;  // speech-dominant: within 20 dB of the loudest frame
         const int s = static_cast<int>(fi) * hop;
         for (int i = 0; i < win; ++i) {
             const double pre = y[s + i] - (s + i > 0 ? 0.9 * y[s + i - 1] : 0.0);
@@ -234,6 +234,9 @@ double estimateFormantRatio(const float* a, const float* b, int n, double fs) {
             bestAlpha = alpha;
         }
     }
+    // A minimum on the search boundary means the estimate is not trustworthy
+    // (typically short, noisy or very quiet material).
+    if (bestAlpha < 0.71 || bestAlpha > 1.39) return -1.0;
     return bestAlpha;
 }
 

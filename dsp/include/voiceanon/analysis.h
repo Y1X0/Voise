@@ -21,7 +21,8 @@ float medianVoicedF0(const std::vector<float>& f0);
 std::vector<float> averageEnvelopeDb(const float* x, int n, double fs, double maxHz, int points);
 
 // Estimated spectral-envelope (formant) scaling factor between a and b:
-// envelope_b(f) ~= envelope_a(f / ratio). Searched in [0.7, 1.4].
+// envelope_b(f) ~= envelope_a(f / ratio). Searched in [0.7, 1.4]; returns -1
+// when the best fit lies on the search boundary (unreliable estimate).
 double estimateFormantRatio(const float* a, const float* b, int n, double fs);
 
 // Mean MFCC vector (c1..c12) over active frames.
@@ -36,7 +37,7 @@ struct Comparison {
     double f0GrossErrorRate = 0;       // frames whose shift deviates > 3 st from the median
     double voicingAgreement = 0;       // fraction of dry-voiced frames also voiced in wet
     // Timbre / identity proxies
-    double formantRatio = 1;
+    double formantRatio = 1;     // -1 = could not be estimated reliably
     double mfccCosine = 1;       // cosine similarity of mean MFCC vectors (1 = identical)
     double ltasDistanceDb = 0;   // RMS difference of mean-removed long-term envelopes
     // Content / continuity / artefacts
