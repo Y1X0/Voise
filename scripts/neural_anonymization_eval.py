@@ -213,9 +213,17 @@ class Ge2e:
     def __init__(self):
         from resemblyzer import VoiceEncoder, preprocess_wav
         self.enc, self.pre = VoiceEncoder(device="cpu", verbose=False), preprocess_wav
+        self.vad_failures = set()
 
     def embed(self, path):
-        e = self.enc.embed_utterance(self.pre(path))
+        w = self.pre(path)
+        if len(w) < 1600:
+            # Resemblyzer's VAD found no speech (e.g. badly degraded output): an empty input
+            # gives a constant embedding that would fake perfect matches. Embed the
+            # untrimmed audio instead and record the failure.
+            self.vad_failures.add(path)
+            w = self.pre(path, trim_silence=False)
+        e = self.enc.embed_utterance(w)
         return e / np.linalg.norm(e)
 
 
@@ -265,6 +273,7 @@ def main():
     ap.add_argument("--boot", type=int, default=1000)
     ap.add_argument("--corpus", default=CORPUS)
     ap.add_argument("--out", default=OUT)
+    ap.add_argument("--reuse", action="store_true", help="reuse already rendered audio in --out")
     args = ap.parse_args()
 
     utts = [(os.path.basename(f)[:-4], os.path.join(args.corpus, f))
@@ -310,16 +319,21 @@ def main():
             os.makedirs(d, exist_ok=True)
             for n in test + trainval:
                 out = os.path.join(d, n + ".wav")
-                run(paths[n], out, seed, dirs[speaker(n)])
+                if not (args.reuse and os.path.exists(out)):
+                    run(paths[n], out, seed, dirs[speaker(n)])
                 proc[(sess, n)] = out
                 audio_s += sf.info(paths[n]).duration
         elapsed = time.time() - t0
-        rtf = elapsed / max(1e-9, audio_s)  # wall time / audio time, incl. process start-up
+        rtf = None if args.reuse else elapsed / max(1e-9, audio_s)  # wall/audio time incl. process start-up
         res = {"desc": desc, "rtf_host": rtf,
                "peak_rss_mb": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024,
                "attacks": {}}
         for e, ev in evaluators.items():
+            if hasattr(ev, "vad_failures"):
+                ev.vad_failures.clear()
             pe = {k: ev.embed(p) for k, p in proc.items()}
+            if hasattr(ev, "vad_failures"):
+                res[f"{e}_vad_failures"] = sorted(os.path.relpath(p, args.out) for p in ev.vad_failures)
             A = {n: pe[("A", n)] for n in test}
             B = {n: pe[("B", n)] for n in test}
             C = {n: pe[("C", n)] for n in test}
@@ -383,11 +397,16 @@ def print_tables(r):
                   f"{fmt(a['lazy_cross_wccn_A->B'])} | {100*c['A->B']['top1']:.0f} % | "
                   f"{c['A->B']['same_mean']:.3f} / {c['A->B']['same_max']:.3f} | {c['A->B']['diff_mean']:.3f} |")
         print()
+    for s, res in r["systems"].items():
+        if res.get("ge2e_vad_failures"):
+            print(f"VAD failures (no speech detected by the GE2E front-end) for {s}: {res['ge2e_vad_failures']}")
+    print()
     print("| system | ESTOI | rel. WER | DNSMOS OVRL | DNSMOS SIG | duration ratio | clipped | RTF (host) |")
     print("|---|---|---|---|---|---|---|---|")
     for s, res in r["systems"].items():
         print(f"| {s} | {res['estoi']:.2f} | {100*res['rel_wer']:.0f} % | {res['dnsmos_ovrl']:.2f} | {res['dnsmos_sig']:.2f} | "
-              f"{res['duration_ratio']:.3f} | {res['clipped_samples']} | {res['rtf_host']:.3f} |")
+              f"{res['duration_ratio']:.3f} | {res['clipped_samples']} | "
+              + ("n/a (reused renders)" if res['rtf_host'] is None else f"{res['rtf_host']:.3f}") + " |")
 
 
 if __name__ == "__main__":
