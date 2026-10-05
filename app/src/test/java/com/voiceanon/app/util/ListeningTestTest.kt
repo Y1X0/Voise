@@ -15,8 +15,9 @@ class ListeningTestTest {
     @Test
     fun blindingIsAPermutationAndVaries() {
         val seen = mutableSetOf<String>()
-        repeat(200) { seed ->
-            val m = ListeningTest.blind(Random(seed.toLong()))
+        val rng = Random(42) // one generator; consecutive tiny seeds give correlated first draws
+        repeat(200) {
+            val m = ListeningTest.blind(rng)
             assertEquals(setOf("sample_1", "sample_2", "sample_3", "sample_4"), m.keys)
             assertEquals(ListeningTest.CONDITIONS.toSet(), m.values.toSet())
             seen += m.getValue("sample_1")

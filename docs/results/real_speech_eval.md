@@ -1,0 +1,32 @@
+| recording | preset | dir | pitch (st) | formant | env. corr | inton. corr | MFCC cos | LTAS dB | clicks | dropouts | clipped |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| arctic_a0007_male | natural | auto | +1.72 | x1.072 | 0.958 | 0.989 | 0.989 | 1.62 | 2 | 0 | 0 |
+| arctic_a0007_male | natural | up | +1.72 | x1.072 | 0.958 | 0.989 | 0.989 | 1.62 | 2 | 0 | 0 |
+| arctic_a0007_male | balanced | auto | +2.97 | x1.086 | 0.950 | 0.971 | 0.977 | 2.69 | 1 | 0 | 0 |
+| arctic_a0007_male | balanced | up | +2.97 | x1.086 | 0.950 | 0.971 | 0.977 | 2.69 | 1 | 0 | 0 |
+| arctic_a0007_male | strong | auto | +4.24 | x1.146 | 0.944 | 0.982 | 0.959 | 3.84 | 2 | 0 | 0 |
+| arctic_a0007_male | strong | up | +4.24 | x1.146 | 0.944 | 0.982 | 0.959 | 3.84 | 2 | 0 | 0 |
+| arctic_aew_male | natural | auto | +1.71 | x1.076 | 0.901 | 0.983 | 0.971 | 1.45 | 0 | 0 | 0 |
+| arctic_aew_male | natural | up | +1.71 | x1.076 | 0.901 | 0.983 | 0.971 | 1.45 | 0 | 0 | 0 |
+| arctic_aew_male | balanced | auto | +3.00 | x1.124 | 0.900 | 0.971 | 0.944 | 2.22 | 0 | 0 | 0 |
+| arctic_aew_male | balanced | up | +3.00 | x1.124 | 0.900 | 0.971 | 0.944 | 2.22 | 0 | 0 | 0 |
+| arctic_aew_male | strong | auto | +4.27 | x1.160 | 0.896 | 0.988 | 0.936 | 2.63 | 0 | 0 | 0 |
+| arctic_aew_male | strong | up | +4.27 | x1.160 | 0.896 | 0.988 | 0.936 | 2.63 | 0 | 0 | 0 |
+| arctic_axb_female | natural | auto | -1.53 | x0.934 | 0.971 | 0.957 | 0.984 | 2.13 | 0 | 0 | 0 |
+| arctic_axb_female | natural | up | +1.70 | x1.056 | 0.966 | 0.989 | 0.946 | 2.35 | 0 | 0 | 0 |
+| arctic_axb_female | balanced | auto | -2.46 | x0.912 | 0.973 | 0.966 | 0.979 | 3.03 | 0 | 0 | 0 |
+| arctic_axb_female | balanced | up | +2.93 | x1.090 | 0.966 | 0.980 | 0.901 | 3.21 | 0 | 0 | 0 |
+| arctic_axb_female | strong | auto | -3.49 | x0.874 | 0.972 | 0.957 | 0.967 | 3.89 | 0 | 0 | 0 |
+| arctic_axb_female | strong | up | +4.15 | x1.138 | 0.963 | 0.987 | 0.819 | 4.12 | 0 | 0 | 0 |
+| mssnsd_clnsp1_male | natural | auto | +1.71 | x1.068 | 0.919 | 0.982 | 0.986 | 1.30 | 0 | 0 | 0 |
+| mssnsd_clnsp1_male | natural | up | +1.71 | x1.068 | 0.919 | 0.982 | 0.986 | 1.30 | 0 | 0 | 0 |
+| mssnsd_clnsp1_male | balanced | auto | +3.00 | x1.090 | 0.908 | 0.941 | 0.976 | 2.24 | 0 | 0 | 0 |
+| mssnsd_clnsp1_male | balanced | up | +3.00 | x1.090 | 0.908 | 0.941 | 0.976 | 2.24 | 0 | 0 | 0 |
+| mssnsd_clnsp1_male | strong | auto | +4.28 | x1.144 | 0.902 | 0.976 | 0.967 | 2.96 | 0 | 0 | 0 |
+| mssnsd_clnsp1_male | strong | up | +4.28 | x1.144 | 0.902 | 0.976 | 0.967 | 2.96 | 0 | 0 | 0 |
+| speechbrain_example1 | natural | auto | -1.38 | x0.952 | 0.916 | 0.959 | 0.989 | 1.58 | 0 | 0 | 0 |
+| speechbrain_example1 | natural | up | +1.72 | x1.078 | 0.926 | 0.979 | 0.987 | 1.44 | 0 | 0 | 0 |
+| speechbrain_example1 | balanced | auto | -2.32 | n/a | 0.907 | 0.910 | 0.983 | 2.55 | 0 | 0 | 0 |
+| speechbrain_example1 | balanced | up | +2.95 | x1.172 | 0.924 | 0.938 | 0.970 | 1.75 | 0 | 0 | 0 |
+| speechbrain_example1 | strong | auto | -3.27 | x0.882 | 0.897 | 0.838 | 0.984 | 3.24 | 0 | 0 | 0 |
+| speechbrain_example1 | strong | up | +4.20 | n/a | 0.923 | 0.980 | 0.936 | 2.42 | 0 | 0 | 0 |
