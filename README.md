@@ -23,6 +23,8 @@ child effects) and it is **not encryption**.
 | `docs/TESTING.md` | Test suites, measured results, VERIFIED / NOT VERIFIED status of each capability |
 | `docs/REAL_DEVICE_VALIDATION.md` | Device/emulator validation, speaker-embedding results, call-app analysis, safety audit |
 | `docs/ANONYMIZATION_EVALUATION.md` | 22-configuration speaker-anonymization experiments on 15 real speakers (similarity, linkage EER, intelligibility, naturalness) and the final decision |
+| `docs/NEURAL_ANONYMIZATION_RESULTS.md` | Threat-model research (attacker knows the transform): candidates, pseudo-speaker experiment, classification D |
+| `docs/NEURAL_ANDROID_FEASIBILITY.md` | Runtime options and budget for any future on-device model (not started: offline gate not passed) |
 | `docs/NEURAL_VC_RESEARCH.md` | Neural voice-conversion feasibility for real-time Android (research only) |
 | `docs/LISTENING_AND_ARABIC_PROTOCOL.md` | Blind A/B/C/D listening test and real Arabic recording protocol |
 | `scripts/device_validation.sh` | One-command validation on a phone via adb |
