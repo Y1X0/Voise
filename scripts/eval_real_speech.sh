@@ -26,7 +26,9 @@ echo "|---|---|---|---|---|---|---|---|---|---|---|---|"
 for f in "$AUDIO"/*.wav; do
   for preset in natural balanced strong; do
     for dir in auto up; do
-      line="$("$BUILD/voiceanon_eval" --preset "$preset" --direction "$dir" --out "$OUT" "$f")"
+      # Processed WAVs are written for the default (auto) direction only.
+      outArgs=(); [ "$dir" = auto ] && outArgs=(--out "$OUT")
+      line="$("$BUILD/voiceanon_eval" --preset "$preset" --direction "$dir" "${outArgs[@]}" "$f")"
       python3 - "$line" "$preset" "$dir" <<'PY'
 import json, sys
 d = json.loads(sys.argv[1]); m = d["metrics"]
