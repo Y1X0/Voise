@@ -104,6 +104,11 @@ class DeviceValidationTest {
         val exported = (pi.activities!!.filter { it.exported }.map { it.name } +
             pi.receivers!!.filter { it.exported }.map { it.name } + pi.services!!.filter { it.exported }.map { it.name })
         put("exportedComponents", JSONArray(exported))
+        // Only the launcher activity, the token-protected receiver and the androidx
+        // profile installer (guarded by android.permission.DUMP) may be exported.
+        val allowed = setOf("com.voiceanon.app.ui.MainActivity", "com.voiceanon.app.ipc.ControlReceiver",
+            "androidx.profileinstaller.ProfileInstallReceiver")
+        assertTrue("unexpected exported components: ${exported - allowed}", (exported - allowed).isEmpty())
     }
 
     @Test
