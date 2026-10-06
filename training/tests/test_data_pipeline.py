@@ -132,10 +132,10 @@ def fixture(root, n_spk=40, sessions=3, utts=2, subset="train-clean-100", corpus
 
 def consent_record(cid, pseudonym, commercial=True, withdrawn=False, evaluation=True):
     return {"consent_id": cid, "speaker_pseudonym": pseudonym, "form_version": "consent-ar-en-v1.0", "form_sha256": "0" * 64,
-            "consented_at": "2026-10-01", "adult_confirmed": True, "language": ["ar"], "dialect_primary": "Jordanian",
-            "scopes": {"evaluation": evaluation, "ml_training": True, "commercial_ml_training": commercial,
-                       "audio_redistribution": False},
-            "withdrawal": {"withdrawn": withdrawn, "withdrawn_at": None}, "retention_until": "2031-10-01",
+            "consent_timestamp": "2026-10-01T10:00:00Z", "adult_confirmed": True, "language": ["ar"], "dialect_primary": "Jordanian",
+            "scopes": {"ml_training": True, "voice_anonymization_rnd": True, "commercial_product_development": commercial,
+                       "model_evaluation": evaluation, "derivative_model_training": commercial, "audio_redistribution": False},
+            "withdrawal": {"status": "withdrawn" if withdrawn else "active", "withdrawn_at": None}, "retention_until": "2031-10-01",
             "withdrawal_token_sha256": "a" * 64, "collector": "campaign-2026-amman-1"}
 
 
@@ -150,6 +150,23 @@ class Consent(unittest.TestCase):
         self.assertTrue(CO.validate_record(dict(rec, speaker_pseudonym="own_recordings:ahmad")))
         bad = dict(rec, scopes=dict(rec["scopes"], ml_training=False))
         self.assertTrue(any("requires ml_training" in e for e in CO.validate_record(bad)))
+        self.assertTrue(CO.validate_record(dict(rec, scopes=dict(rec["scopes"], sell_voice=True))))
+        self.assertEqual(CO.commercial_eligibility(rec), "COMMERCIAL_TRAINING_ELIGIBLE")
+        for k in CO.COMMERCIAL_SCOPES:   # every one of the five scopes is necessary
+            self.assertEqual(CO.commercial_eligibility(dict(rec, scopes=dict(rec["scopes"], **{k: False}))),
+                             "NOT_COMMERCIAL_TRAINING_ELIGIBLE", k)
+        self.assertEqual(CO.commercial_eligibility(dict(rec, withdrawal={"status": "withdrawn", "withdrawn_at": None})),
+                         "NOT_COMMERCIAL_TRAINING_ELIGIBLE")
+
+    def test_session_schema(self):
+        from datasets import consent as CO
+        ses = {"speaker_id": "own_recordings:spk-0123456789", "consent_id": "CNS-0123456789ab", "session_id": "ses-0a1b2c3d",
+               "language": "ar", "dialect": "Jordanian", "recording_device": "phone_android", "environment": "quiet_room",
+               "sampling_rate_hz": 48000, "recorded_at": "2026-10-02", "duration_s": 1800.0, "age_bucket": "25-34",
+               "consent_scope_snapshot": "b" * 64, "withdrawal_status": "active"}
+        self.assertEqual(CO.validate_session(ses), [])
+        self.assertTrue(CO.validate_session(dict(ses, device_serial="R58M12345")))   # no device identifiers
+        self.assertTrue(CO.validate_session(dict(ses, recording_device="Samsung SM-A515F")))
 
     def test_check_rows(self):
         from datasets import consent as CO
@@ -268,9 +285,9 @@ class ManifestBuilder(unittest.TestCase):
         self.assertTrue(BM.licence_check(rows, "research"))        # own recordings need consent records
         self.assertEqual(BM.licence_check(rows, "research", self.consents), [])
         opted_out = [dict(r, split="train") for r in rows if r["corpus"] == "own_recordings"
-                     and not self.consents[r["consent_id"]]["scopes"]["commercial_ml_training"]]
+                     and not self.consents[r["consent_id"]]["scopes"]["commercial_product_development"]]
         self.assertTrue(opted_out)
-        self.assertTrue(any("commercial_ml_training" in e for e in BM.licence_check(opted_out, "commercial", self.consents)))
+        self.assertTrue(any("NOT_COMMERCIAL_TRAINING_ELIGIBLE" in e for e in BM.licence_check(opted_out, "commercial", self.consents)))
         ok = [dict(r, corpus="vctk", speaker="vctk:" + r["speaker"].split(":")[1]) for r in rows]
         self.assertEqual(BM.licence_check(ok, "commercial"), [])
         nc = [dict(rows[0], corpus="qasr", split="train")]

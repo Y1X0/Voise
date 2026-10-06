@@ -1,0 +1,80 @@
+{
+ "segment_seconds": 2.0,
+ "note": "CPU saved-tensor bytes; half = CPU bf16 autocast",
+ "runs": [
+  {
+   "batch": 2,
+   "stage": "content_distillation",
+   "precision": "fp32",
+   "saved_activation_mb": 116.40378189086914
+  },
+  {
+   "batch": 2,
+   "stage": "content_distillation",
+   "precision": "half",
+   "saved_activation_mb": 60.26291275024414
+  },
+  {
+   "batch": 2,
+   "stage": "reconstruction",
+   "precision": "fp32",
+   "saved_activation_mb": 1565.085578918457
+  },
+  {
+   "batch": 2,
+   "stage": "reconstruction",
+   "precision": "half",
+   "saved_activation_mb": 961.1187171936035
+  },
+  {
+   "batch": 2,
+   "stage": "anonymization",
+   "precision": "fp32",
+   "saved_activation_mb": 2606.392318725586
+  },
+  {
+   "batch": 2,
+   "stage": "anonymization",
+   "precision": "half",
+   "saved_activation_mb": 1517.5374145507812
+  },
+  {
+   "batch": 4,
+   "stage": "content_distillation",
+   "precision": "fp32",
+   "saved_activation_mb": 141.07757949829102
+  },
+  {
+   "batch": 4,
+   "stage": "content_distillation",
+   "precision": "half",
+   "saved_activation_mb": 74.15033340454102
+  },
+  {
+   "batch": 4,
+   "stage": "reconstruction",
+   "precision": "fp32",
+   "saved_activation_mb": 2763.615737915039
+  },
+  {
+   "batch": 4,
+   "stage": "reconstruction",
+   "precision": "half",
+   "saved_activation_mb": 1652.1816177368164
+  },
+  {
+   "batch": 4,
+   "stage": "anonymization",
+   "precision": "fp32",
+   "saved_activation_mb": 4259.37459564209
+  },
+  {
+   "batch": 4,
+   "stage": "anonymization",
+   "precision": "half",
+   "saved_activation_mb": 2441.6213912963867
+  }
+ ],
+ "params_trainable_m": 22.192496,
+ "param_grad_adam_mb": 338.630615234375
+}

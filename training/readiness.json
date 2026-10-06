@@ -1,0 +1,20 @@
+{
+ "_doc": "Machine-readable training readiness (docs/FINAL_COMPUTE_READINESS.md). The orchestrator (scripts/orchestrate_training.py preflight, .github/workflows/train-orchestrator.yml) refuses to bundle or launch anything unless verdict == GO. Only the owner changes this file, in a reviewed commit, after every condition below is true with evidence.",
+ "verdict": "NO-GO",
+ "updated": "2026-10-06",
+ "conditions": {
+  "licence_blockers_resolved": false,
+  "mls_download_provenance_verified": false,
+  "teacher_resolved": true,
+  "manifests_reproducible": true,
+  "leakage_tests_pass": true,
+  "validation_pipeline_complete": true,
+  "android_runtime_privacy_static": true,
+  "android_runtime_privacy_on_device": false,
+  "mixed_precision_implemented": true,
+  "resumable_checkpoints": true,
+  "gpu_verified_official_free_and_commercial": false,
+  "gpu_budget_approved_by_owner": false,
+  "arabic_scope_decided_by_owner": false
+ }
+}

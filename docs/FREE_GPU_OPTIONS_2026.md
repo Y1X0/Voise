@@ -1,5 +1,11 @@
 # Free / credit-based GPU options (2026) and a GPU-frugal training plan
 
+> **Superseded for decisions by `FINAL_COMPUTE_READINESS.md`** (2026-10-06 audit).
+> * Search results no longer count as evidence: Kaggle, Lightning, Modal and Colab are SEARCH_ONLY with commercial use UNKNOWN, so 0 verified free GPU-hours.
+> * GitHub GPU runners are paid ($0.052/min) and need a Team or Enterprise Cloud organization.
+> * T4 memory is now measured: stage 3 at batch 16 in fp16 fits in about 11–13 GB.
+> * Mixed precision is implemented.
+
 **Checked:** 2026-10-06. **Machine-readable:** `training/gpu_profiles.json`.
 
 **Evidence: E2 throughout.** Every provider page is blocked by this environment's egress

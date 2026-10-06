@@ -2,45 +2,217 @@
  "$schema": "https://json-schema.org/draft/2020-12/schema",
  "$id": "voise/consent_record/v1",
  "title": "Consent record for a voluntarily recorded speaker (docs/CONSENTED_RECORDING_PLAN.md)",
- "description": "Stored separately from audio. Contains NO name, phone, e-mail, address, national id, exact birth date, precise location, IP address or device identifier. The link to a reachable person (for withdrawal) is a random withdrawal token held by the speaker; the project keeps only its sha256.",
+ "description": "Stored separately from audio. Contains NO name, phone, e-mail, address, national id, exact birth date, precise location, IP address or device identifier. The link to a reachable person (for withdrawal) is a random withdrawal token held by the speaker; the project keeps only its sha256. Commercial training eligibility requires ALL of ml_training, voice_anonymization_rnd, commercial_product_development, model_evaluation and derivative_model_training; otherwise the speaker is NOT_COMMERCIAL_TRAINING_ELIGIBLE.",
  "type": "object",
  "additionalProperties": false,
- "required": ["consent_id", "speaker_pseudonym", "form_version", "form_sha256", "consented_at", "adult_confirmed",
-              "language", "dialect_primary", "scopes", "withdrawal", "retention_until", "withdrawal_token_sha256", "collector"],
+ "required": [
+  "consent_id",
+  "speaker_pseudonym",
+  "form_version",
+  "form_sha256",
+  "consent_timestamp",
+  "adult_confirmed",
+  "language",
+  "dialect_primary",
+  "scopes",
+  "withdrawal",
+  "retention_until",
+  "withdrawal_token_sha256",
+  "collector"
+ ],
  "properties": {
-  "consent_id": {"type": "string", "pattern": "^CNS-[0-9a-f]{12}$", "description": "random, issued at consent time; printed for the speaker"},
-  "speaker_pseudonym": {"type": "string", "pattern": "^own_recordings:spk-[0-9a-f]{10}$", "description": "random; the manifest speaker id; never derived from identity"},
-  "form_version": {"type": "string", "description": "e.g. 'consent-ar-en-v1.0'"},
-  "form_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$", "description": "hash of the exact consent text shown"},
-  "consented_at": {"type": "string", "format": "date"},
-  "adult_confirmed": {"const": true, "description": "speaker confirmed age >= 18; minors are not recorded"},
-  "language": {"type": "array", "items": {"enum": ["ar", "en"]}, "minItems": 1},
-  "dialect_primary": {"enum": ["MSA", "Jordanian", "Levantine-other", "Palestinian", "Syrian", "Lebanese", "Egyptian", "Gulf",
-                               "Iraqi", "Maghrebi", "Sudanese", "mixed", "English-native", "English-L2", "other"]},
-  "dialect_secondary": {"type": "array", "items": {"type": "string"}},
-  "region_country": {"type": ["string", "null"], "pattern": "^[A-Z]{2}$", "description": "optional, country level only (ISO 3166-1 alpha-2)"},
-  "age_band": {"enum": ["18-24", "25-34", "35-44", "45-54", "55-64", "65+", "prefer_not_to_say"]},
-  "gender": {"enum": ["female", "male", "other", "prefer_not_to_say"]},
+  "consent_id": {
+   "type": "string",
+   "pattern": "^CNS-[0-9a-f]{12}$",
+   "description": "random, issued at consent time; printed for the speaker"
+  },
+  "speaker_pseudonym": {
+   "type": "string",
+   "pattern": "^own_recordings:spk-[0-9a-f]{10}$",
+   "description": "random; the manifest speaker id; never derived from identity"
+  },
+  "form_version": {
+   "type": "string",
+   "description": "e.g. 'consent-ar-en-v1.0'"
+  },
+  "form_sha256": {
+   "type": "string",
+   "pattern": "^[0-9a-f]{64}$",
+   "description": "hash of the exact consent text shown"
+  },
+  "adult_confirmed": {
+   "const": true,
+   "description": "speaker confirmed age >= 18; minors are not recorded"
+  },
+  "language": {
+   "type": "array",
+   "items": {
+    "enum": [
+     "ar",
+     "en"
+    ]
+   },
+   "minItems": 1
+  },
+  "dialect_primary": {
+   "enum": [
+    "MSA",
+    "Jordanian",
+    "Levantine-other",
+    "Palestinian",
+    "Syrian",
+    "Lebanese",
+    "Egyptian",
+    "Gulf",
+    "Iraqi",
+    "Maghrebi",
+    "Sudanese",
+    "mixed",
+    "English-native",
+    "English-L2",
+    "other"
+   ]
+  },
+  "dialect_secondary": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   }
+  },
+  "region_country": {
+   "type": [
+    "string",
+    "null"
+   ],
+   "pattern": "^[A-Z]{2}$",
+   "description": "optional, country level only (ISO 3166-1 alpha-2)"
+  },
+  "gender": {
+   "enum": [
+    "female",
+    "male",
+    "other",
+    "prefer_not_to_say"
+   ]
+  },
   "scopes": {
-   "type": "object", "additionalProperties": false,
-   "required": ["evaluation", "ml_training", "commercial_ml_training", "audio_redistribution"],
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "ml_training",
+    "voice_anonymization_rnd",
+    "commercial_product_development",
+    "model_evaluation",
+    "derivative_model_training",
+    "audio_redistribution"
+   ],
    "properties": {
-    "evaluation": {"type": "boolean", "description": "use in privacy/intelligibility evaluation of the anonymizer"},
-    "ml_training": {"type": "boolean", "description": "use to train/validate voice-anonymization models (research)"},
-    "commercial_ml_training": {"type": "boolean", "description": "use to train models that ship in a commercial product; requires ml_training"},
-    "audio_redistribution": {"type": "boolean", "description": "share raw audio outside the project (default false)"},
-    "listening_tests": {"type": "boolean", "description": "play anonymised outputs to paid/volunteer listeners"}
+    "ml_training": {
+     "type": "boolean",
+     "description": "recordings may be used to train machine-learning models"
+    },
+    "voice_anonymization_rnd": {
+     "type": "boolean",
+     "description": "use for voice-anonymization research and development"
+    },
+    "commercial_product_development": {
+     "type": "boolean",
+     "description": "use to develop a commercial product (models that ship)"
+    },
+    "model_evaluation": {
+     "type": "boolean",
+     "description": "use to evaluate models (privacy, intelligibility)"
+    },
+    "derivative_model_training": {
+     "type": "boolean",
+     "description": "models derived from models trained on the recordings may be trained and shipped"
+    },
+    "audio_redistribution": {
+     "type": "boolean",
+     "description": "share raw audio outside the project (default false)"
+    },
+    "listening_tests": {
+     "type": "boolean",
+     "description": "play anonymised outputs to listeners"
+    }
    }
   },
   "withdrawal": {
-   "type": "object", "additionalProperties": false, "required": ["withdrawn"],
-   "properties": {"withdrawn": {"type": "boolean"}, "withdrawn_at": {"type": ["string", "null"], "format": "date"}}
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "status"
+   ],
+   "properties": {
+    "status": {
+     "enum": [
+      "active",
+      "withdrawn"
+     ]
+    },
+    "withdrawn_at": {
+     "type": [
+      "string",
+      "null"
+     ],
+     "format": "date-time"
+    }
+   }
   },
-  "retention_until": {"type": "string", "format": "date"},
-  "withdrawal_token_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-  "collector": {"type": "string", "description": "collection campaign id, not a person"},
-  "recording_conditions": {"type": "array", "items": {"enum": ["quiet_room", "noisy_room", "street", "car", "phone_handset", "phone_speaker", "headset", "laptop_mic"]}},
-  "compensation": {"enum": ["none", "voucher", "payment"]},
-  "notes": {"type": "string", "maxLength": 200, "description": "must not contain personal data"}
+  "retention_until": {
+   "type": "string",
+   "format": "date"
+  },
+  "withdrawal_token_sha256": {
+   "type": "string",
+   "pattern": "^[0-9a-f]{64}$"
+  },
+  "collector": {
+   "type": "string",
+   "description": "collection campaign id, not a person"
+  },
+  "recording_conditions": {
+   "type": "array",
+   "items": {
+    "enum": [
+     "quiet_room",
+     "noisy_room",
+     "street",
+     "car",
+     "phone_handset",
+     "phone_speaker",
+     "headset",
+     "laptop_mic"
+    ]
+   }
+  },
+  "compensation": {
+   "enum": [
+    "none",
+    "voucher",
+    "payment"
+   ]
+  },
+  "notes": {
+   "type": "string",
+   "maxLength": 200,
+   "description": "must not contain personal data"
+  },
+  "consent_timestamp": {
+   "type": "string",
+   "format": "date-time",
+   "description": "UTC ISO-8601 time the consent was given"
+  },
+  "age_bucket": {
+   "enum": [
+    "18-24",
+    "25-34",
+    "35-44",
+    "45-54",
+    "55-64",
+    "65+",
+    "prefer_not_to_say"
+   ]
+  }
  }
 }

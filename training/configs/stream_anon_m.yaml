@@ -65,7 +65,7 @@ optim:
   discriminator: {lr: 2.0e-4, betas: [0.8, 0.99]}
   lr_decay: 0.999996      # per step
   grad_clip: 10.0
-  precision: bf16
+  precision: auto        # bf16 on A100/L4/4090; fp16 + loss scaling on T4/P100 (trainers/loop.py)
 
 stages:
   - {name: content_distillation, steps: 200000, train: [encoder, unit_head, ctc_head, vq], losses: [unit_ce, ctc, vq_commit]}

@@ -35,6 +35,27 @@ New engineering:
 * per-speaker consent gate for own recordings;
 * a registry validator that keeps unverified corpora out of the commercial path.
 
+## Update 2026-10-06 (final compute + data readiness audit)
+
+`FINAL_COMPUTE_READINESS.md`; the machine-readable verdict is `training/readiness.json`.
+
+**Verdict: NO-GO.**
+
+| Key | Value |
+|---|---|
+| FREE_GPU_VERIFIED_HOURS | 0 |
+| REQUIRED_GPU_HOURS | 62–141 A100-h |
+| COMPUTE_DEFICIT | 100 % (≈ $155–353 at the official HF A100 price, if that use is permitted) |
+
+**MLS English:**
+* hours: train 44,659.74 / all splits 44,691.04;
+* speakers: train 5,490 / all splits 5,574;
+* the official archive is unreachable here, and the publisher's HF repo has no English, so
+  download provenance is PENDING.
+
+**Fixed in this audit:** mixed precision (bf16, or fp16 + GradScaler) was missing from the
+trainer; iSTFT and the VQ restart broke under autocast.
+
 ## USER_DECISION_REQUIRED
 
 ### U1: How to accept LibriSpeech / LibriTTS-R licence evidence

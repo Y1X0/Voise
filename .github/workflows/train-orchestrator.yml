@@ -1,0 +1,57 @@
+# Training orchestrator (docs/FINAL_COMPUTE_READINESS.md §6). Runs ONLY on manual dispatch,
+# ONLY on standard (free, CPU) runners. GitHub never receives audio, consent records or
+# checkpoints: artifacts of a public repository are readable by others. While
+# training/readiness.json says NO-GO the preflight job fails and nothing else runs.
+name: train-orchestrator
+on:
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: "stage to run (content_distillation | reconstruction | anonymization | qat_int8)"
+        required: true
+        default: content_distillation
+permissions:
+  contents: read
+concurrency:
+  group: train-orchestrator
+  cancel-in-progress: false
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: validate readiness + dataset registry (prepare_dataset / validate_manifest happen on the data host)
+        run: python scripts/orchestrate_training.py preflight
+  prepare_training_artifact:
+    needs: preflight
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: deterministic code bundle (no data) + sha256
+        run: python scripts/orchestrate_training.py bundle --out training-bundle.tar.gz | tee bundle.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: training-bundle
+          path: |
+            training-bundle.tar.gz
+            bundle.json
+          retention-days: 7
+  launch_external_gpu:
+    needs: prepare_training_artifact
+    runs-on: ubuntu-latest
+    # The environment must have required reviewers; provider credentials live only there.
+    environment: gpu-launch
+    steps:
+      - name: launch (provider not selected; see docs/FINAL_COMPUTE_READINESS.md)
+        run: |
+          echo "No GPU provider is verified as free AND allowed for commercial training."
+          echo "The external job must: fetch the bundle, check its sha256, run"
+          echo "  scripts/orchestrate_training.py plan-resume --ckpt-dir <provider storage>"
+          echo "  then train with atomic checkpoints (trainers/checkpoint.py) and upload only sidecars."
+          exit 1

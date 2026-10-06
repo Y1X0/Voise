@@ -70,6 +70,10 @@ jobs:
         run: |
           python scripts/dataset_registry_summary.py > /dev/null
           python training/tests/test_registry.py
+      - name: Compute readiness (mixed precision, orchestrator gate refuses NO-GO, MLS numbers)
+        env:
+          ORT_DISABLE_TELEMETRY: "1"
+        run: python training/tests/test_compute_readiness.py
       - name: Validation / evaluator-role / protocol (A6) tests
         env:
           ORT_DISABLE_TELEMETRY: "1"

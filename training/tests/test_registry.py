@@ -79,17 +79,27 @@ class GpuProfiles(unittest.TestCase):
         self.g = json.load(open(os.path.join(TRAINING, "gpu_profiles.json")))
 
     def test_fields_and_no_abuse(self):
-        need = ["provider", "gpu_type", "vram_gb", "free_hours_or_credits", "session_limit", "storage", "network_restrictions",
-                "persistent_storage", "background_jobs", "multiple_accounts_prohibited", "commercial_ml_training_allowed",
-                "application_requirements", "official_url", "last_verified", "evidence_level"]
+        need = ["provider", "gpu_type", "vram_gb", "free", "free_amount", "cost", "eligibility", "commercial_training",
+                "evidence_status", "evidence", "session_limit", "persistent_storage", "background_jobs",
+                "multiple_accounts_prohibited", "last_verified", "counted_as_guaranteed_free", "suitable"]
         for p in self.g["providers"]:
             for k in need:
                 self.assertIn(k, p, p.get("provider"))
+            self.assertIn(p["evidence_status"], ("VERIFIED_OFFICIAL", "SEARCH_ONLY", "NOT_VERIFIED", "EXPIRED", "APPLICATION_REQUIRED"))
             low = json.dumps(p).lower()
             for bad in ("vpn", "second account", "referral abuse", "account farming"):
                 self.assertNotIn(bad, low)
-        research = [p for p in self.g["providers"] if "research" in p["provider"].lower() and "google cloud" in p["provider"].lower()]
-        self.assertTrue(research and research[0]["commercial_ml_training_allowed"] is False)
+
+    def test_only_fully_verified_sources_count(self):
+        for p in self.g["providers"]:
+            if p["counted_as_guaranteed_free"]:
+                self.assertEqual(p["evidence_status"], "VERIFIED_OFFICIAL")
+                self.assertIs(p["free"], True)
+                self.assertTrue(str(p["commercial_training"]).startswith("YES"))
+            if p["evidence_status"] != "VERIFIED_OFFICIAL" or "UNKNOWN" in str(p["commercial_training"]):
+                self.assertFalse(p["counted_as_guaranteed_free"], p["provider"])
+        gh = next(p for p in self.g["providers"] if p["provider"].startswith("GitHub Actions GPU"))
+        self.assertIs(gh["free"], False)
 
     def test_stage_budget(self):
         st = self.g["stages"]

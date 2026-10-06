@@ -24,7 +24,7 @@ STAGES = ("content_distillation", "reconstruction", "anonymization")
 
 class Trainer:
     def __init__(self, cfg, out_dir, train, valid, assets, seed=0, device="cpu", disc_scale=1.0,
-                 batch_size=None, smoke=False, validator=None, selector=None):
+                 batch_size=None, smoke=False, validator=None, selector=None, precision=None):
         torch.manual_seed(seed)
         self.cfg, self.out, self.seed, self.dev, self.smoke = cfg, out_dir, seed, device, smoke
         self.train_data, self.valid_data, self.assets = train, valid, assets
@@ -53,8 +53,48 @@ class Trainer:
         # evaluation/validator.py: VALID-role evaluators + VALID-split speakers only (checked there);
         # the selector (early stopping / best checkpoint) refuses non-VALID metrics.
         self.validator, self.selector = validator, selector
+        self._setup_precision(precision if precision is not None else cfg.optim.get("precision", "fp32"))
         if validator is not None and validator.ctx != "validation":
             raise ValueError("the trainer may only hold a validation-context validator (never final_eval)")
+
+    # ------------------------------------------------------------------ precision
+    def _setup_precision(self, precision):
+        """fp32 | bf16 | fp16 | auto. Mixed precision is applied on CUDA only unless the
+        precision is forced (tests); CPU runs (smoke) stay fp32 and bit-exact.
+          auto -> bf16 where supported (A100/L4/4090), else fp16 + loss scaling (T4/P100).
+        STFT/iSTFT and the complex spectrum always run in fp32 (_render)."""
+        cuda = self.dev.startswith("cuda") and torch.cuda.is_available()
+        force = precision.startswith("force-")      # tests: run mixed precision on CPU
+        precision = precision[6:] if force else precision
+        if precision == "auto":
+            precision = ("bf16" if torch.cuda.is_bf16_supported() else "fp16") if cuda else "fp32"
+        elif precision in ("bf16", "fp16") and not cuda and not force:
+            precision = "fp32"
+        self.precision = precision
+        self.amp_dtype = {"bf16": torch.bfloat16, "fp16": torch.float16}.get(precision)
+        use_scaler = precision == "fp16"
+        dev_type = "cuda" if cuda else "cpu"
+        self.scaler_g = torch.amp.GradScaler(dev_type, enabled=use_scaler)
+        self.scaler_d = torch.amp.GradScaler(dev_type, enabled=use_scaler)
+
+    def _amp(self):
+        import contextlib
+        if self.amp_dtype is None:
+            return contextlib.nullcontext()
+        return torch.autocast(device_type="cuda" if self.dev.startswith("cuda") else "cpu", dtype=self.amp_dtype)
+
+    def _opt_step(self, loss, opt, scaler, check=True):
+        opt.zero_grad(set_to_none=True)
+        if scaler.is_enabled():
+            scaler.scale(loss).backward()
+            scaler.unscale_(opt)        # inf/nan steps are skipped by the scaler (expected occasionally in fp16)
+            scaler.step(opt)
+            scaler.update()
+            return
+        loss.backward()
+        if check:
+            self._check_grads()
+        opt.step()
 
     # ------------------------------------------------------------------ helpers
     def _freeze(self, stage):
@@ -74,7 +114,10 @@ class Trainer:
 
     def _render(self, mel, pros, spk):
         spec, _ = self.model(mel, pros, spk)
-        return istft_ola(torch.complex(spec[..., 0], spec[..., 1]), self.cfg.model.win, self.cfg.model.hop)
+        # complex spectrum + iSTFT/OLA always in fp32 (no complex half dtype; same float scope as INT8 export)
+        with torch.autocast(device_type=spec.device.type, enabled=False):
+            spec = spec.float()
+            return istft_ola(torch.complex(spec[..., 0], spec[..., 1]), self.cfg.model.win, self.cfg.model.hop)
 
     def _align(self, y, x):
         """Output sample k corresponds to input sample k - delay*hop; drop the incomplete last hop."""
@@ -95,9 +138,7 @@ class Trainer:
         s_r, _ = self.disc(x)
         s_f, _ = self.disc(y_hat.detach())
         loss = L.gan_discriminator(s_r, s_f)
-        self.opt_d.zero_grad(set_to_none=True)
-        loss.backward()
-        self.opt_d.step()
+        self._opt_step(loss, self.opt_d, self.scaler_d, check=False)
         return float(loss)
 
     def _weight(self, k):
@@ -115,10 +156,7 @@ class Trainer:
             terms["vq_commit"] = L.vq_commitment(out["z_e"], out["z_q"])
             terms["vq_codebook"] = F.mse_loss(out["z_q"], out["z_e"].detach())
         loss = sum(self._weight(k) * v for k, v in terms.items())
-        self.opt_g.zero_grad(set_to_none=True)
-        loss.backward()
-        self._check_grads()
-        self.opt_g.step()
+        self._opt_step(loss, self.opt_g, self.scaler_g)
         if self.model.vq is not None and self.step % 20 == 0:
             self._restart_dead_codes(out["z_e"].detach(), out["vq_idx"])
         return {k: float(v) for k, v in terms.items()} | {"vq_perplexity": float(out["vq_perplexity"])}
@@ -143,7 +181,7 @@ class Trainer:
             g = torch.Generator().manual_seed(self.seed * 1000003 + self.step)
             pick = torch.randint(0, z_e.shape[0] * z_e.shape[1], (len(dead),), generator=g)
             with torch.no_grad():  # z_e is already in the lookup space (normalised for cosine VQ)
-                self.model.vq.codebook[dead] = z_e.reshape(-1, z_e.shape[-1])[pick]
+                self.model.vq.codebook[dead] = z_e.reshape(-1, z_e.shape[-1])[pick].to(self.model.vq.codebook.dtype)
 
     def _recon_terms(self, b):
         x = b["wav"].to(self.dev)
@@ -162,10 +200,7 @@ class Trainer:
         d_loss = self._d_step(y_a, x_a)                 # discriminator first ...
         terms.update(self._gan(y_a, x_a, recon=True))   # ... then generator terms through the updated D
         loss = sum(self._weight(k) * v for k, v in terms.items())
-        self.opt_g.zero_grad(set_to_none=True)
-        loss.backward()
-        self._check_grads()
-        self.opt_g.step()
+        self._opt_step(loss, self.opt_g, self.scaler_g)
         return {k: float(v) for k, v in terms.items()} | {"disc": d_loss}
 
     def step_anon(self, b):
@@ -206,10 +241,7 @@ class Trainer:
                    for k in terms}
         weights["speaker_adversarial"] = weights["speaker_adversarial_hist"] = 1.0  # λ lives in the GRL
         loss = sum(weights[k] * v for k, v in terms.items())
-        self.opt_g.zero_grad(set_to_none=True)
-        loss.backward()
-        self._check_grads()
-        self.opt_g.step()
+        self._opt_step(loss, self.opt_g, self.scaler_g)
         acc = float((heads["spk_logits"].argmax(-1) == spk).float().mean())
         return {k: float(v) for k, v in terms.items()} | {"disc": d_loss, "grl_lambda": lam, "adv_acc": acc}
 
@@ -270,7 +302,8 @@ class Trainer:
                  "stage": self.stage, "step_in_stage": self.step_in_stage, "prior": (self.prior_mu, self.prior_var),
                  "teacher": None if self.teacher is None else self.teacher.state_dict(),
                  "centroids": self.centroids, "tau": self.tau, "history": self.history,
-                 "torch_rng": torch.get_rng_state(),
+                 "torch_rng": torch.get_rng_state(), "precision": self.precision,
+                 "scaler_g": self.scaler_g.state_dict(), "scaler_d": self.scaler_d.state_dict(),
                  "cuda_rng": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None}
         meta = {"step": self.step, "stage": self.stage, "step_in_stage": self.step_in_stage, "seed": self.seed,
                 "smoke": self.smoke, "run_info": getattr(self, "run_info", None)}
@@ -290,6 +323,9 @@ class Trainer:
         self.prior_mu, self.prior_var = c["prior"]
         self.history = c["history"]
         self.centroids, self.tau = c["centroids"], c["tau"]
+        if c.get("scaler_g"):
+            self.scaler_g.load_state_dict(c["scaler_g"])
+            self.scaler_d.load_state_dict(c["scaler_d"])
         if c.get("torch_rng") is not None:
             torch.set_rng_state(c["torch_rng"])
         if c.get("cuda_rng") is not None and torch.cuda.is_available():
@@ -324,7 +360,8 @@ class Trainer:
         t0 = time.time()
         while self.step_in_stage < steps:
             b = self.train_data.batch(self.step, self.bs)
-            logs = fn(b)
+            with self._amp():
+                logs = fn(b)
             ev = self.monitor.step({k: v for k, v in logs.items() if isinstance(v, float)})
             self.history[stage].append(logs)
             self.step += 1

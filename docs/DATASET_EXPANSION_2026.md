@@ -63,6 +63,10 @@ page.
 | 9 | Speaker count (commercial path, known) | **8,492**: MLS-en 5,574 + Speech Commands 2,618 (E2) + AMI 189 + VCTK 110 + ClArTTS 1 |
 | 10 | Unique speakers after de-duplication (commercial path) | **≈ 8,490**. Internal duplicates are not expected; the residual risk is Speech Commands contributors who also read for LibriVox, which can only be resolved with embedding-based de-duplication after download. People's Speech has **no speaker ids**, so it is used for content only. |
 
+> **Correction (final audit):** MLS English is 44,659.74 h / 5,490 speakers in **train**, and
+> 44,691.04 h / 5,574 speakers over **all splits**. The publisher's HF repo has **no English config**; the
+> official archive is OpenSLR 94, so download provenance is PENDING (`FINAL_COMPUTE_READINESS.md` §5).
+
 **What changed vs `DATASET_LICENSE_MATRIX.md` (2026-10-06 morning).**
 * **MLS English** (44,660 h, 5,490 train speakers, M/F balanced) has an E1 publisher card:
   "Public Domain, Creative Commons Attribution 4.0".

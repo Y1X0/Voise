@@ -9,12 +9,12 @@
  ],
  "datasets": [
   {
-   "version": "MLS (OpenSLR 94; HF facebook/multilingual_librispeech)",
+   "version": "MLS v1 (OpenSLR SLR94, English). Statistics and licence from the publisher's HF card facebook/multilingual_librispeech (last updated 2024-08-12).",
    "dialect": "mixed (LibriVox volunteer readers, mostly US)",
-   "hours": 44691.0,
-   "hours_evidence": "E1 HF card: train 44,659.74 h + dev 15.75 + test 15.55",
+   "hours": 44691.04,
+   "hours_evidence": "E1 publisher card 'Data Statistics': train 44,659.74 h + dev 15.75 h + test 15.55 h = 44,691.04 h. 44,660 h = train only (rounded); 44,691 h = all splits.",
    "speakers": 5574,
-   "speakers_evidence": "E1 HF card: train 2742 M + 2748 F, dev 42, test 42",
+   "speakers_evidence": "E1 publisher card '# Speakers': train 5,490 (2,742 M / 2,748 F), dev 42, test 42. 5,574 = sum of the per-split counts (MLS splits are speaker-disjoint by design; to verify on download). 5,490 = train only.",
    "gender": "M/F per speaker (card)",
    "speaker_session_metadata": "speaker_id + chapter_id (chapter = session)",
    "sampling_rate_hz": 16000,
@@ -26,9 +26,9 @@
    "provenance": "LibriVox public-domain audiobook recordings, segmented/aligned by Meta AI (publisher)",
    "source_url": "https://huggingface.co/datasets/facebook/multilingual_librispeech",
    "official_license_url": "https://creativecommons.org/licenses/by/4.0/legalcode",
-   "download_url": "https://huggingface.co/datasets/facebook/multilingual_librispeech (mirror of https://www.openslr.org/94)",
+   "download_url": "https://www.openslr.org/94/ (official distributor; egress-blocked here). NOTE: the publisher HF repo facebook/multilingual_librispeech does NOT contain English (configs: dutch, french, german, italian, polish, portuguese, spanish only). Mirror parler-tts/mls_eng (E1-m): train 10.8M rows, 704.7 GB parquet, dev 3.8K, test 3.8K rows.",
    "license_date_checked": "2026-10-06",
-   "sha256": "NOT_DOWNLOADED (full downloads forbidden before READY)",
+   "sha256": "NOT_AVAILABLE: official English archive not reachable from this environment; no download manifest hash can be produced. Required before GO (readiness.json mls_download_provenance_verified).",
    "evidence_level": "E1",
    "evidence": "hf://datasets/facebook/multilingual_librispeech/README.md (publisher org 'facebook')",
    "known_restrictions": [
@@ -48,7 +48,35 @@
    "upgrade_path": null,
    "id": "mls_en",
    "dataset": "Multilingual LibriSpeech (English)",
-   "language": "en"
+   "language": "en",
+   "hours_by_split": {
+    "train": 44659.74,
+    "dev": 15.75,
+    "test": 15.55
+   },
+   "speakers_by_split": {
+    "train": {
+     "M": 2742,
+     "F": 2748,
+     "total": 5490
+    },
+    "dev": {
+     "M": 21,
+     "F": 21,
+     "total": 42
+    },
+    "test": {
+     "M": 21,
+     "F": 21,
+     "total": 42
+    }
+   },
+   "download_provenance_status": "PENDING",
+   "storage_estimates": {
+    "mirror_parquet_opus_GB": 704.7,
+    "flac_16k_est_TB": "~3.1 (44,691 h x 3600 x 32 kB/s x ~0.6)",
+    "pcm_16k_TB": "5.15"
+   }
   },
   {
    "version": "v1 (OpenSLR 12)",

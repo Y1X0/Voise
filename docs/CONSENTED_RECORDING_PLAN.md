@@ -1,123 +1,161 @@
-# Private consented recording collection (Arabic first: Jordanian / Levantine)
+# Private consented Arabic corpus (priority)
 
-**Why.** `DATASET_EXPANSION_2026.md` found **0 hours** of commercially licensed
-Jordanian/Levantine speech, and no commercial dialectal Arabic at all. Data of unknown
-rights is never used to fill that gap. Voluntary, explicitly consented recordings are the
-route.
+**Why.** `DATASET_EXPANSION_2026.md` found:
+* **0 h** of commercially licensed Jordanian / Levantine / Egyptian / Gulf / Iraqi speech;
+* **12 h** of commercial Arabic in total (one speaker).
 
-**Status:** designed, not started.
-* A lawyer in the collection jurisdiction (Jordan, plus any other country where speakers
-  live) must review the consent text before the first recording.
-* The data-protection review must cover Jordan's personal-data protection law (reported as
-  Law No. 24 of 2023; verify). This is named so the review happens; its applicability is
-  not assessed here.
+Public ≠ training permission. Telegram, YouTube, news channels and podcasts are **not**
+scraped. The Arabic training data must come from people who volunteer and explicitly consent.
 
-## 1. Principles
+**Status:** designed and schema-enforced in code; **not started.**
+* A lawyer in each collection jurisdiction must review the consent text before the first
+  recording.
+* For Jordan, the review must cover the personal-data protection law (reported as Law No. 24
+  of 2023; verify). Its applicability is not assessed here.
 
-| # | Principle | How |
+## 1. Targets
+
+| Phase | Hours | Speakers | Per speaker | Raw storage (48 kHz / 16-bit WAV) | Training copy (16 kHz FLAC, est.) |
+|---|---|---|---|---|---|
+| **A** | **500 h** | **1,000** | ≈ 30 min over ≥ 2 sessions | ≈ 173 GB | ≈ 35 GB |
+| **B** | **1,000–1,500 h** | **1,500–2,500** | ≈ 36–40 min over ≥ 2 sessions | ≈ 346–518 GB | ≈ 70–105 GB |
+
+**Phase A dialect allocation** (speakers; ≈ 50 % female). MSA reading is included for every
+speaker.
+
+| Variety | Speakers | Hours |
 |---|---|---|
-| 1 | Voluntary and informed | Plain-language consent in Arabic and English, shown before any recording. Speakers can stop at any time, and refusing has no penalty. |
-| 2 | Separate, explicit scopes | Each scope is a separate opt-in. **Commercial ML training is its own opt-in**, never bundled. Scopes: (a) evaluation of the anonymizer, (b) ML training/validation (research), (c) **commercial ML training** (models that ship in a product), (d) listening tests of anonymised outputs, (e) raw-audio redistribution, **default no**. |
-| 3 | Adults only | The speaker confirms age ≥ 18. Minors are not recorded. |
-| 4 | Data minimisation | The consent record holds **no name, phone, e-mail, address, national id, exact birth date, precise location, IP or device id**. Only: age band, optional gender, dialect, optional country, recording conditions. |
-| 5 | Pseudonymous identity | `speaker_pseudonym` (`own_recordings:spk-<10 hex>`) and `consent_id` (`CNS-<12 hex>`) are random. Neither is derived from identity, and they are the only ids used in manifests. |
-| 6 | Withdrawal | The speaker receives a random **withdrawal token** (and the consent id). The project stores only the token's sha256. Presenting the token withdraws consent. Withdrawn speakers are removed from future manifests; `datasets/consent.py` refuses withdrawn records. |
-| 7 | Retention | `retention_until` per record (proposed: 5 years). Expired records are refused by the pipeline. |
-| 8 | Storage | Audio and consent store are kept on encrypted, access-controlled storage. **Never in git, never in the app, never uploaded to free/third-party GPU hosts** without a data-processing agreement. Training hosts receive only audio + pseudonyms. |
-| 9 | No impersonation use | Recordings are never used as a target voice. They are training/evaluation material for an anonymizer whose outputs are synthetic pseudo-speakers. |
-| 10 | Fair compensation | Optional voucher or payment, recorded only as a category. Payment does not depend on consenting to the commercial scope. |
+| Jordanian | 200 | 100 |
+| Palestinian | 150 | 75 |
+| Syrian | 150 | 75 |
+| Lebanese | 100 | 50 |
+| Egyptian | 120 | 60 |
+| Gulf | 100 | 50 |
+| Iraqi | 80 | 40 |
+| MSA-focused (news-style reading, any origin) | 100 | 50 |
+| **Total** | **1,000** | **500** |
 
-## 2. Consent metadata schema
+* **Phase B** keeps the proportions and adds Maghrebi and Sudanese when recruitment allows.
+* **Splits:**
+  * TEST is ≥ 40 speakers per main variety, held out; only evaluation consent is needed.
+  * VALID speakers are disjoint from TEST.
+  * Each speaker has ≥ 2 sessions on different days, for cross-session enroll/trial.
 
-The schema is `data/consent_schema.json` (JSON Schema, v1). It is enforced by
-`training/datasets/consent.py`, and the tests are in `training/tests/test_data_pipeline.py`
-(class `Consent`).
+## 2. Consent must cover commercial ML explicitly
+
+Each scope is a separate, explicit opt-in in Arabic and English. It is enforced by
+`data/consent_schema.json` + `training/datasets/consent.py`.
+
+| Scope (schema key) | Meaning |
+|---|---|
+| `ml_training` | the recordings may be used to train machine-learning models |
+| `voice_anonymization_rnd` | use for voice-anonymization research and development |
+| `commercial_product_development` | use to develop a commercial product, i.e. models that ship |
+| `model_evaluation` | use to evaluate models (privacy, intelligibility) |
+| `derivative_model_training` | models derived from those models may be trained and shipped |
+| `audio_redistribution` | sharing raw audio outside the project. **Default no.** |
+| `listening_tests` | playing anonymised outputs to listeners |
+
+**A speaker is `COMMERCIAL_TRAINING_ELIGIBLE` only if all five of the first scopes are true
+and consent is active.** Otherwise they are **`NOT_COMMERCIAL_TRAINING_ELIGIBLE`**
+(`consent.commercial_eligibility`).
+
+The manifest builder refuses:
+* own recordings without a consent store;
+* withdrawn or expired consent, or a pseudonym mismatch;
+* train/valid rows without `ml_training` + `voice_anonymization_rnd`;
+* any non-eligible speaker on the commercial path;
+* test rows without `model_evaluation`.
+
+These rules are tested.
+
+## 3. Metadata (no unnecessary PII)
+
+### Per speaker: consent record (`data/consent_schema.json`)
 
 | Field | Content |
 |---|---|
-| `consent_id` | `CNS-[0-9a-f]{12}`, random |
-| `speaker_pseudonym` | `own_recordings:spk-[0-9a-f]{10}`, random. This is the manifest speaker id. |
-| `form_version`, `form_sha256` | exact consent text shown (hash) |
-| `consented_at` | date |
-| `adult_confirmed` | must be `true` |
-| `language` | `ar` / `en` |
-| `dialect_primary` | MSA, Jordanian, Levantine-other, Palestinian, Syrian, Lebanese, Egyptian, Gulf, Iraqi, Maghrebi, Sudanese, mixed, English-native, English-L2, other |
+| `consent_id` | `CNS-<12 hex>`, random |
+| `speaker_pseudonym` | `own_recordings:spk-<10 hex>`, random. This is the manifest `speaker_id`. |
+| `form_version`, `form_sha256` | exact consent text shown |
+| `consent_timestamp` | ISO-8601 UTC |
+| `adult_confirmed` | must be `true`; minors are not recorded |
+| `language`, `dialect_primary` | MSA, Jordanian, Levantine-other, Palestinian, Syrian, Lebanese, Egyptian, Gulf, Iraqi, Maghrebi, Sudanese, mixed, English-native, English-L2, other |
 | `dialect_secondary` | optional |
-| `region_country` | optional, ISO country code only |
-| `age_band`, `gender` | optional; `prefer_not_to_say` allowed |
-| `scopes` | `{evaluation, ml_training, commercial_ml_training, audio_redistribution, listening_tests}`. `commercial_ml_training` requires `ml_training`. |
-| `withdrawal` | `{withdrawn, withdrawn_at}` |
+| `region_country` | optional, country code only |
+| `age_bucket`, `gender` | optional; `prefer_not_to_say` allowed |
+| `scopes` | the table in §2 |
+| `withdrawal` | `{status: active / withdrawn, withdrawn_at}` |
 | `retention_until` | date |
 | `withdrawal_token_sha256` | hash only |
-| `collector` | campaign id (not a person) |
-| `recording_conditions` | quiet_room, noisy_room, street, car, phone_handset, phone_speaker, headset, laptop_mic |
-| `compensation` | none / voucher / payment |
+| `collector` | campaign id, not a person |
+| `recording_conditions`, `compensation` | categories |
 | `notes` | ≤ 200 characters; rejected if it looks like contact data |
 
-**Any other field is rejected**, so no personal data can slip in.
+**Any other field is rejected.** There is no name, phone, e-mail, address, national id,
+exact birth date, precise location, IP or device identifier.
 
-### How the pipeline uses it
+### Per session (`data/recording_session_schema.json`)
 
-* Each speaker directory has a `consent_id.txt`.
-* `build_manifests.py --generic ROOT:own_recordings:ar --consent-store consents.jsonl` adds
-  `consent_id` to every row. Rows are refused when:
-  * there is no record, or the record belongs to another pseudonym;
-  * consent is withdrawn or retention has expired;
-  * train/valid rows lack `ml_training`, or, on the commercial path,
-    `commercial_ml_training`;
-  * test rows lack `evaluation`.
-* Without `--consent-store`, own recordings are refused on **every** path.
-
-## 3. Recording protocol (per speaker)
-
-| Item | Target |
+| Field | Content |
 |---|---|
-| Sessions | ≥ 2 on different days. Cross-session enroll/trial is required by the leakage rules; test speakers need ≥ 2 sessions. |
-| Duration | ≈ 30–45 min per speaker in total |
-| Content | (a) scripted MSA sentences, phonetically balanced, no personal content; (b) scripted dialect sentences; (c) prompted spontaneous speech on neutral topics (instruct "do not mention names, addresses, phone numbers"); (d) a short read passage shared by all speakers (for evaluation) |
-| Conditions | at least two of: quiet room, noisy room, phone handset, phone speakerphone, headset |
-| Format | 16-bit PCM WAV, ≥ 16 kHz (48 kHz preferred), mono, recorded on the speaker's own phone/laptop through the collection app |
-| Transcripts | scripted parts known; spontaneous parts transcribed later (Whisper draft + human correction), with personal data redacted |
-| Quality control | automatic checks (clipping, SNR, duration, silence); spot listening by the collector |
+| `speaker_id`, `consent_id`, `session_id` | `ses-<8 hex>` |
+| `language`, `dialect` | — |
+| `recording_device` | **class only**: `phone_android`, `phone_ios`, `laptop_builtin`, `usb_mic`, `headset`, `other`. Never a model, serial or identifier. |
+| `environment` | — |
+| `sampling_rate_hz` | — |
+| `recorded_at` | date |
+| `duration_s` | — |
+| `age_bucket`, `gender` | optional |
+| `consent_scope_snapshot` | sha256 of the scopes at recording time |
+| `withdrawal_status` | — |
 
-**Targets for a first Arabic evaluation and fine-tuning set:**
-* Jordanian ≥ 60 speakers, other Levantine (Palestinian/Syrian/Lebanese) ≥ 40, MSA reading
-  by all;
-* gender-balanced;
-* ≈ 45 h in total.
+## 4. Recording protocol (per speaker)
 
-**Split rule:**
-* ≥ 40 speakers are held out as TEST (evaluation consent only needed);
-* VALID speakers are disjoint from them;
-* only the rest go to training.
-* The registry entry `own_consented` changes per speaker:
-  * training rows are allowed only with `commercial_ml_training` (commercial path) or
-    `ml_training` (research path);
-  * evaluation rows need only `evaluation`.
+**Sessions:** ≥ 2 on different days, with at least two conditions among: quiet room, noisy
+room, phone handset, speakerphone, headset.
 
-## 4. Recruitment (no scraping)
+**Content:**
+* (a) scripted, phonetically balanced MSA sentences;
+* (b) scripted dialect sentences per variety, written with native speakers;
+* (c) prompted spontaneous speech on neutral topics. The prompt says "do not mention names,
+  addresses, phone numbers"; transcripts are redacted.
+* (d) one shared read passage, for evaluation.
 
-**Channels:** university notice boards and mailing lists, community organisations, and
-social-media posts, including **Telegram/WhatsApp/Facebook posts that link to the consent +
-recording page.**
-* Telegram is used only to invite people.
-* Public channels or groups are never recorded, downloaded or scraped.
+**Format:** 16-bit PCM WAV, mono, 48 kHz preferred (≥ 16 kHz accepted).
 
-**Invitation text (Arabic + English) states:**
-* the purpose (a privacy tool that changes a speaker's voice on the phone);
-* that participation is voluntary and paid or unpaid;
-* the separate commercial opt-in;
-* how to withdraw.
+**Quality control:**
+* automatic checks: clipping, SNR, silence, duration;
+* spot listening;
+* transcript draft by ASR followed by human correction.
 
-**Content creators** (podcasters, voice actors) may join through the same flow, giving
-explicit written permission for ML training. This is the only acceptable form of "creator
-permission".
+## 5. Recruitment (no scraping)
 
-## 5. Open items before the first recording (owner)
+* **Channels:** universities, community organisations, and social posts — including
+  Telegram, WhatsApp and Facebook posts — that **link to the consent + recording page**.
+  Public channels or groups are never recorded or downloaded.
+* **Content creators** (podcasters, voice actors) join through the same consent flow. That
+  is the only acceptable form of "creator permission".
+* **Compensation** is optional, as a voucher or payment, and does not depend on choosing the
+  commercial scopes.
 
-1. Legal review of the consent text and of data-protection obligations in each speakers'
-   country.
-2. Choose secure storage and the collection app: a web page or a separate Android app. It
-   must **not** be the anonymizer app, which has no network permission and must keep it.
-3. Budget for compensation and transcription.
-4. Name a data controller and contact for withdrawals.
+## 6. Storage and processing
+
+* Encrypted, access-controlled storage. **Never in git, never in the anonymizer app, never in
+  GitHub Actions artifacts.**
+* Never on third-party GPU hosts without a data-processing agreement.
+* Training hosts receive audio plus pseudonyms only.
+* Withdrawal removes the speaker from every future manifest. Models already trained are
+  documented, and the consent text says what withdrawal can and cannot undo.
+
+## 7. Open items (owner)
+
+1. Legal review of the consent text and data-protection obligations per country.
+2. The collection app: a separate web page or app. It is never the anonymizer app, which has
+   no network permission and must keep it that way.
+3. Budget and timeline.
+   * At 30 min per speaker, Phase A is about 1,000 recording sessions × 2, plus
+     transcription correction.
+   * Assuming a spontaneous share of about 40 % (an assumption, not a measurement), that is
+     about 200 h of transcripts to correct.
+4. A named data controller and a withdrawal contact.

@@ -1,0 +1,129 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "voise/recording_session/v1",
+ "title": "Per-session recording metadata for the consented corpus (no personal data)",
+ "type": "object",
+ "additionalProperties": false,
+ "required": [
+  "speaker_id",
+  "consent_id",
+  "session_id",
+  "language",
+  "dialect",
+  "recording_device",
+  "environment",
+  "sampling_rate_hz",
+  "recorded_at",
+  "duration_s",
+  "consent_scope_snapshot",
+  "withdrawal_status"
+ ],
+ "properties": {
+  "speaker_id": {
+   "type": "string",
+   "pattern": "^own_recordings:spk-[0-9a-f]{10}$"
+  },
+  "consent_id": {
+   "type": "string",
+   "pattern": "^CNS-[0-9a-f]{12}$"
+  },
+  "session_id": {
+   "type": "string",
+   "pattern": "^ses-[0-9a-f]{8}$"
+  },
+  "language": {
+   "enum": [
+    "ar",
+    "en"
+   ]
+  },
+  "dialect": {
+   "enum": [
+    "MSA",
+    "Jordanian",
+    "Levantine-other",
+    "Palestinian",
+    "Syrian",
+    "Lebanese",
+    "Egyptian",
+    "Gulf",
+    "Iraqi",
+    "Maghrebi",
+    "Sudanese",
+    "mixed",
+    "English-native",
+    "English-L2",
+    "other"
+   ]
+  },
+  "recording_device": {
+   "enum": [
+    "phone_android",
+    "phone_ios",
+    "laptop_builtin",
+    "usb_mic",
+    "headset",
+    "other"
+   ],
+   "description": "device CLASS only; never a model, serial or identifier"
+  },
+  "environment": {
+   "enum": [
+    "quiet_room",
+    "noisy_room",
+    "street",
+    "car",
+    "office",
+    "other"
+   ]
+  },
+  "sampling_rate_hz": {
+   "enum": [
+    16000,
+    22050,
+    24000,
+    32000,
+    44100,
+    48000
+   ]
+  },
+  "recorded_at": {
+   "type": "string",
+   "format": "date"
+  },
+  "duration_s": {
+   "type": "number",
+   "minimum": 0
+  },
+  "age_bucket": {
+   "enum": [
+    "18-24",
+    "25-34",
+    "35-44",
+    "45-54",
+    "55-64",
+    "65+",
+    "prefer_not_to_say"
+   ]
+  },
+  "gender": {
+   "enum": [
+    "female",
+    "male",
+    "other",
+    "prefer_not_to_say"
+   ]
+  },
+  "consent_scope_snapshot": {
+   "type": "string",
+   "pattern": "^[0-9a-f]{64}$",
+   "description": "sha256 of the scopes object at recording time"
+  },
+  "withdrawal_status": {
+   "enum": [
+    "active",
+    "withdrawn"
+   ]
+  }
+ }
+}
