@@ -288,7 +288,8 @@ class Trainer:
         x = b["wav"].to(self.dev)
         mel, pros = self.mel(x), b["prosody"].to(self.dev)
         g = torch.Generator().manual_seed(self.seed * 7919 + self.step)
-        s_p = self.prior_mu + self.prior_var.sqrt() * torch.randn(x.shape[0], self.cfg.model.spk_dim, generator=g)
+        noise = torch.randn(x.shape[0], self.cfg.model.spk_dim, generator=g)   # CPU generator: same draws on any device
+        s_p = self.prior_mu + self.prior_var.sqrt() * noise.to(device=self.prior_mu.device, dtype=self.prior_mu.dtype)
         y_p = self._render(mel, pros, s_p)                          # pseudo-speaker half (no target waveform)
         yp_a, _ = self._align(y_p, x)
         mel_y = self.mel(yp_a)
@@ -332,7 +333,8 @@ class Trainer:
         x = b["wav"].to(self.dev)
         mel, pros = self.mel(x), b["prosody"].to(self.dev)
         g = torch.Generator().manual_seed(self.seed * 7919 + self.step)
-        s_p = self.prior_mu + self.prior_var.sqrt() * torch.randn(x.shape[0], self.cfg.model.spk_dim, generator=g)
+        noise = torch.randn(x.shape[0], self.cfg.model.spk_dim, generator=g)   # CPU generator: same draws on any device
+        s_p = self.prior_mu + self.prior_var.sqrt() * noise.to(device=self.prior_mu.device, dtype=self.prior_mu.dtype)
         yp_a, _ = self._align(self._render(mel, pros, s_p), x)
         mel_y = self.mel(yp_a)
         with torch.no_grad():

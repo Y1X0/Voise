@@ -276,6 +276,32 @@ class CodebookInit(unittest.TestCase):
         self.assertTrue(torch.equal(a.model.vq.codebook, b.model.vq.codebook))
 
 
+class PseudoSpeakerNoiseDevice(unittest.TestCase):
+    """Regression: step_anon / step_qat added pseudo-speaker noise drawn from a CPU generator to the
+    prior on the model device (same cuda:0 vs cpu mismatch as _init_codebook)."""
+
+    def run_steps(self, device):
+        tr = CodebookInit.trainer(self, device)
+        out = {}
+        for st in ("anonymization", "qat_int8"):
+            tr.begin_stage(st)
+            res = tr.run_stage(st, 2, val_every=10 ** 9, ckpt_every=10 ** 9, resume=True)
+            self.assertEqual(res["aborted"], [], st)
+            out[st] = [h for h in tr.history[st]]
+            self.assertTrue(all(np.isfinite(v) for h in out[st] for v in h.values() if isinstance(v, float)), st)
+        return tr, out
+
+    @unittest.skipUnless(torch.cuda.is_available(), "needs a CUDA GPU (runs on Kaggle / any GPU machine)")
+    def test_anon_and_qat_steps_on_cuda(self):
+        tr, _ = self.run_steps("cuda:0")
+        self.assertEqual(tr.prior_mu.device.type, "cuda")
+
+    def test_cpu_steps_deterministic(self):
+        _, a = self.run_steps("cpu")
+        _, b = self.run_steps("cpu")
+        self.assertEqual(a, b)
+
+
 class KaggleDocCommands(unittest.TestCase):
     def test_every_flag_exists(self):
         import re
