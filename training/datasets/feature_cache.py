@@ -38,10 +38,12 @@ def row_key(r):
 
 def load_16k(r):
     import soundfile as sf
-    info = sf.info(r["path"])
+    from datasets.paths import resolve
+    src = resolve(r["path"])
+    info = sf.info(src)
     start = int(float(r.get("offset") or 0) * info.samplerate)
     stop = start + int(float(r["duration"]) * info.samplerate) if r.get("offset") is not None else -1
-    x, sr = sf.read(r["path"], start=start, stop=None if stop < 0 else stop, dtype="float32", always_2d=True)
+    x, sr = sf.read(src, start=start, stop=None if stop < 0 else stop, dtype="float32", always_2d=True)
     x = x.mean(1)
     if sr != SR:
         from scipy.signal import resample_poly
@@ -65,8 +67,9 @@ def audio_source(r, cache_dir, key, mode="auto"):
       * anything else (other rate, multi-channel, offset segments) or mode "copy" -> 16 kHz FLAC copy
     """
     import soundfile as sf
+    from datasets.paths import resolve
     whole = r.get("offset") is None
-    info = sf.info(r["path"]) if whole else None
+    info = sf.info(resolve(r["path"])) if whole else None
     if whole and info.samplerate == SR and info.channels == 1:
         if r["path"].endswith((".flac", ".wav")):
             return r["path"], "seek", False
@@ -81,6 +84,7 @@ def build(manifest_rows, cache_dir, units_dir=None, hop=160, audio_mode="auto"):
     "copy": the previous behaviour, a 16 kHz FLAC copy of every non-FLAC/WAV source."""
     if audio_mode not in AUDIO_MODES:
         raise ValueError(f"audio_mode must be one of {AUDIO_MODES}")
+    from datasets.paths import resolve
     from datasets.segments import utterance_features
     import soundfile as sf
     os.makedirs(os.path.join(cache_dir, "prosody"), exist_ok=True)
@@ -109,7 +113,7 @@ def build(manifest_rows, cache_dir, units_dir=None, hop=160, audio_mode="auto"):
             e["audio_seek"] = seek
         if r.get("mix_weight") is not None:
             e["mix_weight"] = r["mix_weight"]
-        if units_dir and os.path.exists(os.path.join(units_dir, key + ".npy")):
+        if units_dir and os.path.exists(resolve(os.path.join(units_dir, key + ".npy"))):
             e["units"] = os.path.join(units_dir, key + ".npy")
         entries[key] = e
     with open(idx_path, "w", encoding="utf-8") as f:

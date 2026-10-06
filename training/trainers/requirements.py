@@ -80,35 +80,38 @@ def internal_consistency(cfg_raw, mix_cfgs=()):
 
 
 def artifact_requirements(cfg, models_dir="models_train", sample=2000):
-    """-> list of missing / invalid DATA artifacts that train.py would consume."""
+    """-> list of missing / invalid DATA artifacts that train.py would consume. Paths are LOGICAL
+    (config / index strings); files are looked up through datasets/paths.py (VOISE_PATH_MAP)."""
+    from datasets.paths import resolve as R
+    exists = lambda p: bool(p) and os.path.exists(R(p))
     miss = []
     d = cfg.data
     for key in ("train_manifest", "valid_manifest"):
-        if not os.path.exists(d.get(key, "")):
+        if not exists(d.get(key, "")):
             miss.append(f"data.{key}: {d.get(key)} (datasets/mix.py)")
     mdir = os.path.dirname(d.get("train_manifest", "")) or "."
-    if not os.path.exists(os.path.join(mdir, "manifest_index.json")):
+    if not exists(os.path.join(mdir, "manifest_index.json")):
         miss.append(f"{mdir}/manifest_index.json (datasets/mix.py)")
     else:
         from datasets.build_manifests import LeakageError, verify
         try:
-            verify(mdir)
+            verify(R(mdir))
         except LeakageError as e:
             miss.append(f"manifest verification FAILED: {e}")
     for key in ("train_index", "valid_index"):
-        if not os.path.exists(d.get(key, "")):
+        if not exists(d.get(key, "")):
             miss.append(f"data.{key}: {d.get(key)} (datasets/feature_cache.py)")
     t = d.get("teacher", {})
     km = t.get("units")
-    if not km or not os.path.exists(km):
+    if not exists(km):
         miss.append(f"teacher units: {km} (scripts/compute_teacher_units.py; data preparation needs the local "
                     f"teacher checkpoint {t.get('unit_teacher')}/)")
     else:
-        k = int(np.load(km).shape[0])
+        k = int(np.load(R(km)).shape[0])
         if k != int(cfg.model.n_units):
             miss.append(f"teacher k-means K={k} != model.n_units={cfg.model.n_units}")
-    if os.path.exists(d.get("train_index", "")):
-        with open(d["train_index"], encoding="utf-8") as f:
+    if exists(d.get("train_index", "")):
+        with open(R(d["train_index"]), encoding="utf-8") as f:
             ents = [json.loads(l) for _, l in zip(range(sample), f) if l.strip()]
         no_units = [e["key"] for e in ents if "units" not in e]
         if no_units:
@@ -119,10 +122,10 @@ def artifact_requirements(cfg, models_dir="models_train", sample=2000):
             miss.append(f"{len(bad_dir)} train index entries reference units outside data.teacher.units_dir")
     for s in encoder_specs(d):
         pt, js = os.path.join(models_dir, s["name"] + ".pt"), os.path.join(models_dir, s["name"] + ".json")
-        if not (os.path.exists(pt) and os.path.exists(js)):
+        if not (exists(pt) and exists(js)):
             miss.append(f"role-TRAIN speaker encoder {pt} + .json (scripts/train_speaker_encoder.py --arch {s['arch']} --role TRAIN)")
             continue
-        with open(js) as f:
+        with open(R(js)) as f:
             meta = json.load(f)
         if meta.get("arch") != s["arch"] or meta.get("role") != "TRAIN":
             miss.append(f"{js}: arch/role {meta.get('arch')}/{meta.get('role')} != config {s['arch']}/TRAIN")

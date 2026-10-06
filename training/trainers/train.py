@@ -40,11 +40,13 @@ def preflight(cfg, require_gpu=True, models_dir="models_train"):
     Not required here, because train.py never reads them: the Whisper teacher checkpoint (only
     scripts/compute_teacher_units.py reads it) and noise/RIR manifests (augmentation is off).
     """
-    import torch
+    from trainers.gpu_select import select
     from trainers.requirements import artifact_requirements, internal_consistency
     missing = ["CODE: " + e for e in internal_consistency(cfg.raw)]
-    if require_gpu and not torch.cuda.is_available():
-        missing.append("GPU: CUDA GPU (training on CPU is not supported; see docs/STREAMING_NEURAL_TRAINING_PLAN.md §10)")
+    if require_gpu:
+        idx, _, msg = select()
+        if idx is None:
+            missing.append(msg + " (see docs/STREAMING_NEURAL_TRAINING_PLAN.md §10)")
     if any(m.startswith("CODE: speaker_encoders_train entries") for m in missing):
         return missing
     return missing + ["DATA: " + m for m in artifact_requirements(cfg, models_dir)]
@@ -60,6 +62,12 @@ def main():
     ap.add_argument("--resume", action="store_true", help="continue from the newest valid checkpoint of each stage")
     ap.add_argument("--keep-checkpoints", type=int, default=3,
                     help="numbered checkpoints kept per stage (>= 1); last.pt and best.pt are always kept")
+    ap.add_argument("--path-map", help="JSON {logical prefix: physical prefix} (datasets/paths.py), e.g. "
+                                       "training/configs/kaggle/path_map.example.json; data content is unchanged")
+    ap.add_argument("--max-hours", type=float, default=None,
+                    help="session time budget: checkpoint + clean exit (status 75) when reached; resume with --resume")
+    ap.add_argument("--no-deterministic", dest="deterministic", action="store_false",
+                    help="allow non-deterministic CUDA kernels (faster; resume is then exact only up to GPU run-to-run noise)")
     ap.add_argument("--smoke", action="store_true",
                     help="Stage 0 smoke run (configs/smoke.yaml, placeholders, CPU allowed, NO scientific meaning)")
     a = ap.parse_args()
@@ -68,6 +76,8 @@ def main():
         r = smoke_main(a.out)
         print(json.dumps({"smoke_passed": r["passed"], "checks": r["checks"]}, indent=1, default=str))
         sys.exit(0 if r["passed"] else 1)
+    from datasets.paths import activate
+    activate(a.path_map)
     from trainers.real_run import NotReady, run
     cfg = load_config(a.config)
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "scripts"))
@@ -82,12 +92,21 @@ def main():
         for m in missing:
             print("  - " + m, file=sys.stderr)
         sys.exit(2)
+    from trainers.gpu_select import select
+    idx, _, msg = select()
+    print(msg, file=sys.stderr)
     try:
         reps = run(a.config, a.out, a.gpu_profile, a.licence_path or cfg.data.get("licence_path", "commercial"),
-                   resume=a.resume, stages=a.stage, keep_checkpoints=a.keep_checkpoints)
+                   resume=a.resume, stages=a.stage, keep_checkpoints=a.keep_checkpoints, device=f"cuda:{idx}",
+                   max_seconds=None if a.max_hours is None else a.max_hours * 3600, deterministic=a.deterministic)
     except NotReady as e:
         print("NOT STARTING TRAINING: " + str(e), file=sys.stderr)
         sys.exit(2)
+    stop = reps.pop("_interrupted", None)
+    if stop:
+        print(f"SESSION STOP ({stop['reason']}) in stage {stop['stage']} at step {stop['step']}: checkpoint "
+              f"{stop['checkpoint']} written. Continue in a new session with the same command + --resume.", file=sys.stderr)
+        sys.exit(75)
     print(json.dumps({s: {"passed": r["passed"], "exit_criteria": {k: v["status"] for k, v in r["exit_criteria"].items()}}
                       for s, r in reps.items()}, indent=1))
     sys.exit(0 if reps and all(r["passed"] for r in reps.values()) else 1)

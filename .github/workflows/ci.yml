@@ -87,6 +87,10 @@ jobs:
         env:
           ORT_DISABLE_TELEMETRY: "1"
         run: python training/tests/test_efficiency.py
+      - name: Kaggle / interrupted-session readiness (GPU selection, path map, time budget + resume, session smoke on CPU)
+        env:
+          ORT_DISABLE_TELEMETRY: "1"
+        run: python training/tests/test_kaggle.py
       - name: Validation / evaluator-role / protocol (A6) tests
         env:
           ORT_DISABLE_TELEMETRY: "1"

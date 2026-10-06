@@ -83,7 +83,9 @@ class GpuAssets:
     PLACEHOLDERS = []
 
     def __init__(self, cfg, device="cuda", models_dir="models_train"):
+        from datasets.paths import resolve
         from trainers.requirements import encoder_specs
+        models_dir = resolve(models_dir)
         specs = encoder_specs(cfg.data)
         if not specs:
             raise ValueError("data.speaker_encoders_train is empty")

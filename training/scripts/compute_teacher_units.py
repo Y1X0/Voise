@@ -58,7 +58,8 @@ def features(model, fe, wav, layer, device):
 def _rows(manifest):
     """Iterate manifest rows without holding the manifest: a JSONL path is re-read on every pass."""
     if isinstance(manifest, str):
-        with open(manifest, encoding="utf-8") as f:
+        from datasets.paths import resolve
+        with open(resolve(manifest), encoding="utf-8") as f:
             for line in f:
                 if line.strip():
                     yield json.loads(line)

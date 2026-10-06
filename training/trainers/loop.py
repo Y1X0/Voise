@@ -467,7 +467,10 @@ class Trainer:
                 self.centroids, self.tau = self.assets.protected_centroids(self.train_data, self.mel)
             self.enable_qat()
 
-    def run_stage(self, stage, steps, log_every=10, val_every=50, ckpt_every=50, resume=False):
+    def run_stage(self, stage, steps, log_every=10, val_every=50, ckpt_every=50, resume=False, should_stop=None):
+        """should_stop(): polled after every completed step (session time budget / SIGTERM). When it
+        returns True before the stage ends, the current step is checkpointed (numbered + last) and the
+        stage returns {"interrupted": True}; --resume continues from exactly that step."""
         if not resume:
             from trainers.run_info import check_stage_gate
             check_stage_gate(self.out, stage, STAGES)   # stage n+1 only after stage n passed
@@ -512,4 +515,10 @@ class Trainer:
                 self.save("last")
             if self.smoke and self.step_in_stage == steps // 2 and not resume:
                 self.save("half")  # smoke only: the bit-exact resume check (trainers/smoke.py)
+            if should_stop is not None and self.step_in_stage < steps and should_stop():
+                if self.step_in_stage % ckpt_every != 0:      # not already saved at this step
+                    self.save(f"step_{self.step}")
+                    self.save("last")
+                return {"aborted": [], "interrupted": True, "seconds": time.time() - t0,
+                        "checkpoint": self.ckpt_path(f"step_{self.step}")}
         return {"aborted": [], "seconds": time.time() - t0}

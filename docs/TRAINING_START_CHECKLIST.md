@@ -21,6 +21,9 @@ Two data scopes:
 - [ ] On-device runtime privacy test on a real phone (`android_runtime_privacy_on_device`).
 
 ## B. GPU
+
+Kaggle (single T4, interrupted sessions, private datasets): see `docs/KAGGLE.md`.
+
 - [ ] (GPU) CUDA GPU visible to PyTorch (`torch.cuda.is_available()`); mixed precision verified on it.
 - [ ] Profile matches the card: `a100_40gb`, `a100_80gb` or `t4_16gb`.
 - [ ] (EXTERNAL_POLICY) The provider's terms allow training a commercial model, and the budget is approved (≈ 62–141 A100-h, ESTIMATED).

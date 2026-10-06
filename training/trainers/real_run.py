@@ -48,7 +48,8 @@ def data_scope(data_cfg):
     English+Arabic target."""
     mdir = os.path.dirname(data_cfg.get("train_manifest", "")) or "."
     langs = []
-    p = os.path.join(mdir, "manifest_index.json")
+    from datasets.paths import resolve
+    p = resolve(os.path.join(mdir, "manifest_index.json"))
     if os.path.exists(p):
         with open(p) as f:
             langs = sorted((json.load(f).get("inputs", {}).get("data_scope") or {}).get("languages", []))
@@ -62,7 +63,13 @@ def readiness_scope(data_cfg):
 
 
 def run(config, out_dir, gpu_profile, licence_path="commercial", resume=False, stages=None,
-        readiness=None, device="cuda", require_gpu=True, models_dir="models_train", keep_checkpoints=3):
+        readiness=None, device="cuda", require_gpu=True, models_dir="models_train", keep_checkpoints=3,
+        max_seconds=None, deterministic=True):
+    """max_seconds: session time budget. When reached (or on SIGTERM/SIGINT), the current step is
+    checkpointed and run() returns {"_interrupted": {...}} after the reports of finished stages;
+    the same call with resume=True continues from exactly that step (new process / new session)."""
+    import signal
+    import time
     sys.path.insert(0, TRAINING)
     sys.path.insert(0, os.path.join(ROOT, "scripts"))
     from datasets.stream_sampler import StreamingSegmentSampler
@@ -83,6 +90,17 @@ def run(config, out_dir, gpu_profile, licence_path="commercial", resume=False, s
         missing = preflight(cfg, models_dir=models_dir)
         if missing:
             raise NotReady("; ".join(missing))
+    from trainers.determinism import configure
+    info_det = configure(device, deterministic)
+    t_start = time.time()
+    stop_flag = {"signal": None}
+
+    def on_signal(signum, frame):
+        stop_flag["signal"] = signal.Signals(signum).name
+    old_handlers = {s: signal.signal(s, on_signal) for s in (signal.SIGTERM, signal.SIGINT)}
+
+    def should_stop():
+        return stop_flag["signal"] is not None or (max_seconds is not None and time.time() - t_start >= max_seconds)
     prof = GP.load(gpu_profile)
     kw = GP.apply(cfg, prof)
     d = cfg.data
@@ -94,21 +112,38 @@ def run(config, out_dir, gpu_profile, licence_path="commercial", resume=False, s
     tr = Trainer(cfg, out_dir, train, valid, None, seed=cfg.raw.get("seed", 0), device=device,
                  batch_size=kw["batch_size"], precision=kw["precision"], keep_checkpoints=keep_checkpoints)
     tr.assets = GpuAssets(cfg, device=device, models_dir=models_dir)
-    manifests = [p for p in (d.get("train_manifest"), d.get("valid_manifest")) if p and os.path.exists(p)]
+    from datasets.paths import resolve
+    manifests = [resolve(p) for p in (d.get("train_manifest"), d.get("valid_manifest")) if p and os.path.exists(resolve(p))]
     info = write_run_info(out_dir, ROOT, cfg.raw, manifests, cfg.raw.get("seed", 0), smoke=False)
     info["gpu_profile"] = prof["name"]
     info["licence_path"] = licence_path
     info["data_scope"] = data_scope(d)
+    info["determinism"] = info_det
     tr.run_info = info
     gates = cfg.raw.get("stage_gates", {})
     steps = {s["name"]: s["steps"] for s in cfg.stages}
+    try:
+        return _stages(tr, cfg, out_dir, stages or STAGES, steps, gates, kw, resume, info, prof, should_stop, stop_flag,
+                       latest_valid, sha256_file, validate_report)
+    finally:
+        for s, h in old_handlers.items():
+            signal.signal(s, h)
+
+
+def _stages(tr, cfg, out_dir, stages, steps, gates, kw, resume, info, prof, should_stop, stop_flag,
+            latest_valid, sha256_file, validate_report):
     reports = {}
-    for stage in stages or STAGES:
+    for stage in stages:
         ck = latest_valid(os.path.join(out_dir, stage)) if resume else None
         if ck:
             tr.load(ck)
         res = tr.run_stage(stage, steps[stage], val_every=cfg.raw.get("val_every", 5000),
-                           ckpt_every=kw["ckpt_every"], resume=bool(ck))
+                           ckpt_every=kw["ckpt_every"], resume=bool(ck), should_stop=should_stop)
+        if res.get("interrupted"):
+            reports["_interrupted"] = {"stage": stage, "step": tr.step, "step_in_stage": tr.step_in_stage,
+                                       "checkpoint": os.path.relpath(res["checkpoint"], out_dir),
+                                       "reason": stop_flag["signal"] or "time budget"}
+            return reports
         crit = evaluate_stage(stage, tr.history[stage], gates)
         last = tr.ckpt_path("last")
         rep = {"stage": stage, "smoke": False, "checkpoint": os.path.relpath(last, out_dir),

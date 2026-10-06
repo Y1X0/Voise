@@ -117,7 +117,8 @@ class EntryTable:
 
 
 def _index_rows(index_path, split, min_samples):
-    with open(index_path, encoding="utf-8") as f:
+    from datasets.paths import resolve
+    with open(resolve(index_path), encoding="utf-8") as f:
         for line in f:
             if line.strip():
                 e = json.loads(line)
@@ -156,20 +157,23 @@ class StreamingSegmentSampler:
         """Exact samples [s, s + n) for every s. Entries with "audio_seek": "prefix" (Ogg Opus: seeking
         is not sample-exact, decoding from 0 is) are decoded ONCE from sample 0 to the last end."""
         import soundfile as sf
+        from datasets.paths import resolve
+        path = resolve(e["audio"])
 
         def fit(x):
             return np.pad(x, (0, n - len(x))) if len(x) < n else x
         if e.get("audio_seek") == "prefix":
-            x, _ = sf.read(e["audio"], start=0, stop=max(starts) + n, dtype="float32", always_2d=True)
+            x, _ = sf.read(path, start=0, stop=max(starts) + n, dtype="float32", always_2d=True)
             x = x.mean(1)
             return [fit(x[s:s + n]) for s in starts]
         out = []
         for s in starts:
-            x, _ = sf.read(e["audio"], start=s, stop=s + n, dtype="float32", always_2d=True)
+            x, _ = sf.read(path, start=s, stop=s + n, dtype="float32", always_2d=True)
             out.append(fit(x.mean(1)))
         return out
 
     def batch(self, step, batch_size):
+        from datasets.paths import resolve
         rng = np.random.default_rng([self.seed, step])
         wav, ref, pros, spk, units = [], [], [], [], []
         for _ in range(batch_size):
@@ -183,11 +187,11 @@ class StreamingSegmentSampler:
             w, rf = self._read_many(e, [start * self.hop, rstart * self.hop], self.seg)
             wav.append(w)
             ref.append(rf)
-            p = np.load(e["prosody"], mmap_mode="r")
+            p = np.load(resolve(e["prosody"]), mmap_mode="r")
             pros.append(np.asarray(p[start: start + seg_f], np.float32))
             spk.append(self.spk_index[e["speaker"]])
             if "units" in e:
-                u = np.load(e["units"], mmap_mode="r")        # 20 ms units -> 10 ms frames
+                u = np.load(resolve(e["units"]), mmap_mode="r")        # 20 ms units -> 10 ms frames
                 u10 = np.repeat(np.asarray(u), 2)[start: start + seg_f]
                 units.append(np.pad(u10, (0, seg_f - len(u10)), mode="edge"))
         out = {"wav": torch.from_numpy(np.stack(wav)), "ref": torch.from_numpy(np.stack(ref)),
@@ -225,6 +229,10 @@ def prefetching_batches(sampler, start_step, n_steps, batch_size, num_workers):
         for i in range(n_steps):
             yield sampler.batch(start_step + i, batch_size)
         return
+    # dedicated generator: creating the iterator draws the workers' base seed from it instead of the
+    # GLOBAL torch RNG, so a resumed run (new iterator at step k) keeps the RNG stream of the
+    # uninterrupted run. batch() itself never uses worker seeds (pure function of seed, step).
     dl = torch.utils.data.DataLoader(StepBatches(sampler, start_step, n_steps, batch_size), batch_size=None,
-                                     shuffle=False, num_workers=num_workers, persistent_workers=False, prefetch_factor=2)
+                                     shuffle=False, num_workers=num_workers, persistent_workers=False, prefetch_factor=2,
+                                     generator=torch.Generator().manual_seed(0))
     yield from dl

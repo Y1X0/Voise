@@ -1,0 +1,8 @@
+{
+ "_doc": "Logical prefix (as written in manifests / feature index / configs) -> physical prefix on Kaggle (private datasets are mounted read-only under /kaggle/input/<dataset-slug>/). Replace the slugs with your own private datasets. Keys starting with _ are ignored. Data content and selection are unchanged; see datasets/paths.py and docs/KAGGLE.md.",
+ "/data/mls/mls_english": "/kaggle/input/voise-mls-en-10pct/mls_english",
+ "data/manifests": "/kaggle/input/voise-prep/manifests",
+ "data/features": "/kaggle/input/voise-prep/features",
+ "data/teacher/units": "/kaggle/input/voise-prep/teacher_units",
+ "models_train": "/kaggle/input/voise-models/models_train"
+}
