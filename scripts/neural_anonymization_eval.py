@@ -32,8 +32,10 @@ Attacks (each evaluator):
                     processed audio (attacker adapts to the anonymizer)
 
 Evaluators: GE2E (Resemblyzer d-vectors) and an independent MFCC-statistics
-embedding (mean/std of MFCC+delta, standardised on TRAIN originals). A modern
-evaluator (ECAPA-TDNN / WavLM) could not be downloaded in this environment.
+embedding (mean/std of MFCC+delta, standardised on TRAIN originals). Optional modern
+evaluators, loaded from LOCAL files only (no download): --ecapa-dir (SpeechBrain
+ECAPA-TDNN) and --wavlm-sv-dir (WavLM-Base-Plus x-vector). See
+docs/NEURAL_MODEL_ACQUISITION.md for the exact files.
 
 Quality: ESTOI, relative WER (pocketsphinx vs. ASR of the original), DNSMOS OVRL/SIG,
 duration ratio, clipped samples. Performance: real-time factor, peak RSS, model size.
@@ -229,6 +231,48 @@ class Ge2e:
         return e / np.linalg.norm(e)
 
 
+def _load16k(path):
+    import librosa
+    return librosa.load(path, sr=16000)[0].astype(np.float32)
+
+
+class Ecapa:
+    """SpeechBrain ECAPA-TDNN (speechbrain/spkrec-ecapa-voxceleb), loaded ONLY from a local
+    directory holding hyperparams.yaml, embedding_model.ckpt, mean_var_norm_emb.ckpt,
+    classifier.ckpt, label_encoder.txt. Nothing is downloaded."""
+
+    def __init__(self, local_dir):
+        import torch
+        from speechbrain.inference.speaker import EncoderClassifier
+        self.torch = torch
+        self.model = EncoderClassifier.from_hparams(
+            source=local_dir, savedir=local_dir, run_opts={"device": "cpu"},
+            overrides={"pretrained_path": os.path.abspath(local_dir)})  # never resolve to the Hub
+
+    def embed(self, path):
+        with self.torch.no_grad():
+            e = self.model.encode_batch(self.torch.from_numpy(_load16k(path))[None]).squeeze().numpy()
+        return e / np.linalg.norm(e)
+
+
+class WavlmSv:
+    """microsoft/wavlm-base-plus-sv x-vector head, loaded ONLY from a local directory holding
+    config.json, preprocessor_config.json, pytorch_model.bin. Nothing is downloaded."""
+
+    def __init__(self, local_dir):
+        import torch
+        from transformers import AutoFeatureExtractor, WavLMForXVector
+        self.torch = torch
+        self.fe = AutoFeatureExtractor.from_pretrained(local_dir, local_files_only=True)
+        self.model = WavLMForXVector.from_pretrained(local_dir, local_files_only=True).eval()
+
+    def embed(self, path):
+        x = self.fe(_load16k(path), sampling_rate=16000, return_tensors="pt")
+        with self.torch.no_grad():
+            e = self.model(**x).embeddings.squeeze().numpy()
+        return e / np.linalg.norm(e)
+
+
 def wccn(train_embs, lam=0.05):
     """Within-class covariance normalisation trained on (speaker -> [embeddings])."""
     dim = len(next(iter(train_embs.values()))[0])
@@ -276,6 +320,8 @@ def main():
     ap.add_argument("--corpus", default=CORPUS)
     ap.add_argument("--out", default=OUT)
     ap.add_argument("--reuse", action="store_true", help="reuse already rendered audio in --out")
+    ap.add_argument("--ecapa-dir", help="local copy of speechbrain/spkrec-ecapa-voxceleb (adds evaluator 'ecapa')")
+    ap.add_argument("--wavlm-sv-dir", help="local copy of microsoft/wavlm-base-plus-sv (adds evaluator 'wavlm_sv')")
     args = ap.parse_args()
 
     utts = [(os.path.basename(f)[:-4], os.path.join(args.corpus, f))
@@ -291,6 +337,10 @@ def main():
 
     evaluators = {"ge2e": Ge2e(), "mfcc_stats": MfccStats()}
     evaluators["mfcc_stats"].fit([paths[n] for n in trainval if role[speaker(n)] == "train"])
+    if args.ecapa_dir:
+        evaluators["ecapa"] = Ecapa(args.ecapa_dir)
+    if args.wavlm_sv_dir:
+        evaluators["wavlm_sv"] = WavlmSv(args.wavlm_sv_dir)
 
     systems = {}
     for name in args.systems.split(","):
