@@ -302,6 +302,33 @@ class PseudoSpeakerNoiseDevice(unittest.TestCase):
         self.assertEqual(a, b)
 
 
+class ResumeRngOnDevice(unittest.TestCase):
+    """Regression (Kaggle T4 smoke, step 8): Trainer.load maps the checkpoint to the model device, so the
+    saved RNG states arrived as CUDA tensors and torch.set_rng_state refused them."""
+
+    def round_trip(self, device):
+        a = CodebookInit.trainer(self, device)
+        a.begin_stage("content_distillation")
+        a.run_stage("content_distillation", 2, val_every=10 ** 9, ckpt_every=1, resume=True)
+        ck = os.path.join(a.out, "content_distillation", "step_2.pt")
+        rng = torch.get_rng_state().clone()
+        cuda_rng = [s.clone() for s in torch.cuda.get_rng_state_all()] if torch.cuda.is_available() else None
+        torch.manual_seed(12345)                                # disturb the global state
+        b = CodebookInit.trainer(self, device)
+        b.load(ck)
+        self.assertTrue(torch.equal(torch.get_rng_state(), rng))
+        if cuda_rng is not None:
+            self.assertTrue(all(torch.equal(x, y) for x, y in zip(torch.cuda.get_rng_state_all(), cuda_rng)))
+        self.assertEqual((b.step, b.step_in_stage), (2, 2))
+
+    @unittest.skipUnless(torch.cuda.is_available(), "needs a CUDA GPU (runs on Kaggle / any GPU machine)")
+    def test_load_on_cuda_restores_rng(self):
+        self.round_trip("cuda:0")
+
+    def test_load_on_cpu_restores_rng(self):
+        self.round_trip("cpu")
+
+
 class KaggleDocCommands(unittest.TestCase):
     def test_every_flag_exists(self):
         import re

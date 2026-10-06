@@ -109,7 +109,7 @@ def train(index, name, role, steps, out, models_dir, channels=512, dim=192, batc
     if ck:
         c = torch.load(ck, map_location=device, weights_only=False)
         enc.load_state_dict(c["enc"]); head.load_state_dict(c["head"]); opt.load_state_dict(c["opt"])
-        sched.load_state_dict(c["sched"]); step = c["step"]; torch.set_rng_state(c["rng"])
+        sched.load_state_dict(c["sched"]); step = c["step"]; torch.set_rng_state(c["rng"].cpu())
     hist = []
     while step < steps:
         b = sampler.batch(step, batch)

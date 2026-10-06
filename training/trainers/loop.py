@@ -443,10 +443,11 @@ class Trainer:
         if c.get("scaler_g"):
             self.scaler_g.load_state_dict(c["scaler_g"])
             self.scaler_d.load_state_dict(c["scaler_d"])
+        # map_location moved the RNG states (ByteTensors) to self.dev; the setters need CPU tensors
         if c.get("torch_rng") is not None:
-            torch.set_rng_state(c["torch_rng"])
+            torch.set_rng_state(c["torch_rng"].cpu())
         if c.get("cuda_rng") is not None and torch.cuda.is_available():
-            torch.cuda.set_rng_state_all(c["cuda_rng"])
+            torch.cuda.set_rng_state_all([s.cpu() for s in c["cuda_rng"]])
         if c["teacher"] is not None:
             self._make_teacher()
             self.teacher.load_state_dict(c["teacher"])
