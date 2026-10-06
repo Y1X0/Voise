@@ -235,6 +235,47 @@ class SessionSmoke(unittest.TestCase):
             shutil.rmtree(d)
 
 
+class CodebookInit(unittest.TestCase):
+    """Regression: on a CUDA model _init_codebook added CPU noise to CUDA tensors
+    ("Expected all tensors to be on the same device ... cuda:0 and cpu", Kaggle T4 smoke)."""
+
+    def trainer(self, device):
+        from trainers import kaggle as K
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d)
+        c = yaml.safe_load(open(os.path.join(TRAINING, "configs", "smoke.yaml")))
+        c["data"]["speaker_encoders_train"] = [{"name": "ecapa_train_inhouse", "arch": "ecapa"}]
+        cp = os.path.join(d, "cfg.yaml")
+        yaml.safe_dump(c, open(cp, "w"))
+        tr, _, _ = K.build(cp, os.path.join(TRAINING, "configs", "gpu", "t4_16gb.yaml"), os.path.join(d, "o"), 0, device,
+                           "synthetic")
+        return tr
+
+    @unittest.skipUnless(torch.cuda.is_available(), "needs a CUDA GPU (runs on Kaggle / any GPU machine)")
+    def test_init_codebook_on_cuda(self):
+        tr = self.trainer("cuda:0")
+        tr.begin_stage("content_distillation")                 # calls _init_codebook
+        cb = tr.model.vq.codebook
+        self.assertEqual(cb.device.type, "cuda")
+        self.assertTrue(torch.isfinite(cb).all())
+
+    def test_cpu_result_unchanged(self):
+        a, b = self.trainer("cpu"), self.trainer("cpu")
+        a._init_codebook()
+        zs = []                                                 # the previous formula, all on CPU
+        torch.set_grad_enabled(False)                           # as under _init_codebook's @torch.no_grad()
+        self.addCleanup(torch.set_grad_enabled, True)
+        for i in range(4):
+            bt = b.train_data.batch(20_000_000 + i, b.bs)
+            b.model.encode(b.mel(bt["wav"]), None)
+            zs.append(b.model._last_ze.reshape(-1, b.cfg.model.bottleneck_dim))
+        z = torch.cat(zs)
+        g = torch.Generator().manual_seed(b.seed)
+        idx = torch.randint(0, len(z), (b.cfg.model.vq_codes,), generator=g)
+        b.model.vq.codebook.copy_(z[idx] + 1e-3 * torch.randn(len(idx), z.shape[1], generator=g))
+        self.assertTrue(torch.equal(a.model.vq.codebook, b.model.vq.codebook))
+
+
 class KaggleDocCommands(unittest.TestCase):
     def test_every_flag_exists(self):
         import re

@@ -248,9 +248,11 @@ class Trainer:
             self.model.encode(self.mel(b["wav"].to(self.dev)), None)
             zs.append(self.model._last_ze.reshape(-1, self.cfg.model.bottleneck_dim))
         z = torch.cat(zs)
+        # the CPU generator keeps the draws identical on every device; they are moved to z's device/dtype
         g = torch.Generator().manual_seed(self.seed)
-        idx = torch.randint(0, len(z), (self.cfg.model.vq_codes,), generator=g)
-        self.model.vq.codebook.copy_(z[idx] + 1e-3 * torch.randn(len(idx), z.shape[1], generator=g))
+        idx = torch.randint(0, len(z), (self.cfg.model.vq_codes,), generator=g).to(z.device)
+        noise = torch.randn(len(idx), z.shape[1], generator=g).to(device=z.device, dtype=z.dtype)
+        self.model.vq.codebook.copy_(z[idx] + 1e-3 * noise)
 
     def _restart_dead_codes(self, z_e, idx):
         used = torch.bincount(idx.flatten(), minlength=self.cfg.model.vq_codes) > 0
