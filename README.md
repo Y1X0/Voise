@@ -9,6 +9,16 @@ child effects) and it is **not encryption**.
 
 > ⚠️ This reduces how recognisable a voice is to an ordinary listener. It does
 > **not** make anyone 100 % anonymous. See [docs/ANDROID_LIMITATIONS.md](docs/ANDROID_LIMITATIONS.md).
+>
+> Measured ([docs/NEURAL_MODEL_EVALUATION.md](docs/NEURAL_MODEL_EVALUATION.md)):
+> * **Naive attacker** (comparing your processed voice with your *original* voice):
+>   the app's pitch/formant processing only partly hides you (EER 18–22 % with modern
+>   speaker-recognition models).
+> * **Informed attacker** (has processed recordings of you, made with this app): it
+>   gives **no protection**. Your voice stays recognisable (EER 1–4 %).
+> * Offline neural speaker replacement (kNN-VC, VoicePrivacy B3) does much better
+>   against that attacker. It is too large and too slow for a phone, and it loses
+>   intelligibility.
 
 ## What is in the repo
 
@@ -24,8 +34,8 @@ child effects) and it is **not encryption**.
 | `docs/REAL_DEVICE_VALIDATION.md` | Device/emulator validation, speaker-embedding results, call-app analysis, safety audit |
 | `docs/ANONYMIZATION_EVALUATION.md` | 22-configuration speaker-anonymization experiments on 15 real speakers (similarity, linkage EER, intelligibility, naturalness) and the final decision |
 | `docs/NEURAL_ANONYMIZATION_RESULTS.md` | Threat-model research (attacker knows the transform): candidates, pseudo-speaker experiment, classification D |
-| `docs/NEURAL_MODEL_ACQUISITION.md` | Phase 2: candidate neural anonymizers/evaluators, licenses, exact weight files needed (MODEL_ARTIFACTS_REQUIRED) |
-| `docs/NEURAL_MODEL_EVALUATION.md` | Phase 2 offline evaluation status: classification D (no admissible model obtainable) |
+| `docs/NEURAL_MODEL_ACQUISITION.md` | Models obtained from official sources (SHA-256, licenses), what stayed blocked; `scripts/fetch_models.sh` |
+| `docs/NEURAL_MODEL_EVALUATION.md` | Phase 3: kNN-VC and VoicePrivacy B3 vs app DSP under 4 speaker evaluators and an informed attacker, Whisper WER, classification B |
 | `docs/NEURAL_ANDROID_FEASIBILITY.md` | Runtime options and budget for any future on-device model (not started: offline gate not passed) |
 | `docs/NEURAL_VC_RESEARCH.md` | Neural voice-conversion feasibility for real-time Android (research only) |
 | `docs/LISTENING_AND_ARABIC_PROTOCOL.md` | Blind A/B/C/D listening test and real Arabic recording protocol |
@@ -93,3 +103,10 @@ Then: plug in headphones → open the app → **ON** → choose Natural / Balanc
 طقطقة). أما ما لم يُتحقق منه بعد: التشغيل الفعلي على هاتف، وزمن التأخير الكلي على
 الجهاز، واختبار الاستماع البشري، واختبار أنظمة التعرف على المتحدث، وتسجيلات عربية
 حقيقية. التفاصيل في `docs/TESTING.md`.
+
+**نتيجة تقييم إخفاء الهوية (docs/NEURAL_MODEL_EVALUATION.md):** قِسنا التطبيق بأربعة
+نماذج للتعرف على المتحدث، منها نموذج VoicePrivacy الرسمي.
+- **مهاجم يقارن صوتك المعالج بصوتك الأصلي:** المعالجة الحالية (تغيير طبقة الصوت والفورمانت) تخفي الهوية جزئيًا فقط.
+- **مهاجم عنده تسجيلات لك معالجة بنفس التطبيق:** المعالجة الحالية **لا تحمي** هويتك.
+- **استبدال المتحدث بصوت اصطناعي عبر نماذج عصبية (kNN-VC و VoicePrivacy B3):** يقلل الربط كثيرًا، لكنه يُضعف وضوح الكلام. كما أن هذه النماذج أكبر وأبطأ من أن تعمل على الهاتف في الوقت الحقيقي، فلم تُنقل إلى التطبيق.
+- **العربية:** غير متحقق منها (ARABIC_NOT_VERIFIED).

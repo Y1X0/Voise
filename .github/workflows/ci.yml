@@ -28,6 +28,10 @@ jobs:
         run: bash termux/tests/test_cli.sh
       - name: Listening-test analysis self-test
         run: python3 tools/listening-test/test_analyze.py
+      - name: Anonymization-evaluation helper self-tests (no model weights)
+        run: |
+          python3 -m pip install --quiet numpy soundfile
+          python3 scripts/tests/test_eval_helpers.py
       - uses: actions/upload-artifact@v4
         with:
           name: dsp-reports

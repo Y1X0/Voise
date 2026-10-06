@@ -31,11 +31,11 @@ Status vocabulary used throughout:
 | Long-run stability | VERIFIED (host, 120 s) | output level drift 0.2 dB |
 | Noise suppression | VERIFIED | 21–23 dB less noise in pauses at 10 dB SNR (pink/white); 14.6 dB on pure pink noise |
 | Quiet / loud speech handling | VERIFIED | −46 dBFS input raised by AGC (+8.5 dB at output); loud input limited |
-| Intelligibility preserved | PARTIALLY VERIFIED (proxy) | syllabic envelope correlation 0.90–0.99; no ASR/human test was run |
+| Intelligibility preserved | PARTIALLY VERIFIED (ASR proxy) | Whisper small.en relative WER 8.1–10.0 % (Natural/Balanced/Strong, 27 real test utterances, `NEURAL_MODEL_EVALUATION.md`); syllabic envelope correlation 0.90–0.99; no human test |
 | "Not robotic" | PARTIALLY VERIFIED (proxy) | intonation correlation 0.94–0.999 (melody kept, not monotone); bounded shifts; no MOS listening test |
 | Measurable change of speaker characteristics | VERIFIED (acoustic) | F0 ±1.7/2.9/4.2 st, formant ×0.87–1.16, LTAS distance 1.3–4.6 dB |
 | Speaker similarity with a speaker-embedding model | PARTIALLY VERIFIED | GE2E d-vectors, 5 English speakers: similarity to the original fell from 0.79 to 0.69/0.64/0.60 (Natural/Balanced/Strong), but stayed above the different-speaker mean of 0.50, and processed clips remain linkable to each other (see REAL_DEVICE_VALIDATION.md) |
-| Anonymity against speaker-recognition systems | NOT VERIFIED | No EER-style evaluation; the result above shows the system is NOT unrecognisable to an embedding model |
+| Anonymity against speaker-recognition systems | MEASURED: **not achieved** against an informed attacker | `NEURAL_MODEL_EVALUATION.md`. Naive attacker (original enrollment): EER 18–22 % (Strong). Informed attacker (processed enrollment, cross-session): EER 1–4 %, top-1 96–100 %, under the VPC 2024 ECAPA ASV and a VoxCeleb ResNet. 9 test speakers. |
 | Male / female voices | VERIFIED (synthetic + real) | see tables |
 | Arabic speech | PARTIALLY VERIFIED | only synthetic *Arabic-like* phoneme sequences (incl. pharyngeals ħ/ʕ, q). No real Arabic recording was available in the build environment. Run `voiceanon_eval` on your own recordings. |
 | English speech | VERIFIED | synthetic + 5 real recordings (CMU ARCTIC, MS-SNSD, SpeechBrain sample) |
@@ -55,6 +55,7 @@ Status vocabulary used throughout:
 | Android JVM unit tests (Kotlin) | `./gradlew testDebugUnitTest` | 19 tests |
 | Performance benchmark | `./dsp/build/voiceanon_bench` | — |
 | Real-speech evaluation | `scripts/eval_real_speech.sh` | 5 files × 3 presets × 2 directions |
+| Anonymization-evaluation helpers (Python, no weights) | `python3 scripts/tests/test_eval_helpers.py` | 11 tests |
 
 DSP scenarios covered: silence, speech, loud speech (+10 dBFS peaks, ×3
 overdrive), quiet speech (−46 dBFS), male/female, Arabic-like/English-like,

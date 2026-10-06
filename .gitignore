@@ -21,3 +21,6 @@ eval-experiments/
 eval-neural/
 __pycache__/
 models/
+eval-neural-p3/
+eval-b3/
+eval-neural-p3-b3/

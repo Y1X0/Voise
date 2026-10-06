@@ -6,6 +6,12 @@ App status unchanged: `SPEAKER_ANONYMIZATION_PARTIAL`, decision D (DSP).
 
 The DSP engine, Android UI, Termux and call integration were not modified in this phase.
 
+> **Update (Phase 3):** real models have since been obtained and run. See
+> `NEURAL_MODEL_EVALUATION.md` (classification **B — PARTIALLY_VALIDATED**). Two modern
+> evaluators (the VoicePrivacy 2024 ECAPA ASV and a VoxCeleb ResNet) confirm that
+> DSP and WORLD stay linkable (informed cross-session EER 1–9 %). kNN-VC and VPC B3
+> towards synthetic speakers raise it to 28–50 %, at a large intelligibility cost.
+
 The question this research had to answer:
 
 > *Can an attacker who knows the transformation, applies it to their own

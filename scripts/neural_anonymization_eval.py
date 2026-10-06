@@ -18,6 +18,8 @@ Systems (all produce anonymized.wav from original.wav, 16 kHz):
   cmd:<template>
         any external anonymizer, e.g. a neural model:
         "cmd:python my_vc.py --in {in} --out {out} --seed {seed}"
+        or, with a short system name (used for the output folder and tables):
+        "my_vc=cmd:python my_vc.py --in {in} --out {out} --seed {seed}"
 
 Speaker split (speaker-disjoint, fixed seed, written to docs/results/neural_splits.json):
   TRAIN speakers  -> population statistics for psn_world; attacker back-end training
@@ -176,6 +178,16 @@ class PseudoSpeakerWorld:
         sf.write(out, y.astype(np.float32), sr, subtype="PCM_16")
 
 
+def parse_cmd_spec(spec):
+    """'cmd:TEMPLATE' -> (spec, TEMPLATE); 'NAME=cmd:TEMPLATE' -> (NAME, TEMPLATE)."""
+    if spec.startswith("cmd:"):
+        return spec, spec[4:]
+    label, sep, template = spec.partition("=cmd:")
+    if not sep or not label or "/" in label:
+        raise ValueError(f"bad external system spec: {spec!r}")
+    return label, template
+
+
 def cmd_system(template):
     def run(inp, out, seed, direction):
         subprocess.run(template.format(**{"in": inp, "out": out, "seed": seed, "direction": direction}),
@@ -237,21 +249,44 @@ def _load16k(path):
 
 
 class Ecapa:
-    """SpeechBrain ECAPA-TDNN (speechbrain/spkrec-ecapa-voxceleb), loaded ONLY from a local
-    directory holding hyperparams.yaml, embedding_model.ckpt, mean_var_norm_emb.ckpt,
-    classifier.ckpt, label_encoder.txt. Nothing is downloaded."""
+    """SpeechBrain ECAPA-TDNN loaded ONLY from a local directory (nothing is downloaded):
+      * speechbrain/spkrec-ecapa-voxceleb (hyperparams.yaml, embedding_model.ckpt,
+        mean_var_norm_emb.ckpt, classifier.ckpt, label_encoder.txt), or
+      * the VoicePrivacy 2024 ASV evaluator exp/asv_orig (ECAPA trained on
+        LibriSpeech-360), embedded exactly as VPC's speechbrain_vectors.py does
+        (trim leading/trailing zeros, encode_batch, cosine scoring)."""
 
     def __init__(self, local_dir):
         import torch
         from speechbrain.inference.speaker import EncoderClassifier
         self.torch = torch
+        local_dir = os.path.abspath(local_dir)
+        has_path_key = "pretrained_path:" in open(os.path.join(local_dir, "hyperparams.yaml")).read()
         self.model = EncoderClassifier.from_hparams(
             source=local_dir, savedir=local_dir, run_opts={"device": "cpu"},
-            overrides={"pretrained_path": os.path.abspath(local_dir)})  # never resolve to the Hub
+            # never resolve to the Hub
+            overrides={"pretrained_path": local_dir} if has_path_key else {})
+
+    def embed(self, path):
+        x = np.trim_zeros(_load16k(path))
+        with self.torch.no_grad():
+            e = self.model.encode_batch(self.torch.from_numpy(x)[None]).squeeze().numpy()
+        return e / np.linalg.norm(e)
+
+
+class SatoolsJit:
+    """TorchScript speaker-verification model from deep-privacy/SA-toolkit releases
+    (e.g. resnet_v1/final.jit: ResNet trained on VoxCeleb1). forward(wave) returns
+    (..., x_vector); the waveform is 16 kHz float in [-1, 1]. Local file only."""
+
+    def __init__(self, jit_path):
+        import torch
+        self.torch = torch
+        self.model = torch.jit.load(jit_path, map_location="cpu").eval()
 
     def embed(self, path):
         with self.torch.no_grad():
-            e = self.model.encode_batch(self.torch.from_numpy(_load16k(path))[None]).squeeze().numpy()
+            e = self.model(self.torch.from_numpy(_load16k(path))[None])[1].squeeze().numpy()
         return e / np.linalg.norm(e)
 
 
@@ -271,6 +306,20 @@ class WavlmSv:
         with self.torch.no_grad():
             e = self.model(**x).embeddings.squeeze().numpy()
         return e / np.linalg.norm(e)
+
+
+def speech_dropout(x, y, frame=320):
+    """Fraction of 20 ms frames that are speech in the original (within 30 dB of its
+    loudest frame) but near-silent in the processed output (> 50 dB below its loudest
+    frame): audible holes / dropouts. Both signals are length-preserving at 16 kHz."""
+    n = min(len(x), len(y)) // frame
+    if n == 0:
+        return 0.0
+    rx = np.sqrt(np.mean(x[:n * frame].reshape(n, frame) ** 2, 1)) + 1e-12
+    ry = np.sqrt(np.mean(y[:n * frame].reshape(n, frame) ** 2, 1)) + 1e-12
+    act = rx > rx.max() * 10 ** (-30 / 20)
+    hole = ry < ry.max() * 10 ** (-50 / 20)
+    return float(np.mean(hole[act])) if act.any() else 0.0
 
 
 def wccn(train_embs, lam=0.05):
@@ -321,6 +370,8 @@ def main():
     ap.add_argument("--out", default=OUT)
     ap.add_argument("--reuse", action="store_true", help="reuse already rendered audio in --out")
     ap.add_argument("--ecapa-dir", help="local copy of speechbrain/spkrec-ecapa-voxceleb (adds evaluator 'ecapa')")
+    ap.add_argument("--satools-asv-jit", help="local SA-toolkit resnet_v1/final.jit (adds evaluator 'resnet_vox1')")
+    ap.add_argument("--vpc-asv-dir", help="local VoicePrivacy 2024 exp/asv_orig (adds evaluator 'vpc_ecapa')")
     ap.add_argument("--wavlm-sv-dir", help="local copy of microsoft/wavlm-base-plus-sv (adds evaluator 'wavlm_sv')")
     args = ap.parse_args()
 
@@ -339,6 +390,10 @@ def main():
     evaluators["mfcc_stats"].fit([paths[n] for n in trainval if role[speaker(n)] == "train"])
     if args.ecapa_dir:
         evaluators["ecapa"] = Ecapa(args.ecapa_dir)
+    if args.vpc_asv_dir:
+        evaluators["vpc_ecapa"] = Ecapa(args.vpc_asv_dir)
+    if args.satools_asv_jit:
+        evaluators["resnet_vox1"] = SatoolsJit(args.satools_asv_jit)
     if args.wavlm_sv_dir:
         evaluators["wavlm_sv"] = WavlmSv(args.wavlm_sv_dir)
 
@@ -351,8 +406,9 @@ def main():
                                      cmvn=name.endswith("cmvn"))
             systems[name] = (psn.run, "non-neural pseudo-speaker (WORLD), utterance-level statistics"
                              + (" + envelope variance normalisation" if psn.cmvn else ""), 0)
-        elif name.startswith("cmd:"):
-            systems[name] = (cmd_system(name[4:]), "external", 0)
+        elif name.startswith("cmd:") or "=cmd:" in name:
+            label, template = parse_cmd_spec(name)
+            systems[label] = (cmd_system(template), "external: " + template, 0)
 
     orig_emb = {e: {n: ev.embed(paths[n]) for n in test + trainval} for e, ev in evaluators.items()}
     asr_o = ax.asr({n: paths[n] for n in test})
@@ -379,6 +435,8 @@ def main():
         rtf = None if args.reuse else elapsed / max(1e-9, audio_s)  # wall/audio time incl. process start-up
         res = {"desc": desc, "rtf_host": rtf,
                "peak_rss_mb": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024,
+               # external systems run as child processes: their peak (largest child so far)
+               "peak_rss_children_mb": resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss / 1024,
                "attacks": {}}
         for e, ev in evaluators.items():
             if hasattr(ev, "vad_failures"):
@@ -416,15 +474,16 @@ def main():
         edits = sum(ax.edit_distance(asr_o[n], asr_p[n]) for n in test)
         words = sum(len(asr_o[n]) for n in test)
         mos = ax.dnsmos(procA)
-        dur, clip = [], 0
+        dur, clip, drop = [], 0, []
         for n in test:
             a, b = sf.info(paths[n]).duration, sf.info(procA[n]).duration
             dur.append(b / a)
             y, _ = sf.read(procA[n])
             clip += int(np.sum(np.abs(y) >= 0.999))
+            drop.append(speech_dropout(sf.read(paths[n])[0], y))
         res.update({"rel_wer": edits / max(1, words), "estoi": ax.estoi({n: paths[n] for n in test}, procA),
                     "dnsmos_ovrl": mos[0], "dnsmos_sig": mos[2], "duration_ratio": float(np.mean(dur)),
-                    "clipped_samples": clip})
+                    "clipped_samples": clip, "speech_dropout_frac": float(np.mean(drop))})
         result["systems"][sname] = res
         os.makedirs(args.out, exist_ok=True)
         json.dump(result, open(os.path.join(args.out, "results.json"), "w"), indent=1)
@@ -453,12 +512,13 @@ def print_tables(r):
         if res.get("ge2e_vad_failures"):
             print(f"VAD failures (no speech detected by the GE2E front-end) for {s}: {res['ge2e_vad_failures']}")
     print()
-    print("| system | ESTOI | rel. WER | DNSMOS OVRL | DNSMOS SIG | duration ratio | clipped | RTF (host) |")
-    print("|---|---|---|---|---|---|---|---|")
+    print("| system | ESTOI | rel. WER | DNSMOS OVRL | DNSMOS SIG | duration ratio | clipped | speech dropouts | RTF (host) | peak RSS child |")
+    print("|---|---|---|---|---|---|---|---|---|---|")
     for s, res in r["systems"].items():
         print(f"| {s} | {res['estoi']:.2f} | {100*res['rel_wer']:.0f} % | {res['dnsmos_ovrl']:.2f} | {res['dnsmos_sig']:.2f} | "
-              f"{res['duration_ratio']:.3f} | {res['clipped_samples']} | "
-              + ("n/a (reused renders)" if res['rtf_host'] is None else f"{res['rtf_host']:.3f}") + " |")
+              f"{res['duration_ratio']:.3f} | {res['clipped_samples']} | {100*res.get('speech_dropout_frac', 0):.1f} % | "
+              + ("n/a (reused renders)" if res['rtf_host'] is None else f"{res['rtf_host']:.3f}") + " | "
+              + f"{res.get('peak_rss_children_mb', 0):.0f} MB |")
 
 
 if __name__ == "__main__":

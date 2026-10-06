@@ -1,193 +1,96 @@
-# Neural model acquisition (Phase 2)
+# Neural model acquisition
 
-**Outcome: `MODEL_ARTIFACTS_REQUIRED`.** For every candidate that the project's rules
-allow, the official weights sit on a host this environment cannot download from. No
-neural anonymizer and no modern evaluator was obtained, so none was evaluated.
+This is the Phase 3 update; it supersedes the Phase 2 "MODEL_ARTIFACTS_REQUIRED" result.
 
-This document records:
+GitHub release assets are reachable from this environment now (they returned 403 in
+Phase 2). Every artifact below was downloaded **automatically from its official source**:
+* each SHA-256 was recorded, and the size checked against the server's Content-Length;
+* integrity was checked (zip test, or loading with the expected keys and parameter count);
+* everything is stored under `models/`, which is git-ignored, so no weights are in git.
 
-* what each candidate is;
-* where its weights officially live;
-* exactly which files are needed, with names and sizes;
-* the license evidence;
-* the command that runs it once the files are provided.
+`scripts/fetch_models.sh` reproduces all of this and aborts on any checksum mismatch.
 
-No download URL here is invented. Every location is one of these:
+**Hugging Face is still blocked**: the egress proxy answers 403 to `CONNECT
+huggingface.co`, an organization policy. No retries or workarounds were attempted.
+**openaipublic.azureedge.net** (OpenAI's Whisper host) is also blocked by policy.
 
-* a Hugging Face repo path listed by the Hugging Face Hub connector (metadata only; it cannot transfer binary files);
-* a URL copied verbatim from the project's own official script, with file and line named;
-* a GitHub release page whose asset list was read.
+None of these artifacts is used by the Android app, which has no network access and no
+model.
 
-## 1. Access check (2026-10-06, from this container)
+## 1. Requested artifacts
 
-| Host | Result | Meaning |
+| Request | Official source | Result | Reason |
+|---|---|---|---|
+| A) ECAPA `speechbrain/spkrec-ecapa-voxceleb` | huggingface.co | **NOT_ACCESSIBLE** | proxy 403 (policy) on huggingface.co |
+| B) WavLM-SV `microsoft/wavlm-base-plus-sv` | huggingface.co | **NOT_ACCESSIBLE** | same |
+| C) kNN-VC `bshall/knn-vc` | GitHub repo + release `v0.1` | **DOWNLOADED, run** | — |
+| D) VoicePrivacy B3 `DigitalPhonetics/speaker-anonymization` | GitHub release `v2.0`, plus VPC 2024 repo code | **DOWNLOADED, run** | — |
+
+Substitutes for A and B, also from official GitHub releases. They are different models,
+so A and B themselves stay NOT_VERIFIED:
+
+| Artifact | Source | Why |
 |---|---|---|
-| huggingface.co, cdn-lfs.huggingface.co | no connection (000) | **NOT_ACCESSIBLE** (weights) |
-| Hugging Face Hub connector (MCP) | works | file lists, sizes and text files (README, YAML, JSON) only; no binary download |
-| github.com releases / codeload | 403 | **NOT_ACCESSIBLE** (release assets, repo zips) |
-| objects / release-assets.githubusercontent.com | 404 | **NOT_ACCESSIBLE** |
-| raw.githubusercontent.com | 200 | source files readable (used for licenses, configs, scripts) |
-| arxiv.org, zenodo.org, download.pytorch.org, dl.fbaipublicfiles.com, modelscope.cn | no connection | **NOT_ACCESSIBLE** |
-| pypi.org | 200 | code packages only (speechbrain 1.1.1, transformers 5.18.0 installed; they bundle no weights) |
-| voiceprivacychallenge SFTP | password from challenge registration | **NOT_ACCESSIBLE** |
+| VoicePrivacy 2024 ASV evaluator `asv_orig` (ECAPA-TDNN, 512 channels, 921 LibriSpeech-360 speakers) | `Voice-Privacy-Challenge/Voice-Privacy-Challenge-2024` release `pre_model.zip`, file `asv_orig.zip` | the official ECAPA evaluator of the VoicePrivacy Challenge |
+| SA-toolkit ResNet ASV `resnet_v1` (trained on VoxCeleb1 with reverb/noise/codec augmentation, per its `cfg.configs.resnet`) | `deep-privacy/SA-toolkit` release `resnet_v1` | an independent modern evaluator (different architecture and training data) |
+| Whisper small.en, ONNX export | `k2-fsa/sherpa-onnx` release `asr-models`, `sherpa-onnx-whisper-small.en.tar.bz2` | a strong offline ASR for intelligibility; OpenAI's own host is blocked |
+| Silero VAD v5.1.2 | `snakers4/silero-vad` (git tag) | B3's code loads it through `torch.hub` at run time; it is served from this local clone instead |
 
-Executing third-party model code fetched from GitHub was also refused by this session's
-permission policy. The kNN-VC adapter below was therefore written but **not executed**.
+## 2. Inventory
 
-## 2. Candidates
+All files live under `models/`. "SHA-256" is the first 16 hex characters; the full values
+are in `scripts/fetch_models.sh`.
 
-"Synthetic target" means the output voice is a generated pseudo-speaker rather than a
-real person. Candidates without one are excluded by the project rule *"ممنوع استخدام صوت
-شخص حقيقي كهدف impersonation"*.
-
-| Candidate | Paper | Official code | Weights location | License | Size | Runtime / latency (reported, not measured) | Anonymization vs plain VC | Synthetic target | Weights obtainable here | Status |
-|---|---|---|---|---|---|---|---|---|---|---|
-| **kNN-VC** (Baas, van Niekerk, Kamper 2023) | arXiv 2305.18975 | github.com/bshall/knn-vc | GitHub release `v0.1` (URLs in `hubconf.py`) | MIT (repo LICENSE) | 63.1 MB vocoder + 1.18 GB WavLM-Large | PyTorch; utterance-level, not streaming; GPU optional | any-to-any VC; anonymization only through the choice of matching set | **yes, if** the matching set is synthetic (adapter below uses psn_world pseudo-speakers) | no (403) | **MODEL_ARTIFACTS_REQUIRED** |
-| **VoicePrivacy 2024 B3** (STTTS + WGAN pseudo-speaker; Meyer et al.) | VPC 2024 eval plan, arXiv 2404.02677 | github.com/Voice-Privacy-Challenge/Voice-Privacy-Challenge-2024 (`anonymization/pipelines/sttts`) | GitHub release `DigitalPhonetics/speaker-anonymization` `v2.0` (URLs in `anonymization/pipelines/sttts/install.sh`) | GPL-3.0 (both repos' LICENSE) | ≈1.1 GB (831 KB + 390 MB + 713 MB zips) | ESPnet ASR + FastSpeech-style TTS; utterance-level; GPU recommended | designed for anonymization | **yes** (GAN-generated artificial speaker embeddings) | no (403) | **MODEL_ARTIFACTS_REQUIRED** |
-| LLVC (Koe AI 2023) | arXiv 2311.00873 | github.com/KoeAI/LLVC | HF `KoeAI/llvc_models` (`download_models.py` calls `snapshot_download("KoeAI/llvc")`; the Hub lists the repo as `KoeAI/llvc_models`) | MIT (repo LICENSE and HF card) | 39.5 MB (`G_500000.pth`) | streaming, < 20 ms, CPU | plain VC to **one fixed target voice** | **no**: the released checkpoint converts to LibriSpeech speaker 8312 (`experiments/llvc/config.json` → `"dir": "f_8312_ls360"`; README dataset recipe uses RVC model `f_8312` on LibriSpeech) | no | **EXCLUDED_BY_POLICY** (needs retraining toward a synthetic target before it is admissible) |
-| VoicePrivacy 2024 B5 / B6 (ASR-BN + VQ, SA-toolkit) | arXiv 2308.04455 | VPC 2024 repo `configs/anon_asrbn.yaml` | github.com/deep-privacy/SA-toolkit releases | GPL-3.0 (VPC repo) | not read | HiFi-GAN; fast | anonymization by conversion to a training speaker | **no**: `target_constant_spkid: "6081"` "must be one of the training data (libriTTS)"; random-per-utterance mode also picks real LibriTTS speakers | no | **EXCLUDED_BY_POLICY** |
-| VoicePrivacy 2024 B4 (neural audio codec LM) | arXiv 2309.14129 | VPC 2024 repo `configs/anon_nac.yaml` | `exp/nac_models` (download source not established) | GPL-3.0 (VPC repo) | not read | codec LM; utterance-level; GPU | anonymization | not verified | no | **MODEL_UNAVAILABLE** (source and target-selection not verified) |
-| VoicePrivacy B1 (x-vector + NSF, 2020/2022) | Srivastava et al. 2020 | Voice-Privacy-Challenge-2022 (Kaldi) | challenge SFTP (password from registration) | — | not read | Kaldi; utterance-level | anonymization (pseudo x-vector = average of distant real x-vectors) | partly (blend of ≥100 real x-vectors) | no (password) | **NOT_ACCESSIBLE** |
-| Streaming end-to-end anonymization (Quamer & Gutierrez-Osuna 2024) | arXiv 2406.09277 | none found | none found | — | lite ≈ 0.1× full | 230 ms full / 66 ms lite | anonymization | yes (pseudo-speaker embedding) | no | **MODEL_UNAVAILABLE** |
-| DarkStream (Quamer & Gutierrez-Osuna 2025) | arXiv 2509.04667 | none found | none found | — | — | streaming | anonymization | yes (GAN pseudo-speaker) | no | **MODEL_UNAVAILABLE** |
-| Stream-Voice-Anon (Kuzmin et al. 2026) | arXiv 2601.13948 | none found | none found | — | — | streaming codec LM | anonymization | yes (pseudo-speaker sampling) | no | **MODEL_UNAVAILABLE** |
-| TVTSyn (2026) | arXiv 2602.09389 | none found | none found | — | — | streaming | VC + anonymization | — | no | **MODEL_UNAVAILABLE** |
-| StreamVC (Google 2024) | arXiv 2401.03078 | none | not released | — | — | ~70 ms on device | VC | — | no | **MODEL_UNAVAILABLE** |
-
-Evaluators (the rule says *"إذا تعذر تشغيل ECAPA/WavLM ... NOT_VERIFIED ولا تعتبر GE2E وحده كافيًا"*):
-
-| Evaluator | Source | License | Files / size | Obtainable here | Status |
+| File | Bytes | SHA-256 | Source | License evidence | Check |
 |---|---|---|---|---|---|
-| ECAPA-TDNN (SpeechBrain, VoxCeleb1+2, EER 0.80 % on Vox1-O) | HF `speechbrain/spkrec-ecapa-voxceleb` | Apache-2.0 (model card) | 5 files, ≈ 89 MB | no | **MODEL_ARTIFACTS_REQUIRED** → evaluator **NOT_VERIFIED** |
-| WavLM-Base-Plus x-vector head | HF `microsoft/wavlm-base-plus-sv` | no license field in the model card metadata (upstream WavLM code: microsoft/unilm). **NOT VERIFIED** | 3 files, ≈ 405 MB | no | **MODEL_ARTIFACTS_REQUIRED** → evaluator **NOT_VERIFIED** |
+| `torch_hub/hub/checkpoints/prematch_g_02500000.pt` | 66,214,643 | f924c7632c6eaf99 | github.com/bshall/knn-vc/releases/download/v0.1/ (URL in the repo's `hubconf.py`) | MIT (`knn-vc/LICENSE`) | size = 63.1 MB on the release page; key `generator`, 16.5 M params |
+| `torch_hub/hub/checkpoints/WavLM-Large.pt` | 1,261,965,425 | 6fb4b3c3e6aa567f | same release | MIT (repo); WavLM by Microsoft | size = 1.18 GB on the release page; `cfg` 24 layers × 1024; 315.5 M params |
+| `knn-vc/` (code) | — | commit c616845c | git clone | MIT | — |
+| `exp/asv_orig/` (from `asv_orig.zip`) | zip 70,464,879 | f0abf60e569cb60a | VPC 2024 release `pre_model.zip` (URL in the repo's `01_download_data_model.sh`) | GPL-3.0 (VPC 2024 repo) | zip test OK; same-speaker 0.76 vs different-speaker 0.07–0.23 on a smoke pair |
+| `satools_resnet_v1/final.jit` | 33,589,148 | 07c354bc1f601df7 | SA-toolkit release `resnet_v1` | SA-toolkit repo (no separate model license file read) | TorchScript loads; 256-d x-vector; same-speaker 0.67 vs ≈0 |
+| `vpc2024/` (code) | — | commit 0ef55069 | git clone | GPL-3.0 | — |
+| `vpc2024/exp/sttts_models/` (from `anonymization.zip`, `asr.zip`, `tts.zip`) | 850,894 / 408,472,040 / 748,014,864 | 0e662a71 / 14dd433a / c9a40069 | DigitalPhonetics/speaker-anonymization release `v2.0` (URLs in VPC `anonymization/pipelines/sttts/install.sh`) | GPL-3.0 | Content-Length match; zip test OK |
+| `silero-vad/` | — | tag v5.1.2, commit 64785679 | git clone | MIT | — |
+| `sherpa-onnx-whisper-small.en/` (from the tar.bz2) | 635,693,775 | 0cdba2b8aaab69e0 | k2-fsa/sherpa-onnx release `asr-models` | Whisper weights MIT (OpenAI); sherpa-onnx Apache-2.0 | transcribes the bundled LibriSpeech test files correctly |
 
-Search coverage: the Hugging Face Hub connector was searched for "speaker anonymization",
-"voice privacy anonymization", "voiceprivacy", "pseudo-speaker", "anonymization speech",
-"LLVC" and "knn-vc", plus Hugging Face papers and web search for the streaming papers. No
-anonymization model with released weights was found beyond those listed.
+The downloaded zip and tar archives were deleted after unpacking to save disk.
+`fetch_models.sh` re-downloads and re-verifies them if needed.
 
-## 3. MODEL_ARTIFACTS_REQUIRED: exact files
+## 3. Runtime dependencies installed (code only, from PyPI / Ubuntu)
 
-Put the files at the paths given. Sizes are exact bytes where the Hub listing gives them,
-otherwise the size shown on the release page.
+* **System Python:**
+  * `speechbrain` 1.1.1, `transformers` (optional WavLM-SV loader), `sherpa-onnx` 1.13.8.
+* **B3 venv** (`models/venv_b3`, `--system-site-packages`), as pinned by VPC:
+  * `speechbrain==0.5.16`, `espnet==202310`, `espnet-model-zoo==0.1.7`;
+  * `praat-parselmouth==0.4.3`, `noisereduce==3.0.0`, `pypinyin==0.44.0`;
+  * `cvxopt`, `auraloss`, `phonemizer`, `pyloudnorm`.
+* **apt:** `espeak-ng` 1.51 (the version VPC builds) and `libportaudio2`.
 
-### 3.1 ECAPA-TDNN evaluator (priority 1)
+## 4. Adaptations needed to run the official code (no model or algorithm change)
 
-* **Source:** Hugging Face model repo `speechbrain/spkrec-ecapa-voxceleb`, branch `main`.
-* **License:** Apache-2.0 (front matter of `README.md`).
+* **torchaudio 2.11** routes `torchaudio.load` to torchcodec, which is not installed.
+  * The kNN-VC adapter passes tensors loaded with soundfile.
+  * The B3 driver replaces `torchaudio.load` with an equivalent soundfile loader.
+* **B3's code predates torch 2.6** and stores numpy objects in its `.pt` files. The B3
+  driver sets `TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1` *in that process only*. It loads only
+  the official release checkpoints and files the pipeline writes itself.
+* **B3's `torch.hub.load('snakers4/silero-vad')`** is redirected to the local official
+  clone, so no network access happens at run time.
+* **The VPC `install.sh` / download steps are skipped.** Models are unpacked exactly
+  where `install.sh` puts them, and `download_precomputed_intermediate_repr` is false.
 
-| File (exact name) | Bytes |
+## 5. Excluded by rule (not downloaded)
+
+* **LLVC** (`KoeAI/llvc_models`): converts to one real LibriSpeech speaker (8312).
+* **VPC B5/B6**: convert to real LibriTTS training speakers.
+* Both conflict with "no real-person target".
+
+## 6. Still unavailable
+
+| Item | Reason |
 |---|---|
-| `hyperparams.yaml` | 1,919 |
-| `embedding_model.ckpt` | 83,316,686 |
-| `mean_var_norm_emb.ckpt` | 1,921 |
-| `classifier.ckpt` | 5,534,328 |
-| `label_encoder.txt` | 128,619 |
-
-Destination: `models/spkrec-ecapa-voxceleb/`. The loader forces `pretrained_path` to this
-directory, so the unmodified `hyperparams.yaml` is fine and nothing is fetched from the
-Hub.
-
-### 3.2 WavLM speaker-verification evaluator (priority 1)
-
-* **Source:** Hugging Face model repo `microsoft/wavlm-base-plus-sv`, branch `main`.
-* **License:** not stated in the model card metadata. Please confirm before use.
-
-| File | Bytes |
-|---|---|
-| `config.json` | 58,639 |
-| `preprocessor_config.json` | 215 |
-| `pytorch_model.bin` | 404,547,053 |
-
-Destination: `models/wavlm-base-plus-sv/`.
-
-Command for both evaluators, re-running the existing systems with the existing split and
-seeds:
-
-```bash
-HF_HUB_OFFLINE=1 python3 scripts/neural_anonymization_eval.py \
-  --systems dsp_natural,dsp_balanced,dsp_strong,psn_world,psn_world_cmvn \
-  --ecapa-dir models/spkrec-ecapa-voxceleb --wavlm-sv-dir models/wavlm-base-plus-sv
-```
-
-### 3.3 kNN-VC towards a synthetic pseudo-speaker (priority 2)
-
-* **Source (weights):** the GitHub release `v0.1` of `bshall/knn-vc`. These are the exact
-  URLs written in the official `hubconf.py`:
-  * `https://github.com/bshall/knn-vc/releases/download/v0.1/prematch_g_02500000.pt`
-  * `https://github.com/bshall/knn-vc/releases/download/v0.1/WavLM-Large.pt`
-* **Source (code):** the official repo `github.com/bshall/knn-vc`, default branch.
-* **License:** MIT (repo `LICENSE`).
-
-| File | Size (release page) | Destination |
-|---|---|---|
-| `prematch_g_02500000.pt` | 63.1 MB | `$TORCH_HOME/hub/checkpoints/` (default `~/.cache/torch/hub/checkpoints/`) |
-| `WavLM-Large.pt` | 1.18 GB | same |
-| repo clone `bshall/knn-vc` (code: `hubconf.py`, `matcher.py`, `knnvc_utils.py`, `hifigan/`, `wavlm/`) | < 1 MB | e.g. `models/knn-vc/` |
-
-`torch.hub.load_state_dict_from_url` reads an existing file from the checkpoints folder
-and does not download it again.
-
-Command (`psn_world` must come first, because its TRAIN-speaker renders become the
-synthetic matching set):
-
-```bash
-python3 scripts/neural_anonymization_eval.py --ecapa-dir models/spkrec-ecapa-voxceleb \
-  --wavlm-sv-dir models/wavlm-base-plus-sv --systems "psn_world,cmd:python3 \
-  scripts/model_adapters/knnvc_pseudo.py --repo models/knn-vc \
-  --ref-root eval-neural/psn_world --in {in} --out {out} --seed {seed}"
-```
-
-Status of `scripts/model_adapters/knnvc_pseudo.py`: written, **NOT EXECUTED**. Running
-third-party code was refused by the session policy. Expect to fix small issues on the
-first run. One known risk: `torchaudio` 2.11 changed its I/O backends, and `matcher.py`
-calls `torchaudio.load`.
-
-### 3.4 VoicePrivacy 2024 B3, STTTS with GAN pseudo-speakers (priority 3)
-
-* **Source:** the GitHub release `v2.0` of `DigitalPhonetics/speaker-anonymization`. These
-  are the URLs exactly as written in `anonymization/pipelines/sttts/install.sh` of
-  `Voice-Privacy-Challenge/Voice-Privacy-Challenge-2024`:
-  * `https://github.com/DigitalPhonetics/speaker-anonymization/releases/download/v2.0/anonymization.zip`
-  * `https://github.com/DigitalPhonetics/speaker-anonymization/releases/download/v2.0/asr.zip`
-  * `https://github.com/DigitalPhonetics/speaker-anonymization/releases/download/v2.0/tts.zip`
-* **License:** GPL-3.0, for both the VPC 2024 code and DigitalPhonetics/speaker-anonymization.
-
-| File | Size (release page) | Unzips to |
-|---|---|---|
-| `anonymization.zip` | 831 KB | `exp/sttts_models/anonymization/` (WGAN, `style-embed_wgan.pt`) |
-| `asr.zip` | 390 MB | `exp/sttts_models/asr/` (`asr_branchformer_tts-phn_en.zip`) |
-| `tts.zip` | 713 MB | `exp/sttts_models/tts/` (`Embedding/embedding_function.pt`, `Aligner/aligner.pt`, TTS and vocoder) |
-
-You also need:
-
-* a clone of `Voice-Privacy-Challenge/Voice-Privacy-Challenge-2024`;
-* its `00_install.sh` environment (micromamba, ESPnet, espeak-ng 1.51.1);
-* a GPU, which is recommended.
-
-Command: `python run_anonymization.py --config configs/anon_sttts.yaml` on a Kaldi-style
-data directory built from `eval-corpus/` (`wav.scp`, `utt2spk`, `spk2utt`), with
-`download_precomputed_intermediate_repr: false` and utterance-level anonymization. The
-outputs are then scored with `--systems "cmd:cp <rendered>/{name}.wav {out}"`.
-
-The B3 output is not seed-controlled per session through our `{seed}`. Session
-variation comes from its own GAN sampling, so this has to be recorded when interpreting
-the cross-session attack. No adapter has been written for B3.
-
-### 3.5 Excluded or unavailable (do not provide)
-
-* **LLVC** (`KoeAI/llvc_models`: `models/checkpoints/llvc/G_500000.pth`, 39,489,146 B) and
-  **VPC B5/B6**: the released models convert to a *real* speaker, which this project
-  forbids. They would only become admissible after retraining toward a synthetic target,
-  which is out of scope for this phase.
-* **Quamer 2024, DarkStream, Stream-Voice-Anon, TVTSyn, StreamVC**: no public weights.
-  Admissible in principle; could be evaluated if the authors release them.
-* **VPC B1 / B4**: need challenge registration (B1), or the weights source is unverified (B4).
-
-## 4. Data still missing
-
-* **Arabic speech:** no Arabic corpus exists in this project, so every result is
-  **ARABIC_NOT_VERIFIED**. What is needed: consented recordings following
-  `docs/LISTENING_AND_ARABIC_PROTOCOL.md`, from at least 10 speakers with 3 sessions each.
-* The corpus is still 15 speakers / 48 utterances, with 9 test speakers. The confidence
-  intervals stay wide whatever model is supplied.
+| SpeechBrain ECAPA (VoxCeleb), WavLM-Base-Plus-SV | huggingface.co blocked by egress policy (403) |
+| OpenAI Whisper original checkpoints | openaipublic.azureedge.net blocked by egress policy (the sherpa-onnx export of the same model was used) |
+| Streaming anonymizers (Quamer 2024, DarkStream, Stream-Voice-Anon, TVTSyn), StreamVC | no public weights |
+| VPC B1 | challenge password (SFTP) |
+| Arabic speech recordings | none in the environment → ARABIC_NOT_VERIFIED |
