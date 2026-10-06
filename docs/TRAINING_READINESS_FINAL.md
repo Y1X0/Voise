@@ -47,7 +47,8 @@
 | registry | 11 |
 | compute readiness | 9 |
 | training ready | 21 |
-| **consistency** (new) | **18** |
+| consistency | 18 |
+| **efficiency** (new) | **11** |
 
   Termux, the listening tool, the evaluation helpers and the real-speech evaluation also pass.
 * **Smoke, 4 stages** (`docs/results/stage0_smoke_report.json`):
@@ -149,8 +150,11 @@ All from the repository root. Paths are the ones in `training/configs/stream_ano
 python3 scripts/orchestrate_training.py preflight --scope en_only
 python3 scripts/orchestrate_training.py preflight --scope en_ar
 
-# 1. MLS provenance (after the manual download) and MLS manifest (10 % speaker-balanced, official splits)
+# 1. MLS provenance (after the manual download); extract metadata, then ONLY the 10 % speaker-balanced
+#    train audio + dev/test (chosen from the metadata); manifest (official splits)
 python3 training/datasets/mls.py verify --archive <archive> --licence-text <licence-text-file> --source-url https://www.openslr.org/94/
+python3 training/datasets/mls.py extract --archive <archive> --dest /data/mls/mls_english
+python3 training/datasets/mls.py extract --archive <archive> --dest /data/mls/mls_english --fraction 0.10
 python3 training/datasets/mls.py manifest --root /data/mls/mls_english --out data/manifests/mls --fraction 0.10
 
 # 2a. ENGLISH-ONLY mix (interim; ARABIC_NOT_VERIFIED)

@@ -37,8 +37,13 @@ class FakeQuantPerChannel(torch.nn.Module):
 
 class Trainer:
     def __init__(self, cfg, out_dir, train, valid, assets, seed=0, device="cpu", disc_scale=1.0,
-                 batch_size=None, smoke=False, validator=None, selector=None, precision=None):
+                 batch_size=None, smoke=False, validator=None, selector=None, precision=None, keep_checkpoints=3):
         torch.manual_seed(seed)
+        if int(keep_checkpoints) < 1:
+            raise ValueError("keep_checkpoints must be >= 1 (the newest numbered checkpoint is the resume point)")
+        # retention per stage directory: the newest `keep_checkpoints` numbered step_*.pt, plus last.pt
+        # (resume / stage report), best.pt (VALID-selected, evaluation); half.pt only in smoke runs
+        self.keep_checkpoints = int(keep_checkpoints)
         self.cfg, self.out, self.seed, self.dev, self.smoke = cfg, out_dir, seed, device, smoke
         self.train_data, self.valid_data, self.assets = train, valid, assets
         self.bs = batch_size or cfg.data.get("batch_size", 16)
@@ -387,9 +392,10 @@ class Trainer:
     def ckpt_path(self, tag="last"):
         return os.path.join(self.out, self.stage, f"{tag}.pt")
 
-    def save(self, tag="last", keep=3):
+    def save(self, tag="last", keep=None):
         """Atomic checkpoint + sha256 sidecar (trainers/checkpoint.py). Numbered tags
-        ("step_<n>") are rotated to the newest `keep`; named tags are kept."""
+        ("step_<n>") are rotated to the newest `keep` (default self.keep_checkpoints); named tags are kept."""
+        keep = self.keep_checkpoints if keep is None else keep
         from trainers.checkpoint import atomic_save, rotate
         state = {"generator": self.model.state_dict(), "cond": self.cond.state_dict(), "disc": self.disc.state_dict(),
                  "opt_g": self.opt_g.state_dict(), "opt_d": self.opt_d.state_dict(), "step": self.step,
@@ -502,8 +508,8 @@ class Trainer:
                     self.save("last")
                     return {"aborted": ev}
             if self.step_in_stage % ckpt_every == 0 or self.step_in_stage == steps:
-                self.save(f"step_{self.step}")      # numbered, rotated (keep 3): survives a torn "last"
+                self.save(f"step_{self.step}")      # numbered, rotated (keep_checkpoints): survives a torn "last"
                 self.save("last")
-            if self.step_in_stage == steps // 2 and not resume:
-                self.save("half")  # kept for the resume check
+            if self.smoke and self.step_in_stage == steps // 2 and not resume:
+                self.save("half")  # smoke only: the bit-exact resume check (trainers/smoke.py)
         return {"aborted": [], "seconds": time.time() - t0}

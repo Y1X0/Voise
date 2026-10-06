@@ -2,8 +2,11 @@
 """Per-utterance feature cache for large-scale training (MLS-scale manifests do not fit in RAM).
 
 For every manifest row (one pass, idempotent, resumable: existing entries are skipped):
-  * audio: 16 kHz mono FLAC (the source file is reused when it already is 16 kHz mono
-    FLAC/WAV; otherwise a resampled copy is written under <cache>/audio/);
+  * audio: the SOURCE file is referenced whenever the sampler can read exactly the same samples
+    (16 kHz mono FLAC/WAV: seek; 16 kHz mono Ogg Opus: prefix decode, entry "audio_seek": "prefix");
+    otherwise (other rate, multi-channel, offset segments, or --audio-mode copy) a 16 kHz FLAC copy
+    is written under <cache>/audio/. For the MLS 10 % subset (16 kHz Opus, if the official files
+    are 16 kHz mono) this avoids ~310 GB of copies (ESTIMATED);
   * prosody: runtime-identical YIN F0 + energy -> causal prosody over the WHOLE utterance
     (exactly what datasets/segments.py computes in memory), saved as float16 .npy;
   * teacher units (optional): <units_dir>/<key>.npy (20 ms ids) are referenced if present.
@@ -48,7 +51,36 @@ def load_16k(r):
     return x
 
 
-def build(manifest_rows, cache_dir, units_dir=None, hop=160):
+AUDIO_MODES = ("auto", "copy")
+PREFIX_DECODE_EXT = (".opus", ".ogg")
+
+
+def audio_source(r, cache_dir, key, mode="auto"):
+    """-> (audio path, seek mode, needs_copy). The training sampler must read EXACTLY the samples the
+    prosody/units were computed from, so the source is referenced only when that is guaranteed:
+      * 16 kHz mono FLAC/WAV, whole file: sample-accurate seek            -> ("seek")
+      * 16 kHz mono Ogg Opus, whole file (mode auto): libsndfile seeking in Opus is NOT sample-exact
+        (max abs error 1.7e-3 on 30 % of random reads, measured), but decoding from sample 0 is
+        bit-identical to the full decode (tested) -> the sampler decodes the prefix ("prefix")
+      * anything else (other rate, multi-channel, offset segments) or mode "copy" -> 16 kHz FLAC copy
+    """
+    import soundfile as sf
+    whole = r.get("offset") is None
+    info = sf.info(r["path"]) if whole else None
+    if whole and info.samplerate == SR and info.channels == 1:
+        if r["path"].endswith((".flac", ".wav")):
+            return r["path"], "seek", False
+        if mode == "auto" and r["path"].endswith(PREFIX_DECODE_EXT):
+            return r["path"], "prefix", False
+    return os.path.join(cache_dir, "audio", key + ".flac"), "seek", True
+
+
+def build(manifest_rows, cache_dir, units_dir=None, hop=160, audio_mode="auto"):
+    """manifest_rows: any iterable (streamed; only the index entries are held in memory).
+    audio_mode "auto" (default): no audio copy when the source can be read exactly (see audio_source);
+    "copy": the previous behaviour, a 16 kHz FLAC copy of every non-FLAC/WAV source."""
+    if audio_mode not in AUDIO_MODES:
+        raise ValueError(f"audio_mode must be one of {AUDIO_MODES}")
     from datasets.segments import utterance_features
     import soundfile as sf
     os.makedirs(os.path.join(cache_dir, "prosody"), exist_ok=True)
@@ -65,16 +97,16 @@ def build(manifest_rows, cache_dir, units_dir=None, hop=160):
         if key in entries:
             continue
         x = load_16k(r)
-        src_ok = (r.get("offset") is None and r["path"].endswith((".flac", ".wav"))
-                  and sf.info(r["path"]).samplerate == SR and sf.info(r["path"]).channels == 1)
-        audio = r["path"] if src_ok else os.path.join(cache_dir, "audio", key + ".flac")
-        if not src_ok:
+        audio, seek, copy = audio_source(r, cache_dir, key, audio_mode)
+        if copy:
             sf.write(audio, x, SR, subtype="PCM_16")
         pros = utterance_features(x, SR, hop).astype(np.float16)
         ppath = os.path.join(cache_dir, "prosody", key + ".npy")
         np.save(ppath, pros)
         e = {"key": key, "audio": audio, "n_samples": int(len(x)), "prosody": ppath, "speaker": r["speaker"],
              "session": r["session"], "split": r["split"], "corpus": r["corpus"], "language": r["language"]}
+        if seek != "seek":
+            e["audio_seek"] = seek
         if r.get("mix_weight") is not None:
             e["mix_weight"] = r["mix_weight"]
         if units_dir and os.path.exists(os.path.join(units_dir, key + ".npy")):
@@ -95,9 +127,16 @@ def main():
     ap.add_argument("--manifest", required=True)
     ap.add_argument("--cache", required=True)
     ap.add_argument("--units-dir")
+    ap.add_argument("--audio-mode", choices=AUDIO_MODES, default="auto",
+                    help="auto: reference exactly-readable 16 kHz mono sources (no audio copy); copy: FLAC copy of non-FLAC/WAV")
     a = ap.parse_args()
-    from datasets.manifest import read
-    p, d = build(read(a.manifest), a.cache, a.units_dir)
+
+    def rows():
+        with open(a.manifest, encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    yield json.loads(line)
+    p, d = build(rows(), a.cache, a.units_dir, audio_mode=a.audio_mode)
     print(json.dumps({"index": p, "sha256": d}))
 
 

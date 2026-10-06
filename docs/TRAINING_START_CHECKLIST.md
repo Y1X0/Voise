@@ -45,10 +45,11 @@ Two data scopes:
   augmentation is implemented.
 
 ## E. Inputs to the data-preparation commands
-- [ ] `/data/mls/mls_english/` extracted from the verified archive (official layout: `{train,dev,test}/transcripts.txt`, `segments.txt`, `audio/`). If the audio is `.opus`, the local libsndfile must decode Opus.
+- [ ] `/data/mls/mls_english/` filled by `mls.py extract` from the verified archive: metadata (`{train,dev,test}/transcripts.txt`, `segments.txt`), then only the selected 10 % train audio + dev/test audio. If the audio is `.opus`, the local libsndfile must decode Opus.
 - [ ] **Teacher-stage prerequisite:** `models_train/whisper-small/`, a local Hugging Face checkpoint of `openai/whisper-small` (MIT), used only by `compute_teacher_units.py`. Never committed to git.
 - [ ] `en_ar` only: `/secure/incoming_v1` (recordings) and `/secure/consents.jsonl` (consent records).
-- [ ] Disk: about 70 GB (MLS 10 %, opus) plus decoded/cached audio, teacher units and checkpoints. Plan ≥ 0.5–1 TB SSD.
+- [ ] Disk (ESTIMATED, see G): ≈ 0.92 TB in use, **≥ 1.1 TB free SSD minimum, 1.5 TB recommended**; +0.29 TB if the official audio is not 16 kHz mono (the feature cache then writes FLAC copies).
+- [ ] RAM: **32 GB minimum, 64 GB recommended** (largest data step: teacher units, 6.63 GB MEASURED for the k-means sample at full scale + the Whisper encoder).
 
 ## F. Commands (exact; checked against the code by `training/tests/test_consistency.py`)
 
@@ -57,8 +58,10 @@ Two data scopes:
 python3 scripts/orchestrate_training.py preflight --scope en_only
 python3 scripts/orchestrate_training.py preflight --scope en_ar
 
-# MLS provenance + manifest
+# MLS provenance; metadata; only the selected 10 % audio (+ dev/test); manifest
 python3 training/datasets/mls.py verify --archive <archive> --licence-text <licence-text-file> --source-url https://www.openslr.org/94/
+python3 training/datasets/mls.py extract --archive <archive> --dest /data/mls/mls_english
+python3 training/datasets/mls.py extract --archive <archive> --dest /data/mls/mls_english --fraction 0.10
 python3 training/datasets/mls.py manifest --root /data/mls/mls_english --out data/manifests/mls --fraction 0.10
 
 # ENGLISH-ONLY (interim, ARABIC_NOT_VERIFIED)
@@ -88,7 +91,19 @@ python3 training/trainers/train.py --config training/configs/stream_anon_s.yaml 
 Switching from English-only to English + Arabic rewrites `data/manifests/mix_v1/`; re-run the
 teacher-unit, feature-cache, speaker-encoder and training steps afterwards.
 
-## G. Not checked by `train.py`, but required before release
+## G. Resources after the memory/storage changes (MLS English 10 % ≈ 4,469 h, ≈ 1.08 M utterances, ESTIMATED from the publisher statistics)
+
+| Component | RAM | Disk |
+|---|---|---|
+| MLS archive + extraction + manifest | ≈ 1.7 GB (≈ 155 B per train utterance, MEASURED slope) | archive ≈ 0.71 TB (NOT_VERIFIED size) + ≈ 0.08 TB (metadata + selected 10 % audio) |
+| Teacher units (`--max-fit-frames 2000000`, k 500, layer 8) | 6.63 GB MEASURED at full fitting scale (2 M × 768, k 500) + Whisper encoder | ≈ 6 GB (units + checkpoint) |
+| Feature cache (`--audio-mode auto`) | ≈ 2 GB (index) | ≈ 11 GB (prosody + index); 0 GB audio when the source is 16 kHz mono FLAC/WAV/Opus |
+| Speaker encoders (`--keep-checkpoints 3`) | sampler index ≈ 272 B/entry MEASURED | ≈ 0.73 GB (3 × 244 MB MEASURED) + exports |
+| Main training (`--keep-checkpoints 3`) | index ≈ 0.29 GB, shared by DataLoader workers | ≈ 5.3 GB (5 checkpoints × ≈ 0.27 GB × 4 stages) |
+
+Deleting the archive after `verify` + `extract` would save 0.71 TB, but the archive sha256 can then only be re-checked by downloading again; this is an owner decision, not a default.
+
+## H. Not checked by `train.py`, but required before release
 - [ ] VALID evaluators: `ecapa_valid_inhouse` + a VALID ASR (`valid_evaluators_available`).
 - [ ] Attacker/test sets (U1).
 - [ ] A real Android device for the privacy and RTF tests.

@@ -58,6 +58,8 @@ def main():
     ap.add_argument("--gpu-profile", help="training/configs/gpu/<name>.yaml (t4_16gb | a100_40gb | a100_80gb)")
     ap.add_argument("--licence-path", default=None, choices=["commercial", "research"])
     ap.add_argument("--resume", action="store_true", help="continue from the newest valid checkpoint of each stage")
+    ap.add_argument("--keep-checkpoints", type=int, default=3,
+                    help="numbered checkpoints kept per stage (>= 1); last.pt and best.pt are always kept")
     ap.add_argument("--smoke", action="store_true",
                     help="Stage 0 smoke run (configs/smoke.yaml, placeholders, CPU allowed, NO scientific meaning)")
     a = ap.parse_args()
@@ -82,7 +84,7 @@ def main():
         sys.exit(2)
     try:
         reps = run(a.config, a.out, a.gpu_profile, a.licence_path or cfg.data.get("licence_path", "commercial"),
-                   resume=a.resume, stages=a.stage)
+                   resume=a.resume, stages=a.stage, keep_checkpoints=a.keep_checkpoints)
     except NotReady as e:
         print("NOT STARTING TRAINING: " + str(e), file=sys.stderr)
         sys.exit(2)

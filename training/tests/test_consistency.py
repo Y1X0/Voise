@@ -413,7 +413,7 @@ class DocsMatchCode(unittest.TestCase):
                 self.assertNotIn(stale, text, (p, stale))
 
     def test_every_flag_exists(self):
-        subs = {"mls.py": ("download", "verify", "manifest"), "orchestrate_training.py": ("preflight", "bundle", "plan-resume", "verify"),
+        subs = {"mls.py": ("download", "verify", "extract", "manifest"), "orchestrate_training.py": ("preflight", "bundle", "plan-resume", "verify"),
                 "android_benchmark.py": ("plan", "run-neural", "report")}
         for doc, c in self.cmds:
             toks = shlex.split(re.sub(r"[\[\]<>|]", " ", c))
@@ -468,8 +468,12 @@ class DocsMatchCode(unittest.TestCase):
                 (gp,) = arg(c, "--gpu-profile")
                 self.assertTrue(os.path.exists(os.path.join(TRAINING, "configs", "gpu", gp + ".yaml")), gp)
                 seen["train"].add(doc)
+            elif "datasets/mls.py extract" in c:
+                (dest,) = arg(c, "--dest")
+                seen.setdefault("extract", set()).add((doc, dest, tuple(arg(c, "--fraction"))))
             elif "datasets/mls.py manifest" in c:
                 self.assertEqual(arg(c, "--out"), [next(s["manifests"] for s in mixes[OT.MIX_CONFIGS["en_only"]]["sources"])])
+                mls_root, mls_frac = arg(c, "--root")[0], arg(c, "--fraction")
                 seen["mls"].add(doc)
             elif "arabic_import.py" in c:
                 ar = next(s for s in mixes[OT.MIX_CONFIGS["en_ar"]]["sources"] if s["language"] == "ar")
@@ -482,6 +486,9 @@ class DocsMatchCode(unittest.TestCase):
             for k in ("teacher", "train", "mls", "arabic"):
                 self.assertIn(doc, seen[k], (doc, k))
         self.assertEqual(seen["mix"], set(mixes))
+        for doc in {os.path.basename(p) for p in DOCS}:      # metadata pass + selective pass into the manifest root
+            self.assertEqual({(dst, fr) for dd, dst, fr in seen["extract"] if dd == doc},
+                             {(mls_root, ()), (mls_root, tuple(mls_frac))}, doc)
 
 
 if __name__ == "__main__":

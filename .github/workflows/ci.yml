@@ -83,6 +83,10 @@ jobs:
         env:
           ORT_DISABLE_TELEMETRY: "1"
         run: python training/tests/test_consistency.py
+      - name: Data-pipeline memory/storage efficiency (bounded teacher units, no-copy cache, selective MLS extraction, retention)
+        env:
+          ORT_DISABLE_TELEMETRY: "1"
+        run: python training/tests/test_efficiency.py
       - name: Validation / evaluator-role / protocol (A6) tests
         env:
           ORT_DISABLE_TELEMETRY: "1"

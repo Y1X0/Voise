@@ -62,7 +62,7 @@ def readiness_scope(data_cfg):
 
 
 def run(config, out_dir, gpu_profile, licence_path="commercial", resume=False, stages=None,
-        readiness=None, device="cuda", require_gpu=True, models_dir="models_train"):
+        readiness=None, device="cuda", require_gpu=True, models_dir="models_train", keep_checkpoints=3):
     sys.path.insert(0, TRAINING)
     sys.path.insert(0, os.path.join(ROOT, "scripts"))
     from datasets.stream_sampler import StreamingSegmentSampler
@@ -92,7 +92,7 @@ def run(config, out_dir, gpu_profile, licence_path="commercial", resume=False, s
     valid = StreamingSegmentSampler(d["valid_index"], "valid", seg, seed=cfg.raw.get("seed", 0) + 1,
                                     licence_path=licence_path)
     tr = Trainer(cfg, out_dir, train, valid, None, seed=cfg.raw.get("seed", 0), device=device,
-                 batch_size=kw["batch_size"], precision=kw["precision"])
+                 batch_size=kw["batch_size"], precision=kw["precision"], keep_checkpoints=keep_checkpoints)
     tr.assets = GpuAssets(cfg, device=device, models_dir=models_dir)
     manifests = [p for p in (d.get("train_manifest"), d.get("valid_manifest")) if p and os.path.exists(p)]
     info = write_run_info(out_dir, ROOT, cfg.raw, manifests, cfg.raw.get("seed", 0), smoke=False)

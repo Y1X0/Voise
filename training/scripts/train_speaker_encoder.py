@@ -81,19 +81,21 @@ class Encoder(nn.Module):
 
 
 def train(index, name, role, steps, out, models_dir, channels=512, dim=192, batch=32, seg=2.0, lr=1e-3,
-          device=None, licence_path="commercial", seed=0, ckpt_every=2000, arch="ecapa"):
+          device=None, licence_path="commercial", seed=0, ckpt_every=2000, arch="ecapa", keep_checkpoints=3):
     from datasets.stream_sampler import StreamingSegmentSampler
     from models.frontend import CausalLogMel
-    from trainers.checkpoint import atomic_save, latest_valid
+    from trainers.checkpoint import atomic_save, latest_valid, rotate
+    if int(keep_checkpoints) < 1:
+        raise ValueError("keep_checkpoints must be >= 1 (resume point)")
     device = device or ("cuda" if torch.cuda.is_available() else "cpu")
     torch.manual_seed(seed)
     sampler = StreamingSegmentSampler(index, "train", seg, seed=seed, licence_path=licence_path)
     want = "a" if role == "TRAIN" else "b"
-    keep = [i for i, e in enumerate(sampler.entries) if half_of(e["speaker"]) == want]
+    keep = [i for i, s in enumerate(sampler.entries.column("speaker")) if half_of(s.decode()) == want]
     if not keep:
         raise SystemExit(f"no speakers in subset {want}")
-    sampler.entries = [sampler.entries[i] for i in keep]
-    sampler.speakers = sorted({e["speaker"] for e in sampler.entries})
+    sampler.entries = sampler.entries.take(keep)
+    sampler.speakers = sorted({s.decode() for s in sampler.entries.column("speaker")})
     sampler.spk_index = {s: i for i, s in enumerate(sampler.speakers)}
     sampler.p = None
     subset_sha = hashlib.sha256("\n".join(sampler.speakers).encode()).hexdigest()
@@ -124,6 +126,7 @@ def train(index, name, role, steps, out, models_dir, channels=512, dim=192, batc
             atomic_save({"enc": enc.state_dict(), "head": head.state_dict(), "opt": opt.state_dict(),
                          "sched": sched.state_dict(), "step": step, "rng": torch.get_rng_state()},
                         os.path.join(out, f"step_{step}.pt"), {"step": step, "role": role, "subset_sha256": subset_sha})
+            rotate(out, keep_checkpoints)          # was: every checkpoint kept (30 at 60k steps / 2k)
     enc.eval()
     os.makedirs(models_dir, exist_ok=True)
     traced = torch.jit.trace(enc.cpu(), torch.randn(1, 200, 80))
@@ -149,11 +152,12 @@ def main():
     ap.add_argument("--arch", choices=ARCHS, required=True)
     ap.add_argument("--channels", type=int, default=None, help="ecapa: 512 (default); resnet34: 32 (base width)")
     ap.add_argument("--batch", type=int, default=32)
+    ap.add_argument("--keep-checkpoints", type=int, default=3, help="newest resumable checkpoints kept in --out")
     ap.add_argument("--licence-path", choices=["commercial", "research"], default="commercial")
     a = ap.parse_args()
     ch = a.channels or (512 if a.arch == "ecapa" else 32)
     print(json.dumps(train(a.index, a.name, a.role, a.steps, a.out, a.models_dir, ch, batch=a.batch,
-                           licence_path=a.licence_path, arch=a.arch), indent=1))
+                           licence_path=a.licence_path, arch=a.arch, keep_checkpoints=a.keep_checkpoints), indent=1))
 
 
 if __name__ == "__main__":
