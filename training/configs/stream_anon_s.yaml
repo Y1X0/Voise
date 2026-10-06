@@ -1,0 +1,79 @@
+# StreamAnon-S: primary configuration (~6.0 M deployable params, ~0.55 GMAC/s, 40 ms).
+# Nothing here has been trained. See docs/STREAMING_NEURAL_TRAINING_PLAN.md.
+
+model:
+  sr: 16000
+  hop: 160            # 10 ms
+  win: 320            # 20 ms sqrt-Hann, analysis window ends at the current sample
+  n_mels: 80
+  enc_dim: 192
+  enc_blocks: 6
+  enc_kernel: 7
+  enc_gru: true
+  bottleneck_dim: 64
+  vq_codes: 512       # VQ information bottleneck
+  dec_dim: 320
+  dec_blocks: 6
+  dec_kernel: 7
+  mlp_mult: 3
+  spk_dim: 128        # pseudo-speaker vector (FiLM)
+  prosody_emb: 32
+  delay_frames: 2     # 20 ms learned look-ahead -> 40 ms algorithmic latency
+  n_units: 500        # k-means units of the content teacher (training head)
+  n_phones: 72        # multilingual phone inventory incl. Arabic (CTC head, training only)
+  n_speakers: 3000    # adversarial speaker classifier classes (training only)
+
+data:
+  train_manifest: data/manifests/train.jsonl
+  valid_manifest: data/manifests/valid.jsonl
+  segment_seconds: 2.0
+  batch_size: 16
+  num_workers: 8
+  augment:
+    noise_manifest: data/manifests/noise.jsonl     # MUSAN + DNS noise, SNR 0-30 dB
+    rir_manifest: data/manifests/rir.jsonl         # OpenSLR-28 RIRs, p = 0.3
+    codec_p: 0.2                                   # AMR-WB / Opus 16 kbit/s simulation
+    gain_db: [-12, 6]
+  teacher:
+    units: data/teacher/units_k500.npy             # precomputed, see scripts/compute_teacher_units.py
+    content_model: mhubert-147                     # frozen, for the output content loss (layer 9)
+  speaker_encoders_train:                          # used INSIDE the losses; never used for evaluation
+    - wespeaker_resnet34_voxceleb
+    - ecapa_trained_inhouse
+  f0: runtime_yin                                  # the app's C++ YIN, built as a Python extension
+
+losses:   # initial weights; see docs/STREAMING_NEURAL_TRAINING_PLAN.md section 6
+  mel_l1: 45.0
+  mrstft: 1.0
+  gan: 1.0
+  feature_matching: 2.0
+  unit_ce: 1.0
+  ctc: 0.5
+  vq_commit: 0.25
+  speaker_adversarial: {max: 1.0, warmup_steps: 50000}
+  speaker_suppression: {weight: 2.0, margin: 0.25}
+  pseudo_consistency: 1.0
+  anti_impersonation: {weight: 2.0, tau: auto}      # tau = p99 of unrelated-speaker similarity
+  content_output: 10.0
+  temporal_consistency: 0.5
+  f0_follow: 1.0
+
+optim:
+  generator: {lr: 2.0e-4, betas: [0.8, 0.99], weight_decay: 0.01}
+  discriminator: {lr: 2.0e-4, betas: [0.8, 0.99]}
+  lr_decay: 0.999996      # per step
+  grad_clip: 10.0
+  precision: bf16
+
+stages:
+  - {name: content_distillation, steps: 200000, train: [encoder, unit_head, ctc_head, vq], losses: [unit_ce, ctc, vq_commit]}
+  - {name: reconstruction, steps: 300000, train: [decoder, head, speaker_encoder_cond], losses: [mel_l1, mrstft, gan, feature_matching, f0_follow], conditioning: own_speaker}
+  - {name: anonymization, steps: 200000, train: all, losses: all, conditioning: pseudo_speaker_mix_0.5}
+  - {name: qat_int8, steps: 20000, train: all, losses: [mel_l1, mrstft, content_output, speaker_suppression]}
+
+pseudo_speaker:
+  pool_size: 10000
+  dim: 128
+  reject_similarity_to_any_train_speaker: auto     # > p99 of unrelated-speaker similarity -> reject
+  min_density_quantile: 0.05                       # reject implausible (too atypical) voices
+  per_session: true

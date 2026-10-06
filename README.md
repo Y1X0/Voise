@@ -35,6 +35,7 @@ child effects) and it is **not encryption**.
 | `docs/ANONYMIZATION_EVALUATION.md` | 22-configuration speaker-anonymization experiments on 15 real speakers (similarity, linkage EER, intelligibility, naturalness) and the final decision |
 | `docs/NEURAL_ANONYMIZATION_RESULTS.md` | Threat-model research (attacker knows the transform): candidates, pseudo-speaker experiment, classification D |
 | `docs/NEURAL_MODEL_ACQUISITION.md` | Models obtained from official sources (SHA-256, licenses), what stayed blocked; `scripts/fetch_models.sh` |
+| `docs/STREAMING_NEURAL_ANONYMIZER_ARCHITECTURE.md` | Design phase (not trained): streaming on-device neural anonymizer: architecture, measured prototype compute, decision B; plus `STREAMING_NEURAL_{TRAINING,EVALUATION,ANDROID,ARABIC}_PLAN.md` and `training/` |
 | `docs/NEURAL_MODEL_EVALUATION.md` | Phase 3: kNN-VC and VoicePrivacy B3 vs app DSP under 4 speaker evaluators and an informed attacker, Whisper WER, classification B |
 | `docs/NEURAL_ANDROID_FEASIBILITY.md` | Runtime options and budget for any future on-device model (not started: offline gate not passed) |
 | `docs/NEURAL_VC_RESEARCH.md` | Neural voice-conversion feasibility for real-time Android (research only) |
@@ -110,3 +111,7 @@ Then: plug in headphones → open the app → **ON** → choose Natural / Balanc
 - **مهاجم عنده تسجيلات لك معالجة بنفس التطبيق:** المعالجة الحالية **لا تحمي** هويتك.
 - **استبدال المتحدث بصوت اصطناعي عبر نماذج عصبية (kNN-VC و VoicePrivacy B3):** يقلل الربط كثيرًا، لكنه يُضعف وضوح الكلام. كما أن هذه النماذج أكبر وأبطأ من أن تعمل على الهاتف في الوقت الحقيقي، فلم تُنقل إلى التطبيق.
 - **العربية:** غير متحقق منها (ARABIC_NOT_VERIFIED).
+
+**المرحلة التالية (تصميم فقط، بدون تدريب):** نموذج عصبي صغير يعمل بالبث المتدفق
+ويستبدل المتحدث بصوت اصطناعي، ومخصص للهاتف (`docs/STREAMING_NEURAL_ANONYMIZER_ARCHITECTURE.md`).
+القرار: B — ممكن بشروط. التدريب يحتاج GPU وبيانات مرخّصة وتسجيلات عربية.

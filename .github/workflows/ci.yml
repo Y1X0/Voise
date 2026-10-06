@@ -42,6 +42,21 @@ jobs:
             real-eval.md
             eval-out/*.wav
 
+  streaming-prototype:
+    name: Streaming neural anonymizer prototype (graph tests only, untrained)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install CPU-only dependencies
+        run: |
+          python -m pip install --quiet torch --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install --quiet numpy soundfile librosa pyyaml onnx onnxscript onnxruntime
+      - name: Architecture tests
+        run: python training/tests/test_architecture.py
+
   android:
     name: Android APK + JVM unit tests
     runs-on: ubuntu-latest

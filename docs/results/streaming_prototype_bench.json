@@ -1,0 +1,104 @@
+{
+ "host": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+ "note": "untrained weights: compute-cost measurement only, no quality meaning; ONNX Runtime CPU EP, Python driver",
+ "configs": {
+  "s": {
+   "deployable_params": 6003842,
+   "macs_per_frame": 5481184,
+   "gmac_per_s": 0.5481184,
+   "algorithmic_latency_ms_K1": 40.0
+  },
+  "m": {
+   "deployable_params": 10966658,
+   "macs_per_frame": 10133856,
+   "gmac_per_s": 1.0133856,
+   "algorithmic_latency_ms_K1": 40.0
+  }
+ },
+ "bench": [
+  {
+   "model": "stream_anon_s.onnx",
+   "bytes": 24188099,
+   "threads": 1,
+   "frames_per_call": 1,
+   "step_ms_median": 1.4217830000120557,
+   "step_ms_p99": 1.6825942300965835,
+   "rtf_median": 0.14217830000120557,
+   "rtf_p99": 0.16825942300965835,
+   "peak_rss_mb": 610.5859375,
+   "untrained_weights": true
+  },
+  {
+   "model": "stream_anon_s.int8.onnx",
+   "bytes": 7017271,
+   "threads": 1,
+   "frames_per_call": 1,
+   "step_ms_median": 1.294634500027314,
+   "step_ms_p99": 2.158899000027077,
+   "rtf_median": 0.1294634500027314,
+   "rtf_p99": 0.2158899000027077,
+   "peak_rss_mb": 610.7109375,
+   "untrained_weights": true
+  },
+  {
+   "model": "stream_anon_s.int8.onnx",
+   "bytes": 7017271,
+   "threads": 1,
+   "frames_per_call": 2,
+   "step_ms_median": 1.515934999986257,
+   "step_ms_p99": 2.362465599940151,
+   "rtf_median": 0.07579674999931285,
+   "rtf_p99": 0.11812327999700756,
+   "peak_rss_mb": 610.7109375,
+   "untrained_weights": true
+  },
+  {
+   "model": "stream_anon_s.int8.onnx",
+   "bytes": 7017271,
+   "threads": 1,
+   "frames_per_call": 4,
+   "step_ms_median": 1.7993614999909369,
+   "step_ms_p99": 2.507552409897471,
+   "rtf_median": 0.04498403749977342,
+   "rtf_p99": 0.06268881024743678,
+   "peak_rss_mb": 610.7109375,
+   "untrained_weights": true
+  },
+  {
+   "model": "stream_anon_m.onnx",
+   "bytes": 44035715,
+   "threads": 1,
+   "frames_per_call": 1,
+   "step_ms_median": 2.3406024999985675,
+   "step_ms_p99": 2.772028419963135,
+   "rtf_median": 0.23406024999985675,
+   "rtf_p99": 0.2772028419963135,
+   "peak_rss_mb": 630.91796875,
+   "untrained_weights": true
+  },
+  {
+   "model": "stream_anon_m.int8.onnx",
+   "bytes": 12552803,
+   "threads": 1,
+   "frames_per_call": 1,
+   "step_ms_median": 1.7877610000027744,
+   "step_ms_p99": 2.284503329997278,
+   "rtf_median": 0.17877610000027744,
+   "rtf_p99": 0.22845033299972778,
+   "peak_rss_mb": 630.91796875,
+   "untrained_weights": true
+  },
+  {
+   "model": "stream_anon_m.int8.onnx",
+   "bytes": 12552803,
+   "threads": 1,
+   "frames_per_call": 2,
+   "step_ms_median": 2.172090000044591,
+   "step_ms_p99": 3.128443819994117,
+   "rtf_median": 0.10860450000222954,
+   "rtf_p99": 0.15642219099970583,
+   "peak_rss_mb": 630.91796875,
+   "untrained_weights": true
+  }
+ ]
+}
