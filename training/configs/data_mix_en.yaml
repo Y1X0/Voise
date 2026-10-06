@@ -1,0 +1,14 @@
+# ENGLISH-ONLY training data mix (datasets/mix.py) -- INTERIM.
+# This is NOT the project target and does NOT replace English+Arabic training
+# (training/configs/data_mix_en_ar.yaml). Every run built from it is labelled ARABIC_NOT_VERIFIED
+# (trainers/real_run.data_scope); Arabic quality stays ARABIC_NOT_READY until a real Arabic evaluation.
+# Each source is a VERIFIED manifest directory (manifest_index.json). Output directory = the
+# directory of data.train_manifest in training/configs/stream_anon_{s,m}.yaml.
+scope: en_only_interim
+licence_path: commercial
+seed: 2026
+language_weights: {en: 1.0}
+sources:
+  - {name: mls_en_10pct, manifests: data/manifests/mls, language: en}   # datasets/mls.py manifest --out data/manifests/mls
+same_person: data/manifests/same_person.json   # optional: [[speakerA, speakerB], ...] from embedding dedup
+out: data/manifests/mix_v1

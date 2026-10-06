@@ -3,8 +3,9 @@
 GitHub never sees audio, consent records or checkpoints; it only handles code, configs,
 manifest HASHES and checkpoint SIDECARS (sha256 + step metadata).
 
-  preflight            refuse unless training/readiness.json verdict == GO, all conditions true,
-                       the dataset registry validates and (if given) the manifest index verifies
+  preflight [--scope en_only|en_ar]  refuse unless training/readiness.json verdict == GO, every
+                       condition of the scope is true, the training path is internally consistent
+                       (CODE), the dataset registry validates and (if given) the manifest index verifies
   bundle  --out F      deterministic tar.gz of code + configs + registry + readiness (no data),
                        prints its sha256 (the external GPU job checks it before running)
   plan-resume --ckpt-dir D   newest VALID checkpoint (sha256 == sidecar) and the resume command
@@ -34,22 +35,77 @@ class NotReady(SystemExit):
     pass
 
 
-def preflight(readiness_path=READINESS, manifest_dir=None):
+TRAIN_CONFIGS = ("training/configs/stream_anon_s.yaml", "training/configs/stream_anon_m.yaml")
+MIX_CONFIGS = {"en_only": "training/configs/data_mix_en.yaml", "en_ar": "training/configs/data_mix_en_ar.yaml"}
+SCOPES = tuple(MIX_CONFIGS)
+CATEGORIES = ("CODE", "DATA", "GPU", "EXTERNAL_POLICY")
+
+
+def code_problems():
+    """Internal (CODE) inconsistencies of the real training path, recomputed from the repository:
+    producer path == consumer path for every config pair, valid encoder specs, mix configs valid,
+    dataset registry valid. Must be empty; a non-empty list is a bug, never an external blocker."""
+    import yaml
+    from datasets.mix import MixError, check_config
+    from trainers.requirements import internal_consistency
+    import dataset_registry_summary as RS
+    mixes = []
+    probs = []
+    for scope, rel in MIX_CONFIGS.items():
+        with open(os.path.join(ROOT, rel)) as f:
+            m = yaml.safe_load(f)
+        mixes.append(dict(m, name=rel))
+        try:
+            check_config(m)
+        except MixError as e:
+            probs.append(f"{rel}: {e}")
+    for rel in TRAIN_CONFIGS:
+        with open(os.path.join(ROOT, rel)) as f:
+            probs += [f"{rel}: {e}" for e in internal_consistency(yaml.safe_load(f), mixes)]
+    probs += ["dataset registry: " + v for v in RS.violations(RS.load())]
+    return probs
+
+
+def external_blockers(r, scope="en_ar"):
+    """False readiness conditions that apply to `scope`, with their category (GPU / DATA / EXTERNAL_POLICY)."""
+    meta = r.get("condition_meta", {})
+    out = []
+    for k, v in r.get("conditions", {}).items():
+        m = meta.get(k, {})
+        if m.get("category") not in CATEGORIES[1:]:
+            out.append({"condition": k, "category": "CODE", "problem": "condition has no valid category in condition_meta"})
+        elif v is not True and scope in m.get("scopes", SCOPES):
+            out.append({"condition": k, "category": m["category"]})
+    return out
+
+
+def preflight_report(readiness_path=READINESS, manifest_dir=None, scope="en_ar"):
+    if scope not in SCOPES:
+        raise ValueError(f"scope must be one of {SCOPES}")
     with open(readiness_path) as f:
         r = json.load(f)
-    problems = []
-    if r.get("verdict") != "GO":
-        problems.append(f"verdict is {r.get('verdict')!r}, not GO")
-    problems += [f"condition false: {k}" for k, v in r.get("conditions", {}).items() if v is not True]
-    import dataset_registry_summary as RS
-    problems += RS.violations(RS.load())
+    rep = {"scope": scope, "verdict": r.get("verdict"), "code": code_problems(),
+           "external": external_blockers(r, scope), "manifest": []}
     if manifest_dir:
         from datasets.build_manifests import LeakageError, verify
         try:
             verify(manifest_dir)
         except LeakageError as e:
-            problems.append(f"manifest verification failed: {e}")
-    return problems
+            rep["manifest"].append(f"manifest verification failed: {e}")
+    return rep
+
+
+def preflight(readiness_path=READINESS, manifest_dir=None, scope="en_ar"):
+    """Flat list of every reason not to start (empty = ready). CODE findings are prefixed 'CODE:',
+    external blockers carry their category, so the two can never be confused."""
+    rep = preflight_report(readiness_path, manifest_dir, scope)
+    problems = []
+    if rep["verdict"] != "GO":
+        problems.append(f"verdict is {rep['verdict']!r}, not GO")
+    problems += ["CODE: " + p for p in rep["code"]]
+    problems += [f"{b['category']}: condition false: {b['condition']}" if b["category"] != "CODE"
+                 else f"CODE: readiness condition {b['condition']}: {b['problem']}" for b in rep["external"]]
+    return problems + rep["manifest"]
 
 
 def tracked_files():
@@ -104,6 +160,8 @@ def main(argv=None):
     pf = sub.add_parser("preflight")
     pf.add_argument("--readiness", default=READINESS)
     pf.add_argument("--manifest-dir")
+    pf.add_argument("--scope", choices=SCOPES, default="en_ar",
+                    help="en_only = English-only interim (ARABIC_NOT_VERIFIED); en_ar = the English+Arabic target")
     bd = sub.add_parser("bundle")
     bd.add_argument("--out", required=True)
     pr = sub.add_parser("plan-resume")
@@ -113,8 +171,10 @@ def main(argv=None):
     vf.add_argument("--previous-step", type=int)
     a = ap.parse_args(argv)
     if a.cmd == "preflight":
-        probs = preflight(a.readiness, a.manifest_dir)
-        print(json.dumps({"ready": not probs, "problems": probs}, indent=1))
+        rep = preflight_report(a.readiness, a.manifest_dir, a.scope)
+        probs = preflight(a.readiness, a.manifest_dir, a.scope)
+        print(json.dumps({"ready": not probs, "scope": a.scope, "verdict": rep["verdict"], "code_problems": rep["code"],
+                          "external_blockers": rep["external"], "problems": probs}, indent=1))
         if probs:
             raise NotReady(3)
     elif a.cmd == "bundle":

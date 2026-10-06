@@ -24,27 +24,32 @@ model:
   n_speakers: 8192    # adversarial speaker classifier classes (training only; >= training speakers, MLS 10 % ~5.5k + VCTK/AMI)
 
 data:
-  train_manifest: data/manifests/train.jsonl
-  valid_manifest: data/manifests/valid.jsonl
-  train_index: data/features/train/index.jsonl   # datasets/feature_cache.py (streaming sampler)
-  valid_index: data/features/valid/index.jsonl
+  train_manifest: data/manifests/mix_v1/train.jsonl   # written by datasets/mix.py (out: data/manifests/mix_v1)
+  valid_manifest: data/manifests/mix_v1/valid.jsonl
+  train_index: data/features/train/index.jsonl   # datasets/feature_cache.py --cache data/features/train
+  valid_index: data/features/valid/index.jsonl   # datasets/feature_cache.py --cache data/features/valid
   licence_path: commercial                       # datasets/gate.py
   segment_seconds: 2.0
   batch_size: 16
   num_workers: 8
   augment:
-    noise_manifest: data/manifests/noise.jsonl     # MUSAN + DNS noise, SNR 0-30 dB
-    rir_manifest: data/manifests/rir.jsonl         # OpenSLR-28 RIRs, p = 0.3
-    codec_p: 0.2                                   # AMR-WB / Opus 16 kbit/s simulation
+    enabled: false        # NOT wired into the training loop (trainer feeds clean segments); while false,
+                          # noise/RIR files are not prerequisites. true is refused by preflight
+                          # until augmentation is implemented in the trainer (datasets/augment.py exists).
+    noise_manifest: data/manifests/noise.jsonl     # used only if enabled
+    rir_manifest: data/manifests/rir.jsonl         # used only if enabled
+    codec_p: 0.2
     gain_db: [-12, 6]
   teacher:
-    units: data/teacher/units_k500.npy             # precomputed OFFLINE, see scripts/compute_teacher_units.py
-    unit_teacher: whisper-small-encoder            # MIT (code + weights); training-time only, never shipped
-                                                   # (docs/CONTENT_TEACHER_DECISION.md; mHuBERT-147 is CC-BY-NC-SA)
+    units: data/teacher/units/kmeans.npy           # written by scripts/compute_teacher_units.py --out data/teacher/units
+    units_dir: data/teacher/units                  # per-utterance unit files; referenced by the train feature index
+    unit_teacher: models_train/whisper-small       # LOCAL official openai/whisper-small checkpoint (MIT); needed only
+                                                   # by compute_teacher_units.py (data preparation), never by train.py
     content_model: student-stage1-encoder          # stage-3 content-output loss: frozen copy of the stage-1 encoder
   speaker_encoders_train:                          # role TRAIN: used INSIDE the losses; never used for evaluation
-    - ecapa_train_inhouse                          # trained in-house on commercial-path train speakers (USER_DECISION U6)
-    - resnet34_train_inhouse                       # (WeSpeaker VoxCeleb checkpoints: LICENSE_NOT_VERIFIED)
+    - {name: ecapa_train_inhouse, arch: ecapa}         # scripts/train_speaker_encoder.py --arch ecapa --role TRAIN
+    - {name: resnet34_train_inhouse, arch: resnet34}   # scripts/train_speaker_encoder.py --arch resnet34 --role TRAIN
+                                                   # two architectures on purpose (training plan: ResNet-34 + ECAPA)
   f0: runtime_yin                                  # the app's C++ YIN, built as a Python extension
 
 losses:   # initial weights; see docs/STREAMING_NEURAL_TRAINING_PLAN.md section 6

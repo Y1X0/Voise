@@ -5,7 +5,9 @@
 
 Pre-flight checks happen BEFORE anything is computed:
   * a CUDA GPU is present (training on CPU is refused, by design);
-  * every manifest, teacher-unit file and frozen training-time model in the config exists;
+  * the config is internally consistent (trainers/requirements.py: every consumer path equals
+    its producer's output path);
+  * every manifest, feature index, teacher-unit file and role-TRAIN speaker encoder exists;
   * manifests validate (speaker-disjoint splits, licence entries) and their sha256 match
     manifest_index.json (datasets/build_manifests.py verify(): any leakage -> refuse).
 If any check fails the trainer prints exactly what is missing and exits with status 2.
@@ -28,42 +30,24 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from trainers.config import load_config  # noqa: E402
 
 
-def preflight(cfg, require_gpu=True):
-    """Returns a list of missing prerequisites (empty = ready)."""
+def preflight(cfg, require_gpu=True, models_dir="models_train"):
+    """Returns a list of missing prerequisites (empty = ready).
+
+    CODE problems (trainers/requirements.internal_consistency: producer path != consumer path,
+    bad encoder spec, augmentation switched on although not implemented) come first, tagged
+    "CODE:"; then the GPU and the DATA artifacts train.py really consumes
+    (requirements.artifact_requirements), tagged "GPU:" / "DATA:".
+    Not required here, because train.py never reads them: the Whisper teacher checkpoint (only
+    scripts/compute_teacher_units.py reads it) and noise/RIR manifests (augmentation is off).
+    """
     import torch
-    missing = []
+    from trainers.requirements import artifact_requirements, internal_consistency
+    missing = ["CODE: " + e for e in internal_consistency(cfg.raw)]
     if require_gpu and not torch.cuda.is_available():
-        missing.append("CUDA GPU (training on CPU is not supported; see docs/STREAMING_NEURAL_TRAINING_PLAN.md §10)")
-    d = cfg.data
-    for key in ("train_manifest", "valid_manifest"):
-        if not os.path.exists(d.get(key, "")):
-            missing.append(f"data.{key}: {d.get(key)}")
-    idx_dir = os.path.dirname(d.get("train_manifest", "")) or "."
-    if not os.path.exists(os.path.join(idx_dir, "manifest_index.json")):
-        missing.append(f"{idx_dir}/manifest_index.json (build with datasets/build_manifests.py)")
-    else:
-        from datasets.build_manifests import LeakageError, verify
-        try:
-            verify(idx_dir)
-        except LeakageError as e:
-            missing.append(f"manifest verification FAILED: {e}")
-    aug = d.get("augment", {})
-    for key in ("noise_manifest", "rir_manifest"):
-        if aug.get(key) and not os.path.exists(aug[key]):
-            missing.append(f"data.augment.{key}: {aug[key]}")
-    t = d.get("teacher", {})
-    if t.get("units") and not os.path.exists(t["units"]):
-        missing.append(f"teacher units: {t['units']} (scripts/compute_teacher_units.py)")
-    for enc in d.get("speaker_encoders_train", []):
-        if not os.path.exists(os.path.join("models_train", enc + ".pt")):
-            missing.append(f"training-time speaker encoder (TorchScript): models_train/{enc}.pt")
-    for key in ("train_index", "valid_index"):
-        if not os.path.exists(d.get(key, "")):
-            missing.append(f"data.{key}: {d.get(key)} (datasets/feature_cache.py)")
-    if t.get("unit_teacher") and not os.path.exists(t.get("units", "")) and \
-            not os.path.exists(os.path.join("models_train", t["unit_teacher"])):
-        missing.append(f"unit teacher: models_train/{t['unit_teacher']} (or precomputed {t.get('units')})")
-    return missing
+        missing.append("GPU: CUDA GPU (training on CPU is not supported; see docs/STREAMING_NEURAL_TRAINING_PLAN.md §10)")
+    if any(m.startswith("CODE: speaker_encoders_train entries") for m in missing):
+        return missing
+    return missing + ["DATA: " + m for m in artifact_requirements(cfg, models_dir)]
 
 
 def main():
@@ -86,9 +70,11 @@ def main():
     cfg = load_config(a.config)
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "scripts"))
     import orchestrate_training as OT
-    missing = OT.preflight() + preflight(cfg)        # readiness verdict + every missing prerequisite, reported together
+    from trainers.real_run import readiness_scope
+    # readiness (verdict + external blockers of this data scope) + CODE + every missing artifact, reported together
+    missing = OT.preflight(scope=readiness_scope(cfg.data)) + preflight(cfg)
     if not a.gpu_profile:
-        missing.append("--gpu-profile (training/configs/gpu/<t4_16gb|a100_40gb|a100_80gb>)")
+        missing.append("GPU: --gpu-profile (training/configs/gpu/<t4_16gb|a100_40gb|a100_80gb>)")
     if missing:
         print("NOT STARTING TRAINING. Missing prerequisites:", file=sys.stderr)
         for m in missing:

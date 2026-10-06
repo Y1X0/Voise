@@ -1,22 +1,107 @@
 {
- "_doc": "Machine-readable training readiness (docs/FINAL_COMPUTE_READINESS.md). The orchestrator (scripts/orchestrate_training.py preflight, .github/workflows/train-orchestrator.yml) refuses to bundle or launch anything unless verdict == GO. Only the owner changes this file, in a reviewed commit, after every condition below is true with evidence.",
+ "_doc": "Machine-readable training readiness (docs/FINAL_COMPUTE_READINESS.md, docs/TRAINING_START_CHECKLIST.md). The orchestrator (scripts/orchestrate_training.py preflight, .github/workflows/train-orchestrator.yml) and trainers/train.py refuse to bundle or launch anything unless verdict == GO and every condition in scope is true. `conditions` lists ONLY blockers outside the code (category GPU / DATA / EXTERNAL_POLICY); internal CODE consistency is not a condition here: preflight recomputes it on every call (trainers/requirements.internal_consistency + datasets/mix.check_config over the real configs) and reports any finding as 'CODE: ...'. Only the owner changes this file, in a reviewed commit, after every condition is true with evidence.",
  "verdict": "NO-GO",
  "updated": "2026-10-06",
  "conditions": {
-  "pipeline_stages_1_4_cpu_smoke": true,
-  "real_driver_cpu_end_to_end": true,
-  "resume_after_interrupt_bit_exact": true,
-  "dataset_gate_enforced": true,
-  "acceptance_criteria_locked": true,
   "mixed_precision_verified_on_real_gpu": false,
+  "gpu_access_verified_for_commercial_training": false,
+  "gpu_budget_approved_by_owner": false,
   "licence_blockers_resolved": false,
   "mls_download_provenance_verified": false,
   "feature_cache_and_teacher_units_built": false,
   "inhouse_speaker_encoders_trained": false,
   "valid_evaluators_available": false,
-  "gpu_access_verified_for_commercial_training": false,
-  "gpu_budget_approved_by_owner": false,
   "arabic_scope_decided_by_owner": false,
+  "arabic_consented_corpus_available": false,
   "android_runtime_privacy_on_device": false
+ },
+ "condition_meta": {
+  "mixed_precision_verified_on_real_gpu": {
+   "category": "GPU",
+   "scopes": [
+    "en_only",
+    "en_ar"
+   ]
+  },
+  "gpu_access_verified_for_commercial_training": {
+   "category": "EXTERNAL_POLICY",
+   "scopes": [
+    "en_only",
+    "en_ar"
+   ]
+  },
+  "gpu_budget_approved_by_owner": {
+   "category": "EXTERNAL_POLICY",
+   "scopes": [
+    "en_only",
+    "en_ar"
+   ]
+  },
+  "licence_blockers_resolved": {
+   "category": "EXTERNAL_POLICY",
+   "scopes": [
+    "en_only",
+    "en_ar"
+   ]
+  },
+  "mls_download_provenance_verified": {
+   "category": "DATA",
+   "scopes": [
+    "en_only",
+    "en_ar"
+   ]
+  },
+  "feature_cache_and_teacher_units_built": {
+   "category": "DATA",
+   "scopes": [
+    "en_only",
+    "en_ar"
+   ]
+  },
+  "inhouse_speaker_encoders_trained": {
+   "category": "DATA",
+   "scopes": [
+    "en_only",
+    "en_ar"
+   ],
+   "note": "training them needs the GPU and the verified data"
+  },
+  "valid_evaluators_available": {
+   "category": "DATA",
+   "scopes": [
+    "en_only",
+    "en_ar"
+   ]
+  },
+  "arabic_scope_decided_by_owner": {
+   "category": "EXTERNAL_POLICY",
+   "scopes": [
+    "en_only",
+    "en_ar"
+   ]
+  },
+  "arabic_consented_corpus_available": {
+   "category": "DATA",
+   "scopes": [
+    "en_ar"
+   ],
+   "note": "consented Arabic recordings with all five commercial scopes (datasets/arabic_import.py); English-only scope does not need it and is labelled ARABIC_NOT_VERIFIED"
+  },
+  "android_runtime_privacy_on_device": {
+   "category": "EXTERNAL_POLICY",
+   "scopes": [
+    "en_only",
+    "en_ar"
+   ],
+   "note": "owner gate: needs a physical Android device; not a code task"
+  }
+ },
+ "code_verified_by_tests": {
+  "pipeline_stages_1_4_cpu_smoke": "training/tests/test_readiness.py",
+  "real_driver_cpu_end_to_end": "training/tests/test_training_ready.py RealRunOnCpu",
+  "resume_after_interrupt_bit_exact": "training/tests/test_readiness.py",
+  "dataset_gate_enforced": "training/tests/test_training_ready.py",
+  "acceptance_criteria_locked": "training/tests/test_training_ready.py Acceptance",
+  "training_path_internally_consistent": "training/tests/test_consistency.py (recomputed by every preflight)"
  }
 }

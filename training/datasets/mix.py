@@ -9,7 +9,13 @@
   * each train row gets mix_weight = language_weight / (#train rows of that language), so the
     streaming sampler draws segments in the configured language proportions.
 
-  python3 training/datasets/mix.py --config training/configs/data_mix.yaml
+Two configs, same output directory (data/manifests/mix_v1 = data.train_manifest's directory):
+  training/configs/data_mix_en.yaml     English only. INTERIM: does not replace the English+Arabic
+                                        target; runs from it are labelled ARABIC_NOT_VERIFIED.
+  training/configs/data_mix_en_ar.yaml  English + Arabic (the target). Fails clearly if the
+                                        consented Arabic corpus (datasets/arabic_import.py) is missing.
+
+  python3 training/datasets/mix.py --config training/configs/data_mix_en.yaml
 """
 import argparse
 import json
@@ -56,12 +62,39 @@ def apply_same_person(rows, pairs):
     return out
 
 
+PRODUCER = {"en": "datasets/mls.py manifest (or build_manifests.py)", "ar": "datasets/arabic_import.py"}
+
+
+def check_config(cfg):
+    """Config-level checks (no file access): language weights and sources must describe the same
+    languages, so a run can never silently drop a language or carry a weight without a source."""
+    w = cfg.get("language_weights") or {}
+    src_langs = {s["language"] for s in cfg.get("sources", [])}
+    on = {l for l, v in w.items() if v > 0}
+    if not cfg.get("sources"):
+        raise MixError("no sources")
+    if on != src_langs:
+        raise MixError(f"language_weights > 0 {sorted(on)} != source languages {sorted(src_langs)}")
+    if abs(sum(w.values()) - 1.0) > 1e-6:
+        raise MixError(f"language_weights must sum to 1, got {sum(w.values())}")
+    return sorted(on)
+
+
 def mix(cfg, base="."):
     from datasets import build_manifests as BM
     from datasets.consent import load_store
+    langs = check_config(cfg)
     rows, consents = [], {}
     for s in cfg["sources"]:
         d = os.path.join(base, s["manifests"])
+        if not os.path.exists(os.path.join(d, "manifest_index.json")):
+            what = "consented Arabic corpus" if s["language"] == "ar" else "source"
+            hint = (" For English-only interim training use training/configs/data_mix_en.yaml "
+                    "(ARABIC_NOT_VERIFIED; it does not replace the English+Arabic target).") if s["language"] == "ar" else ""
+            raise MixError(f"{what} {s['name']} is missing: {d}/manifest_index.json not found "
+                           f"(build it with {PRODUCER.get(s['language'], 'build_manifests.py')}).{hint}")
+        if s.get("consent_store") and not os.path.exists(os.path.join(base, s["consent_store"])):
+            raise MixError(f"{s['name']}: consent store {s['consent_store']} not found")
         BM.verify(d)                                   # hashes + leakage of the source itself
         src = _read_dir(d)
         if any(r["language"].split("-")[0] != s["language"] for r in src):
@@ -92,7 +125,8 @@ def mix(cfg, base="."):
             lang = r["language"].split("-")[0]
             r["mix_weight"] = w.get(lang, 0.0) / n[lang]
     idx = BM.write(rows, os.path.join(base, cfg["out"]), cfg.get("seed", 2026),
-                   {"mix": cfg, "sources": [s["name"] for s in cfg["sources"]]}, {})
+                   {"mix": cfg, "sources": [s["name"] for s in cfg["sources"]],
+                    "data_scope": {"name": cfg.get("scope"), "languages": langs}}, {})
     return idx, n
 
 

@@ -245,16 +245,9 @@ Plan: `CONSENTED_RECORDING_PLAN.md`.
 
 ## 10. Decision: **NO-GO**
 
-Open conditions (`training/readiness.json`):
-
-| Condition | Status |
-|---|---|
-| Licence blockers | U1 LibriSpeech for attacker/test; U3 Common Voice |
-| `mls_download_provenance_verified` | false |
-| `android_runtime_privacy_on_device` | false |
-| `gpu_verified_official_free_and_commercial` | false |
-| `gpu_budget_approved_by_owner` | false |
-| `arabic_scope_decided_by_owner` | false (U4) |
+Open conditions: `training/readiness.json` `conditions` (each with its category GPU / DATA /
+EXTERNAL_POLICY and scope); the current list is in `docs/TRAINING_READINESS_FINAL.md` §4.
+Internal CODE consistency is not a condition: preflight recomputes it on every call.
 
 **Fastest legitimate route to GO:**
 1. The owner downloads MLS English from openslr.org/94 and records its sha256 and licence.

@@ -241,14 +241,15 @@ class RealRunOnCpu(unittest.TestCase):
     def test_real_driver_end_to_end_gates_and_resume(self):
         import yaml
         import trainers.run_info as RI
-        from models.cond_encoder import CondEncoder
         from trainers import real_run
+        sys.path.insert(0, os.path.join(TRAINING, "scripts"))
+        import train_speaker_encoder as TSE
         d = tempfile.mkdtemp()
         try:
             idx, _, _ = write_feature_fixture(d)
             cfg = yaml.safe_load(open(os.path.join(TRAINING, "configs", "smoke.yaml")))
             cfg["data"].update({"train_index": idx, "valid_index": idx, "segment_seconds": 1.0,
-                                "speaker_encoders_train": ["enc_a"]})
+                                "speaker_encoders_train": [{"name": "ecapa_a", "arch": "ecapa"}]})
             cfg["stages"] = [{"name": "content_distillation", "steps": 4}, {"name": "reconstruction", "steps": 2},
                              {"name": "anonymization", "steps": 2}, {"name": "qat_int8", "steps": 2}]
             cfg["val_every"] = 2
@@ -262,8 +263,10 @@ class RealRunOnCpu(unittest.TestCase):
             yaml.safe_dump(prof, open(pp, "w"))
             md = os.path.join(d, "models_train")
             os.makedirs(md)
-            enc = CondEncoder(80, out_dim=64).eval()
-            torch.jit.trace(enc, torch.randn(1, 50, 80)).save(os.path.join(md, "enc_a.pt"))
+            enc = TSE.Encoder("ecapa", channels=16, dim=64).eval()     # untrained real ECAPA graph (plumbing only)
+            torch.jit.trace(enc, torch.randn(1, 50, 80)).save(os.path.join(md, "ecapa_a.pt"))
+            meta = {"name": "ecapa_a", "arch": "ecapa", "role": "TRAIN"}
+            json.dump(meta, open(os.path.join(md, "ecapa_a.json"), "w"))
             ready = json.load(open(os.path.join(TRAINING, "readiness.json")))
             ready = dict(ready, verdict="GO", conditions={k: True for k in ready["conditions"]})
             rp = os.path.join(d, "ready.json")

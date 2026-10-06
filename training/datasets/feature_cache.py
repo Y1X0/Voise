@@ -10,7 +10,8 @@ For every manifest row (one pass, idempotent, resumable: existing entries are sk
 Writes <cache>/index.jsonl (one line per utterance, sorted by key) + index sha256. The
 streaming sampler (datasets/stream_sampler.py) reads only the segments it needs.
 
-  python3 training/datasets/feature_cache.py --manifest data/manifests/train.jsonl --cache data/features
+  python3 training/datasets/feature_cache.py --manifest data/manifests/mix_v1/train.jsonl --cache data/features/train \\
+      --units-dir data/teacher/units
 """
 import argparse
 import hashlib

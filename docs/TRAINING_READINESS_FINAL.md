@@ -5,8 +5,9 @@
 **Machine-readable state:** `training/readiness.json`, verdict **NO-GO**.
 
 **Verdict: NOT TRAINING_READY.**
-* The code and pipeline are ready.
-* What is missing is verified data, GPU access and owner decisions.
+* The code and pipeline are ready and internally consistent (no CODE blocker).
+* What is missing is verified data, GPU access and owner decisions (GPU / DATA /
+  EXTERNAL_POLICY blockers, §4).
 * No training, download, GPU spend, scraping, DSP, Android or acceptance-criteria change was
   made.
 
@@ -23,12 +24,13 @@
 | Dataset gate | `datasets/gate.py` statuses: `COMMERCIAL_VERIFIED` / `COMMERCIAL_PENDING` / `RESEARCH_ONLY` / `CONSENT_REQUIRED` / `NOT_ELIGIBLE`. **COMMERCIAL_VERIFIED requires recorded download provenance** (archive + official licence-text sha256 in `data/provenance.json`). Enforced in the manifest builder, both samplers, the mixer and `train.py`. |
 | MLS integration | `datasets/mls.py`: download (official URL supplied by the owner; resumable; https only) → sha256/md5 → licence-text check → provenance record → manifest from the official layout → speakers / books (sessions) → speaker-balanced subset → official or re-split splits (session-disjoint enroll/trial) → leakage → hashed manifests + statistics. `verify --corpus` records VCTK, AMI etc. the same way. |
 | Teacher units | `scripts/compute_teacher_units.py`: local Whisper checkpoint, layer features, speaker-normalised MiniBatchKMeans, 20 ms units keyed for the feature cache, idempotent, speaker-leakage report. |
-| In-house speaker encoders | `scripts/train_speaker_encoder.py`: ECAPA + AAM-softmax on gate-admitted data. TRAIN and VALID roles use **disjoint speaker halves**. Resumable; TorchScript export plus metadata. |
+| In-house speaker encoders | `scripts/train_speaker_encoder.py --arch ecapa\|resnet34`: ECAPA-TDNN or ResNet-34 (speechbrain ResNet, [3, 4, 6, 3] residual blocks), AAM-softmax, gate-admitted data. The two role-TRAIN encoders of the losses are **different architectures** (`ecapa_train_inhouse`, `resnet34_train_inhouse`), as the training plan requires. TRAIN and VALID roles use **disjoint speaker halves**. Resumable; TorchScript export plus `<name>.json` (`arch`, `role`), which `GpuAssets` checks against the config. |
 | Arabic infrastructure | `data/consent_schema.json` (five mandatory commercial scopes), `data/recording_session_schema.json`, `data/recording_schema.json`. `datasets/arabic_import.py` covers: audio validation, corruption, resample/normalise, exact and near duplicates, transcript validation, consent validation, IDs, manifests, splits and leakage. Non-eligible speakers are excluded from commercial train/valid. |
-| Data mix | `configs/data_mix.yaml` + `datasets/mix.py`: English + Arabic; re-verifies every source; speaker identity disjoint across **all** sources (speaker spaces plus embedding-dedup merges); language-weighted sampling. |
+| Data mix | `datasets/mix.py` with `configs/data_mix_en_ar.yaml` (English + Arabic, **the target**) or `configs/data_mix_en.yaml` (English only, **interim**, labelled ARABIC_NOT_VERIFIED; not a substitute for the target). Both write `data/manifests/mix_v1/`, the directory `train.py` reads. Re-verifies every source; a missing source (e.g. the consented Arabic corpus) stops the mix with a clear error; language weights must match the sources; speaker identity disjoint across **all** sources; language-weighted sampling; the language scope is recorded in `manifest_index.json` and in `run_info.json`. |
+| Internal consistency | `trainers/requirements.py`: every consumer path equals its producer's output (mix → manifests, `compute_teacher_units.py` → `data/teacher/units/kmeans.npy` → feature index → trainer, `train_speaker_encoder.py` → `GpuAssets`). `train.py` requires only what it consumes: no Whisper checkpoint (data preparation only), no noise/RIR (augmentation is off; `augment.enabled: true` is refused until implemented). Recomputed by every preflight; any finding is reported as `CODE:`, never as an external blocker. |
 | Evaluation | `data/acceptance_criteria.json` (**sha256-pinned**) + `evaluation/acceptance.py`: PASS / FAIL / NOT_MEASURED / INVALID per criterion. Overall PASS only if everything passes; thresholds can never be relaxed by results. Also `validator.py`, `final_eval.py` (one-shot) and `protocol.py` (A6 S1–S5). |
 | Android benchmark | `scripts/android_benchmark.py`: `run-neural` on a real device (RTF, p50/p95/p99, PSS, thermal) plus `report`. Values are reported as MEASURED only from a real, non-emulator device; the neural audio-path metrics stay NOT_MEASURED until app integration, which is forbidden now. The existing `scripts/device_validation.sh` covers the DSP path. |
-| Orchestrator | `.github/workflows/train-orchestrator.yml` + `scripts/orchestrate_training.py` (refuses before GO; data-free bundle; resume plan; checkpoint verification). |
+| Orchestrator | `.github/workflows/train-orchestrator.yml` + `scripts/orchestrate_training.py` (refuses before GO; `preflight --scope en_only\|en_ar` separates CODE findings from GPU / DATA / EXTERNAL_POLICY blockers; data-free bundle; resume plan; checkpoint verification). |
 
 ## 2. What is VERIFIED (measured or tested here)
 
@@ -44,7 +46,8 @@
 | runtime privacy | 10 (ExecuTorch test separately) |
 | registry | 11 |
 | compute readiness | 9 |
-| **training ready** | **21** |
+| training ready | 21 |
+| **consistency** (new) | **18** |
 
   Termux, the listening tool, the evaluation helpers and the real-speech evaluation also pass.
 * **Smoke, 4 stages** (`docs/results/stage0_smoke_report.json`):
@@ -96,54 +99,84 @@
 
 ## 4. What is BLOCKED
 
-| Blocker | Why |
-|---|---|
-| Commercial training data | No speech corpus is COMMERCIAL_VERIFIED. MLS, VCTK and AMI have E1 licences but **no recorded download provenance** (not downloaded). |
-| Arabic | 0 h commercial dialectal Arabic; consented collection not started (**ARABIC_NOT_READY**) |
-| GPU | 0 h verified for commercial training; no budget approved |
-| Assets that need GPU and data | feature cache, teacher units, in-house TRAIN/VALID encoders, VALID ASR |
-| Real-GPU verification | bf16/fp16 throughput and stability never run on a GPU |
-| Device | on-device privacy/network test and Android benchmark need a real phone |
+Internal CODE blockers: **none** (`scripts/orchestrate_training.py preflight` reports
+`code_problems: []`; `training/tests/test_consistency.py`). Every remaining blocker is outside
+the code. They are the `conditions` of `training/readiness.json`, each with its category:
+
+| Condition | Category | Scope | Why |
+|---|---|---|---|
+| `mixed_precision_verified_on_real_gpu` | GPU | both | bf16/fp16 throughput and stability never run on a GPU |
+| `gpu_access_verified_for_commercial_training` | EXTERNAL_POLICY | both | no GPU provider verified whose terms allow commercial-model training |
+| `gpu_budget_approved_by_owner` | EXTERNAL_POLICY | both | 62–141 A100-h (ESTIMATED) not approved |
+| `licence_blockers_resolved` | EXTERNAL_POLICY | both | owner decisions U1 / U3 / U5 |
+| `mls_download_provenance_verified` | DATA | both | MLS not downloaded; no archive / licence-text sha256 in `data/provenance.json` |
+| `feature_cache_and_teacher_units_built` | DATA | both | needs the verified data (and the local Whisper teacher for the units) |
+| `inhouse_speaker_encoders_trained` | DATA | both | needs the verified data and a GPU |
+| `valid_evaluators_available` | DATA | both | `ecapa_valid_inhouse` + a VALID ASR |
+| `arabic_scope_decided_by_owner` | EXTERNAL_POLICY | both | U4 |
+| `arabic_consented_corpus_available` | DATA | `en_ar` only | 0 h consented dialectal Arabic (**ARABIC_NOT_READY**) |
+| `android_runtime_privacy_on_device` | EXTERNAL_POLICY | both | needs a real phone (network test, benchmark) |
+
+`en_only` = English-only interim scope (`data_mix_en.yaml`); `en_ar` = the English + Arabic
+target (`data_mix_en_ar.yaml`). Training in `en_only` scope does not make Arabic ready.
 
 ## 5. Exact remaining blockers (owner actions, in order)
 
 1. **MLS English:**
    * download from the official page https://www.openslr.org/94/ (the URL is copied by you);
    * save the licence text shown there;
-   * run `python3 training/datasets/mls.py verify --archive <file> --licence-text <file> [--expected-md5 <from page>]`.
-2. **VCTK / AMI:** the same, with `--corpus vctk|ami --source-url <official page>`.
-   * Optional; MLS alone exceeds the English plan.
+   * run `mls.py verify` (command in §6).
+2. **Teacher checkpoint:** place the official `openai/whisper-small` (MIT) Hugging Face
+   checkpoint in `models_train/whisper-small/` (not in git). Needed only by
+   `compute_teacher_units.py`; `train.py` never reads it.
 3. **GPU:** choose free or paid access whose terms allow commercial-model training, and
    approve the budget (62–141 A100-h estimated).
 4. **Owner decisions:** U1 (LibriSpeech as attacker/test), U3 (Common Voice), U4 (Arabic
    scope), U5 (Android runtime).
-5. **Arabic:** consent text legal review → collection app → recordings →
-   `datasets/arabic_import.py`.
+5. **Arabic (English + Arabic scope only):** consent text legal review → collection app →
+   recordings → `arabic_import.py` (command in §6).
 6. **Real Android device:** network test and `scripts/android_benchmark.py`.
 7. **Set the readiness conditions:** when each condition is true with evidence, set
    `training/readiness.json` → `verdict: GO` in a reviewed commit.
 
 ## 6. Exact commands once the blockers are cleared
 
-```bash
-# 0. preflight (fails with a list until everything is in place)
-python3 scripts/orchestrate_training.py preflight
+All from the repository root. Paths are the ones in `training/configs/stream_anon_{s,m}.yaml`
+(tested: `training/tests/test_consistency.py` `DocsMatchCode`).
 
-# 1. data (MLS 10 % speaker-balanced, official splits) + mix + feature cache
+```bash
+# 0. preflight: CODE findings + external blockers of the scope (exit 3 until everything is in place)
+python3 scripts/orchestrate_training.py preflight --scope en_only
+python3 scripts/orchestrate_training.py preflight --scope en_ar
+
+# 1. MLS provenance (after the manual download) and MLS manifest (10 % speaker-balanced, official splits)
+python3 training/datasets/mls.py verify --archive <archive> --licence-text <licence-text-file> --source-url https://www.openslr.org/94/
 python3 training/datasets/mls.py manifest --root /data/mls/mls_english --out data/manifests/mls --fraction 0.10
-python3 training/datasets/mix.py --config training/configs/data_mix.yaml
+
+# 2a. ENGLISH-ONLY mix (interim; ARABIC_NOT_VERIFIED)
+python3 training/datasets/mix.py --config training/configs/data_mix_en.yaml
+
+# 2b. OR ENGLISH + ARABIC mix (the target): consented Arabic corpus first
+python3 training/datasets/arabic_import.py --incoming /secure/incoming_v1 --consents /secure/consents.jsonl --out /secure/own_recordings_v1 --dataset-version own_ar_v1
+python3 training/datasets/mix.py --config training/configs/data_mix_en_ar.yaml
+
+# 3. teacher units (needs models_train/whisper-small/) + feature cache (both write what train.py reads)
 python3 training/scripts/compute_teacher_units.py --manifest data/manifests/mix_v1/train.jsonl \
     --teacher models_train/whisper-small --layer 8 --k 500 --out data/teacher/units
 python3 training/datasets/feature_cache.py --manifest data/manifests/mix_v1/train.jsonl --cache data/features/train --units-dir data/teacher/units
 python3 training/datasets/feature_cache.py --manifest data/manifests/mix_v1/valid.jsonl --cache data/features/valid
 
-# 2. in-house speaker encoders (disjoint speaker halves)
-python3 training/scripts/train_speaker_encoder.py --index data/features/train/index.jsonl --name ecapa_train_inhouse --role TRAIN --out runs/spk/a
-python3 training/scripts/train_speaker_encoder.py --index data/features/train/index.jsonl --name ecapa_valid_inhouse --role VALID --out runs/spk/b
+# 4. in-house speaker encoders: two role-TRAIN architectures + the VALID evaluator (disjoint speaker halves)
+python3 training/scripts/train_speaker_encoder.py --index data/features/train/index.jsonl --arch ecapa --name ecapa_train_inhouse --role TRAIN --out runs/spk/ecapa_train
+python3 training/scripts/train_speaker_encoder.py --index data/features/train/index.jsonl --arch resnet34 --name resnet34_train_inhouse --role TRAIN --out runs/spk/resnet34_train
+python3 training/scripts/train_speaker_encoder.py --index data/features/train/index.jsonl --arch ecapa --name ecapa_valid_inhouse --role VALID --out runs/spk/ecapa_valid
 
-# 3. FIRST TRAINING COMMAND (A100 40 GB; use t4_16gb on a T4); add --resume after any interruption
+# 5. FIRST TRAINING COMMAND (A100 40 GB; a100_80gb or t4_16gb for those cards); add --resume after any interruption
 python3 training/trainers/train.py --config training/configs/stream_anon_s.yaml --gpu-profile a100_40gb --out runs/stream_anon_s_v1
 ```
+
+Switching from 2a to 2b rewrites `data/manifests/mix_v1/`; steps 3–5 must then be re-run
+(k-means is refitted; per-utterance files are idempotent).
 
 ## 7. Expected artifacts
 

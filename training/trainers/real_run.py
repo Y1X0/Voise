@@ -42,6 +42,25 @@ def evaluate_stage(stage, history, gates):
     return out
 
 
+def data_scope(data_cfg):
+    """Languages actually in the training manifests (from manifest_index.json written by mix.py).
+    English-only runs are labelled ARABIC_NOT_VERIFIED: they are an interim step, not the
+    English+Arabic target."""
+    mdir = os.path.dirname(data_cfg.get("train_manifest", "")) or "."
+    langs = []
+    p = os.path.join(mdir, "manifest_index.json")
+    if os.path.exists(p):
+        with open(p) as f:
+            langs = sorted((json.load(f).get("inputs", {}).get("data_scope") or {}).get("languages", []))
+    return {"languages": langs, "arabic": "INCLUDED_NOT_VERIFIED" if "ar" in langs else "ARABIC_NOT_VERIFIED"}
+
+
+def readiness_scope(data_cfg):
+    """en_only only when the built manifests are English-only; otherwise (incl. not built yet) the
+    full English+Arabic scope, so nothing is waived by default."""
+    return "en_only" if data_scope(data_cfg)["languages"] == ["en"] else "en_ar"
+
+
 def run(config, out_dir, gpu_profile, licence_path="commercial", resume=False, stages=None,
         readiness=None, device="cuda", require_gpu=True, models_dir="models_train"):
     sys.path.insert(0, TRAINING)
@@ -56,12 +75,12 @@ def run(config, out_dir, gpu_profile, licence_path="commercial", resume=False, s
     import orchestrate_training as OT
 
     cfg = load_config(config)
-    problems = OT.preflight(readiness or OT.READINESS)
+    problems = OT.preflight(readiness or OT.READINESS, scope=readiness_scope(cfg.data))
     if problems:
         raise NotReady("; ".join(problems))
     if require_gpu:
         from trainers.train import preflight
-        missing = preflight(cfg)
+        missing = preflight(cfg, models_dir=models_dir)
         if missing:
             raise NotReady("; ".join(missing))
     prof = GP.load(gpu_profile)
@@ -79,6 +98,7 @@ def run(config, out_dir, gpu_profile, licence_path="commercial", resume=False, s
     info = write_run_info(out_dir, ROOT, cfg.raw, manifests, cfg.raw.get("seed", 0), smoke=False)
     info["gpu_profile"] = prof["name"]
     info["licence_path"] = licence_path
+    info["data_scope"] = data_scope(d)
     tr.run_info = info
     gates = cfg.raw.get("stage_gates", {})
     steps = {s["name"]: s["steps"] for s in cfg.stages}

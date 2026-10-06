@@ -148,7 +148,7 @@ class Roles(unittest.TestCase):
             cfg = load_config(os.path.join(TRAINING, "configs", name))
             self.assertEqual(V.check_config_isolation(cfg.raw, r), [], name)
             ev = cfg.raw["evaluators"]
-            train = set(cfg.raw["data"]["speaker_encoders_train"])
+            train = {e["name"] for e in cfg.raw["data"]["speaker_encoders_train"]}
             for role in ("VALID", "HELD_OUT"):
                 names = {n for k in ev[role].values() for n in (k if isinstance(k, list) else [k])}
                 self.assertFalse(names & train, f"{name}: {role} evaluator also a training encoder")

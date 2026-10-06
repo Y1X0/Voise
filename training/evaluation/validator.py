@@ -129,7 +129,8 @@ def check_config_isolation(cfg_raw: dict, registry: EvaluatorRegistry) -> List[s
     for s in registry.specs():
         if s.role != "TRAIN" and s.name in train_part:
             errs.append(f"{s.role} evaluator {s.name} referenced in the training configuration")
-    train_listed = (cfg_raw.get("data") or {}).get("speaker_encoders_train", [])
+    train_listed = [e["name"] if isinstance(e, dict) else e
+                    for e in (cfg_raw.get("data") or {}).get("speaker_encoders_train", [])]
     for n in train_listed:
         if n in registry._specs and registry._specs[n].role != "TRAIN":
             errs.append(f"training encoder {n} is registered as {registry._specs[n].role}")

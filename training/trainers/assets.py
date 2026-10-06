@@ -11,6 +11,7 @@ linguistic or speaker knowledge, so nothing measured with them is evidence of an
   speaker encoder  a frozen RANDOMLY initialised CondEncoder (fixed seed)
 """
 import copy
+import json
 import os
 
 import numpy as np
@@ -74,21 +75,27 @@ class GpuAssets:
     content teacher  frozen copy of the trained stage-1 encoder (pre-VQ features), as designed
                      (docs/CONTENT_TEACHER_DECISION.md: no external teacher in the training loop)
     speaker encoders role-TRAIN TorchScript models models_train/<name>.pt, mel [B,T,80] -> [B,D];
-                     frozen; never used for evaluation (evaluation/validator.py roles)
+                     config entries {name, arch}; <name>.json (scripts/train_speaker_encoder.py)
+                     must carry the same arch and role TRAIN; frozen; never used for evaluation
     centroids        protected training-speaker centroids from encoder 0 over a few fixed segments
                      per speaker (sampler.speaker_audio); tau = p99 of unrelated-speaker similarity
     """
     PLACEHOLDERS = []
 
     def __init__(self, cfg, device="cuda", models_dir="models_train"):
-        names = cfg.data.get("speaker_encoders_train", [])
-        if not names:
+        from trainers.requirements import encoder_specs
+        specs = encoder_specs(cfg.data)
+        if not specs:
             raise ValueError("data.speaker_encoders_train is empty")
         self.speaker_encoders = []
-        for n in names:
-            p = os.path.join(models_dir, n + ".pt")
-            if not os.path.exists(p):
-                raise FileNotFoundError(f"training-time speaker encoder missing: {p}")
+        for s in specs:
+            p, js = os.path.join(models_dir, s["name"] + ".pt"), os.path.join(models_dir, s["name"] + ".json")
+            if not (os.path.exists(p) and os.path.exists(js)):
+                raise FileNotFoundError(f"training-time speaker encoder missing: {p} + .json")
+            with open(js) as f:
+                meta = json.load(f)
+            if meta.get("arch") != s["arch"] or meta.get("role") != "TRAIN":
+                raise ValueError(f"{js}: arch/role {meta.get('arch')}/{meta.get('role')} != config {s['arch']}/TRAIN")
             enc = torch.jit.load(p, map_location=device).eval()
             for prm in enc.parameters():
                 prm.requires_grad_(False)

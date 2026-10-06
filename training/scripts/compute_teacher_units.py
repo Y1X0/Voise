@@ -72,7 +72,8 @@ def run(manifest_rows, teacher, layer, k, out, device="cpu", fit_utts_per_speake
     if len(X) > max_fit_frames:
         X = X[rng.choice(len(X), max_fit_frames, replace=False)]
     km = MiniBatchKMeans(n_clusters=min(k, len(X)), random_state=seed, batch_size=4096, n_init=3).fit(X)
-    np.save(os.path.join(out, "kmeans.npy"), km.cluster_centers_.astype(np.float32))
+    from trainers.requirements import KMEANS_FILE
+    np.save(os.path.join(out, KMEANS_FILE), km.cluster_centers_.astype(np.float32))
     # 2) assign every utterance
     hist, spk_of = [], []
     n_new = 0

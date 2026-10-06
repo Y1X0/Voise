@@ -1,0 +1,17 @@
+# ENGLISH + ARABIC training data mix (datasets/mix.py) -- the project target.
+# Requires the consented Arabic corpus (datasets/arabic_import.py output, consent records with all
+# five commercial scopes). If it does not exist, mix.py stops with a clear error; it never builds
+# a manifest that names a missing Arabic source.
+# language_weights = target share of training SEGMENTS per language (not of hours).
+# Every source passes the strict dataset gate for licence_path; held-out (test) speakers of
+# every source stay held-out; speaker identity must be disjoint across ALL sources
+# (canonical speaker spaces + optional embedding-dedup merges in same_person file).
+scope: en_ar_target
+licence_path: commercial
+seed: 2026
+language_weights: {en: 0.7, ar: 0.3}
+sources:
+  - {name: mls_en_10pct, manifests: data/manifests/mls, language: en}   # datasets/mls.py manifest --out data/manifests/mls
+  - {name: own_ar_v1, manifests: /secure/own_recordings_v1/manifests, language: ar, consent_store: /secure/consents.jsonl}   # datasets/arabic_import.py --out /secure/own_recordings_v1/manifests
+same_person: data/manifests/same_person.json   # optional: [[speakerA, speakerB], ...] from embedding dedup
+out: data/manifests/mix_v1
