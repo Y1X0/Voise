@@ -10,6 +10,7 @@ Required fields
   sr          sample rate of the file
   split       train | valid | test | attacker_train   (speaker-disjoint, see validate())
 Optional
+  subset (corpus subset, e.g. "train-clean-100"; required for reserved-subset checks),
   text, phones, gender (f/m/u), style (read|spontaneous|conversational|broadcast),
   noise (clean|noisy), device, dialect
 
@@ -39,6 +40,12 @@ LICENSES = {
     "musan": "CC-BY-4.0",
     "openslr28_rir": "Apache-2.0",
     "own_recordings": "consent forms (project)",
+    "minilibrispeech": "CC-BY-4.0",
+    "librosa_example": "CC-BY-4.0 (LibriSpeech excerpts in the librosa/data repository; smoke runs only)",
+    "cmuarctic": "reserved (evaluation)",
+    "mssnsd": "reserved (evaluation)",
+    "pyannote": "reserved (evaluation)",
+    "speechbrain": "reserved (evaluation)",
     "example": "n/a (format example only)",
 }
 

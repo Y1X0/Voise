@@ -15,6 +15,8 @@ import unittest
 import numpy as np
 import torch
 
+os.environ.setdefault("ORT_DISABLE_TELEMETRY", "1")  # ONNX Runtime >= 1.30 ships 1DS telemetry; never send it
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 from models.frontend import CausalLogMel, causal_prosody, causal_stft, istft_ola  # noqa: E402

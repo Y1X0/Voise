@@ -12,11 +12,27 @@ Two modes:
       --out build/stream_anon_s.int8.onnx --mode dynamic
 """
 import argparse
+import os
+
+os.environ.setdefault("ORT_DISABLE_TELEMETRY", "1")  # ONNX Runtime >= 1.30 ships 1DS telemetry; never send it
 
 
-def quantize_dynamic(src, dst):
+# Kept in float: the bottleneck projection + VQ distance (INT8 error could flip code
+# choices, i.e. change content and possibly what identity information passes), and the
+# spectral head (phase/magnitude precision drives audible artifacts).
+FLOAT_SCOPES = ("/to_bn/", "/vq/", "/head/")
+
+
+def float_nodes(path, scopes=FLOAT_SCOPES):
+    import onnx
+    g = onnx.load(path).graph
+    return [n.name for n in g.node if any(s in n.name for s in scopes)]
+
+
+def quantize_dynamic(src, dst, keep_float=True):
     from onnxruntime.quantization import QuantType, quantize_dynamic as qd
-    qd(src, dst, weight_type=QuantType.QInt8, op_types_to_quantize=["MatMul", "Gemm", "Conv"])
+    qd(src, dst, weight_type=QuantType.QInt8, op_types_to_quantize=["MatMul", "Gemm", "Conv"],
+       nodes_to_exclude=float_nodes(src) if keep_float else [])
     return dst
 
 

@@ -1,5 +1,14 @@
 # StreamAnon: Arabic training and evaluation plan
 
+> **Pre-training gate (latest): ARABIC_NOT_READY.**
+> * **MSA:** NOT_READY (read speech only; Common Voice terms decision D1 pending).
+> * **Levantine:** NOT_READY (only unverified or paid sources).
+> * **Jordanian:** NOT_READY (no recordings exist).
+>
+> No dataset without a confirmed commercial licence enters the commercial path. See
+> `DATASET_LICENSE_MATRIX.md` §5 and `TRAINING_READINESS_GATE.md` blocker B6.
+
+
 **Status: ARABIC_NOT_VERIFIED.** No Arabic recordings exist in this project. This status
 changes only when real Arabic recordings have been processed and measured under
 `STREAMING_NEURAL_EVALUATION_PLAN.md`. Statistics below are approximate public figures.

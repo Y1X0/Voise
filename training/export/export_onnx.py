@@ -34,22 +34,43 @@ class StepWrapper(torch.nn.Module):
         return (spec, *new)
 
 
-def export(model: StreamAnon, out_path: str, untrained: bool, frames: int = 1):
+class PooledStepWrapper(torch.nn.Module):
+    """Deployable form: the vetted pseudo-speaker pool is a constant INSIDE the graph and
+    the only speaker input is an index into it. The shipped model therefore cannot be
+    driven with an arbitrary (e.g. a real person's) speaker vector."""
+
+    def __init__(self, model, pool):
+        super().__init__()
+        self.model = model
+        self.register_buffer("pool", torch.as_tensor(pool, dtype=torch.float32))
+
+    def forward(self, mel, prosody, pool_index, *state):
+        spk = torch.index_select(self.pool, 0, pool_index.reshape(1))
+        spec, new = self.model(mel, prosody, spk, list(state))
+        return (spec, *new)
+
+
+def export(model: StreamAnon, out_path: str, untrained: bool, frames: int = 1, pool=None, extra_meta=None):
     model.eval()
     state = model.initial_state(1)
     c = model.cfg
-    args = (torch.zeros(1, frames, c.n_mels), torch.zeros(1, frames, c.prosody_dim),
-            torch.zeros(1, c.spk_dim), *state)
-    names_in = ["mel", "prosody", "spk"] + [f"state_{i}" for i in range(len(state))]
+    if pool is None:
+        wrapper, spk_arg, spk_name = StepWrapper(model, len(state)), torch.zeros(1, c.spk_dim), "spk"
+    else:
+        wrapper, spk_arg, spk_name = PooledStepWrapper(model, pool), torch.zeros(1, dtype=torch.int64), "pool_index"
+    args = (torch.zeros(1, frames, c.n_mels), torch.zeros(1, frames, c.prosody_dim), spk_arg, *state)
+    names_in = ["mel", "prosody", spk_name] + [f"state_{i}" for i in range(len(state))]
     names_out = ["spec"] + [f"new_state_{i}" for i in range(len(state))]
     os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
-    torch.onnx.export(StepWrapper(model, len(state)), args, out_path, input_names=names_in,
+    torch.onnx.export(wrapper, args, out_path, input_names=names_in,
                       output_names=names_out, opset_version=17, dynamo=False,
                       dynamic_axes={"mel": {1: "frames"}, "prosody": {1: "frames"}, "spec": {1: "frames"}})
     import onnx
     m = onnx.load(out_path)
     meta = {"hop": c.hop, "win": c.win, "sr": c.sr, "delay_frames": c.delay_frames,
-            "n_state": len(state), "untrained": int(untrained)}
+            "n_state": len(state), "untrained": int(untrained),
+            "pool_baked": int(pool is not None), "pool_size": 0 if pool is None else len(pool),
+            **(extra_meta or {})}
     for k, v in meta.items():
         p = m.metadata_props.add()
         p.key, p.value = k, str(v)
@@ -62,12 +83,15 @@ def main():
     ap.add_argument("--config", required=True)
     ap.add_argument("--checkpoint")
     ap.add_argument("--out", required=True)
+    ap.add_argument("--pool", help="vetted pseudo-speaker pool .npy to bake in (deployable export)")
     a = ap.parse_args()
     cfg = load_config(a.config)
     model = StreamAnon(cfg.model)
     if a.checkpoint:
         model.load_state_dict(torch.load(a.checkpoint, map_location="cpu", weights_only=True)["generator"], strict=False)
-    print(export(model, a.out, untrained=not a.checkpoint))
+    import numpy as np
+    pool = np.load(a.pool) if a.pool else None
+    print(export(model, a.out, untrained=not a.checkpoint, pool=pool))
 
 
 if __name__ == "__main__":

@@ -1,5 +1,18 @@
 # Streaming neural voice anonymizer: architecture (design phase)
 
+> **Pre-training review** (`PRE_TRAINING_TECHNICAL_REVIEW.md`). Changes:
+> 1. cosine VQ with data initialisation and dead-code restart;
+> 2. an additional code-histogram speaker adversary;
+> 3. causal contour smoothing (`smooth_frames`);
+> 4. a pool-baked deployable export (no free speaker input);
+> 5. INT8 keeps the bottleneck, VQ and head in float.
+>
+> Open quality risk: the 20 ms window and 20 ms look-ahead. A stage-2 ablation is
+> mandatory and may raise latency to 60–70 ms.
+>
+> Training readiness: **READY_WITH_BLOCKERS** (`TRAINING_READINESS_GATE.md`).
+
+
 **Status: DESIGN + UNTRAINED PROTOTYPE.** Nothing has been trained. No anonymization,
 quality or Android result is claimed. The prototype in `training/` is used only for
 graph tests (shapes, causality, streaming state, export, INT8) and for compute-cost

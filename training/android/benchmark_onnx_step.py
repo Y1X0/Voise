@@ -16,6 +16,8 @@ import time
 
 import numpy as np
 
+os.environ.setdefault("ORT_DISABLE_TELEMETRY", "1")  # ONNX Runtime >= 1.30 ships 1DS telemetry; never send it
+
 
 def bench(model, threads=1, steps=2000, warmup=200, frames=1):
     import onnxruntime as ort
@@ -29,7 +31,7 @@ def bench(model, threads=1, steps=2000, warmup=200, frames=1):
     feeds = {}
     for i in sess.get_inputs():
         shape = [1 if not isinstance(d, int) else d for d in i.shape]
-        feeds[i.name] = np.zeros(shape, np.float32)
+        feeds[i.name] = np.zeros(shape, np.int64 if i.type == "tensor(int64)" else np.float32)
     rng = np.random.default_rng(0)
     feeds["mel"] = rng.standard_normal((1, frames, feeds["mel"].shape[2])).astype(np.float32)
     feeds["prosody"] = np.zeros((1, frames, feeds["prosody"].shape[2]), np.float32)

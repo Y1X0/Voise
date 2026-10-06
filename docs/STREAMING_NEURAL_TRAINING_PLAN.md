@@ -1,5 +1,12 @@
 # StreamAnon: training plan (GPU; not started)
 
+> **Superseded in part:**
+> * stages and exit criteria: `TRAINING_READINESS_GATE.md`;
+> * licences: `DATASET_LICENSE_MATRIX.md`. Only LibriTTS-R **train-clean-100 +
+>   train-other-500** enter training; train-clean-360 is the attacker/evaluator pool;
+> * GPU hours: `TRAINING_COMPUTE_ESTIMATE.md` (measured FLOPs; ≈ 20–40 A100-h per run).
+
+
 Training has **not** started. CPU training is refused by design: `training/trainers/train.py`
 exits with status 2 and lists what is missing. Every number below is a plan or an
 estimate unless it is labelled as measured.

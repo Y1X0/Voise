@@ -20,7 +20,9 @@ eval-corpus-src/
 eval-experiments/
 eval-neural/
 __pycache__/
-models/
+/models/
 eval-neural-p3/
 eval-b3/
 eval-neural-p3-b3/
+training/native/build/
+/runs/

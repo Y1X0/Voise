@@ -1,0 +1,84 @@
+# Stage-0 SMOKE configuration: proves the loop mechanics on 45 s of CC-BY-4.0 speech.
+# Nothing trained with it has any scientific meaning (placeholders: trainers/assets.py SmokeAssets).
+# vq_codes=64 matches the 32-unit placeholder teacher (the real config keeps 512 codes for 500 real units).
+model:
+  sr: 16000
+  hop: 160
+  win: 320
+  n_mels: 80
+  enc_dim: 192
+  enc_blocks: 6
+  enc_kernel: 7
+  enc_gru: true
+  bottleneck_dim: 64
+  vq_codes: 64
+  dec_dim: 320
+  dec_blocks: 6
+  dec_kernel: 7
+  mlp_mult: 3
+  spk_dim: 128
+  prosody_emb: 32
+  delay_frames: 2
+  n_units: 32
+  n_phones: 0
+  n_speakers: 2
+data:
+  train_manifest: training/smoke/smoke_manifest.jsonl
+  valid_manifest: training/smoke/smoke_manifest.jsonl
+  segment_seconds: 1.0
+  batch_size: 4
+losses:
+  mel_l1: 45.0
+  mrstft: 1.0
+  gan: 1.0
+  feature_matching: 2.0
+  unit_ce: 1.0
+  ctc: 0.5
+  vq_commit: 0.25
+  speaker_adversarial:
+    max: 1.0
+    warmup_steps: 40
+  speaker_suppression:
+    weight: 2.0
+    margin: 0.25
+  pseudo_consistency: 1.0
+  anti_impersonation:
+    weight: 2.0
+    tau: auto
+  content_output: 10.0
+  temporal_consistency: 0.5
+  f0_follow: 1.0
+optim:
+  generator:
+    lr: 0.0002
+    betas:
+    - 0.8
+    - 0.99
+    weight_decay: 0.01
+  discriminator:
+    lr: 0.0002
+    betas:
+    - 0.8
+    - 0.99
+  lr_decay: 0.999996
+  grad_clip: 10.0
+  precision: bf16
+stages:
+- name: content_distillation
+  steps: 150
+- name: reconstruction
+  steps: 80
+- name: anonymization
+  steps: 60
+pseudo_speaker:
+  pool_size: 10000
+  dim: 128
+  reject_similarity_to_any_train_speaker: auto
+  min_density_quantile: 0.05
+  per_session: true
+smoke:
+  disc_scale: 0.25
+  seed: 1234
+  note: 'Stage 0 smoke run: mechanics only, no scientific meaning'
+abort:
+  vq_warmup_steps: 100

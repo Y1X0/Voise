@@ -57,7 +57,14 @@ def main():
     ap.add_argument("--config", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--stage", help="run only this stage")
+    ap.add_argument("--smoke", action="store_true",
+                    help="Stage 0 smoke run (configs/smoke.yaml, placeholders, CPU allowed, NO scientific meaning)")
     a = ap.parse_args()
+    if a.smoke:
+        from trainers.smoke import main as smoke_main
+        r = smoke_main(a.out)
+        print(json.dumps({"smoke_passed": r["passed"], "checks": r["checks"]}, indent=1, default=str))
+        sys.exit(0 if r["passed"] else 1)
     cfg = load_config(a.config)
     missing = preflight(cfg)
     if missing:

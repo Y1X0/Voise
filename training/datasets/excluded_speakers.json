@@ -1,0 +1,72 @@
+{
+ "_doc": "Speakers / subsets that must never appear in model-training or validation manifests (split train|valid). See docs/TRAINING_READINESS_GATE.md §5. Speaker ids are corpus-prefixed; corpora in 'same_speaker_space' share speaker ids.",
+ "same_speaker_space": {
+  "libritts": "librispeech",
+  "librittsr": "librispeech",
+  "minilibrispeech": "librispeech",
+  "librosa_example": "librispeech"
+ },
+ "speakers": {
+  "phase1_3_evaluation_corpus": [
+   "ami:FEE078",
+   "ami:FEE083",
+   "ami:FEE087",
+   "ami:FEO070",
+   "ami:MEE009",
+   "ami:MEE012",
+   "ami:MEE075",
+   "ami:MEO069",
+   "cmuarctic:aew",
+   "cmuarctic:axb",
+   "cmuarctic:pysptk_a0007_speaker_unknown",
+   "mssnsd:clnsp1",
+   "pyannote:sample-speaker90",
+   "pyannote:sample-speaker91",
+   "speechbrain:example1"
+  ],
+  "known_voice_conversion_targets": [
+   "librispeech:8312",
+   "librispeech:6081"
+  ]
+ },
+ "reserved_subsets": [
+  {
+   "corpus": "cmuarctic",
+   "subset": "*",
+   "reason": "Phase 1-3 evaluation speakers aew/axb plus one ARCTIC speaker of unknown identity (pysptk sample a0007): the whole corpus is excluded"
+  },
+  {
+   "corpus": "librispeech",
+   "subset": "train-clean-360",
+   "reason": "attacker pool (semi-informed attacker) + training data of the VPC 2024 ECAPA evaluator"
+  },
+  {
+   "corpus": "librispeech",
+   "subset": "test-clean",
+   "reason": "test set"
+  },
+  {
+   "corpus": "librispeech",
+   "subset": "test-other",
+   "reason": "test set"
+  },
+  {
+   "corpus": "voxceleb",
+   "subset": "vox1",
+   "reason": "training data of the SA-toolkit ResNet evaluator + Vox1-O test speakers"
+  },
+  {
+   "corpus": "fleurs",
+   "subset": "test",
+   "reason": "test set"
+  },
+  {
+   "corpus": "own_recordings",
+   "subset": "test",
+   "reason": "test set"
+  }
+ ],
+ "contaminated_evaluators": {
+  "ge2e_resemblyzer": "trained on LibriSpeech and VoxCeleb data according to its project documentation (exact subsets to be re-checked); this overlaps any LibriSpeech/LibriTTS training data, so GE2E is reported but never decisive"
+ }
+}

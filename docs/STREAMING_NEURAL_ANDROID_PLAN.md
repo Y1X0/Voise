@@ -1,5 +1,18 @@
 # StreamAnon: Android integration plan (document only; the app is unchanged)
 
+> **Pre-training review additions** (`PRE_TRAINING_TECHNICAL_REVIEW.md`):
+> 1. **Telemetry.** ONNX Runtime 1.30 (Linux) embeds Microsoft 1DS telemetry and tries to
+>    upload usage events after import. `ORT_DISABLE_TELEMETRY=1` stops it;
+>    `disable_telemetry_events()` called after import does not.
+>    * The app must use an ORT build **with telemetry compiled out**, verified in CI by a
+>      binary string check (no `OneCollector` URL).
+>    * It must also set `ORT_DISABLE_TELEMETRY` before ORT initialisation.
+>    * If this cannot be verified, use ExecuTorch or LiteRT instead.
+> 2. **The shipped model is the pool-baked export.** Its only speaker input is
+>    `pool_index` (int64); there is no free speaker vector.
+> 3. **INT8 keeps the bottleneck, VQ and head in float.**
+
+
 Nothing in `app/`, `dsp/` or `termux/` was modified. This document fixes the integration
 boundary so that a trained model can be dropped in later without redesigning the audio
 path. **DSP mode remains the default and the fallback.**

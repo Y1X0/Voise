@@ -20,6 +20,8 @@ import sys
 import numpy as np
 import soundfile as sf
 
+os.environ.setdefault("ORT_DISABLE_TELEMETRY", "1")  # ONNX Runtime >= 1.30 ships 1DS telemetry; never send it
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
@@ -42,8 +44,8 @@ def render(model_path, x, spk, allow_untrained=False, threads=1):
     so.intra_op_num_threads = threads
     sess = ort.InferenceSession(model_path, so, providers=["CPUExecutionProvider"])
     meta = sess.get_modelmeta().custom_metadata_map
-    if meta.get("untrained") == "1" and not allow_untrained:
-        raise SystemExit("refusing to render with an untrained model (metadata untrained=1)")
+    if (meta.get("untrained") == "1" or meta.get("smoke") == "1") and not allow_untrained:
+        raise SystemExit("refusing to render with an untrained or smoke-run model (no scientific meaning)")
     hop, win, delay = int(meta["hop"]), int(meta["win"]), int(meta["delay_frames"])
     xt = torch.from_numpy(np.concatenate([x, np.zeros(hop * (delay + 1), np.float32)]))[None]
     mel = CausalLogMel(win=win, hop=hop)(xt)[0].numpy()
@@ -61,7 +63,9 @@ def render(model_path, x, spk, allow_untrained=False, threads=1):
     s = np.stack(specs)
     y = istft_ola(torch.complex(torch.from_numpy(s[..., 0]), torch.from_numpy(s[..., 1]))[None], win, hop)[0].numpy()
     y = y[delay * hop: delay * hop + len(x)]
-    return y / max(1.0, float(np.abs(y).max()) / 0.89)
+    # No global normalisation (it would use future samples). Like the runtime, hard limits
+    # only; clipped samples are counted by the evaluation pipeline.
+    return np.clip(y, -1.0, 1.0)
 
 
 def main():
@@ -76,7 +80,7 @@ def main():
     import librosa
     x = librosa.load(a.inp, sr=16000)[0].astype(np.float32)
     pool = np.load(a.pool)
-    spk = pool[np.random.default_rng(a.seed).integers(len(pool))]
+    spk = pool[np.random.default_rng(a.seed).integers(len(pool))]  # one vector per session
     sf.write(a.out, render(a.model, x, spk, a.allow_untrained), 16000, subtype="PCM_16")
 
 

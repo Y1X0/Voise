@@ -1,0 +1,37 @@
+{
+ "batch": 16,
+ "segment_seconds": 2.0,
+ "config": "stream_anon_s.yaml",
+ "stage1_step": {
+  "gflop": 41.713045504,
+  "saved_activation_mb": 289.12109756469727,
+  "cpu_s": 0.7114975452423096
+ },
+ "stage2_step": {
+  "gflop": 4099.233299968,
+  "saved_activation_mb": 9954.796691894531,
+  "cpu_s": 26.79089665412903
+ },
+ "stage3_step_with_smoke_placeholders": {
+  "gflop": 5577.9377536,
+  "saved_activation_mb": 14177.268989562988,
+  "cpu_s": 29.66508173942566
+ },
+ "content_teacher_hubert_base_forward_per_batch": {
+  "gflop": 442.360496128,
+  "saved_activation_mb": 0.0,
+  "cpu_s": 1.1226849555969238
+ },
+ "content_teacher_params_m": 94.371712,
+ "speaker_encoder_ecapa1024_forward_per_batch": {
+  "gflop": 120.02000896,
+  "saved_activation_mb": 0.0,
+  "cpu_s": 0.3399848937988281
+ },
+ "speaker_encoder_params_m": 20.767552,
+ "params_generator_m": 7.030659,
+ "params_discriminators_m": 15.162032,
+ "param_grad_adam_mb": 338.6335906982422,
+ "frozen_models_fp16_mb": 259.2216796875,
+ "stage3_step_real_gflop": 8307.539809792
+}

@@ -1,5 +1,19 @@
 # StreamAnon: evaluation protocol and acceptance criteria
 
+> **Superseded in part by `PRE_TRAINING_TECHNICAL_REVIEW.md` §2–§5:**
+> * the acceptance-critical attacker set now also includes **A5 multi-session** and
+>   **A6 matched pseudo-speaker**. A6 replaces the earlier "same-session, reported only"
+>   condition: an attacker who owns the app can identify and reuse the pool voice;
+> * Top-5, attack success at an attacker-calibrated threshold, and threshold transfer are
+>   added;
+> * "privacy against an evaluator" is separated from "actual resistance";
+> * the intelligibility and signal gates are extended (V/UV, F0 correlation, duration,
+>   clicks), and PESQ is restricted to reconstruction mode;
+> * the protected-voice attribution gate is stricter.
+>
+> Where the two documents differ, the review document applies.
+
+
 This protocol is stronger than Phase 3 in four ways:
 1. Larger unseen test sets (≥ 40 speakers per language).
 2. **Attackers trained on processed speech**: semi-informed, as in the VoicePrivacy Challenge.

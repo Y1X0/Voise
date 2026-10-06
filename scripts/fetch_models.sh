@@ -5,7 +5,7 @@
 # Nothing here is used by the Android app. Licenses: see docs/NEURAL_MODEL_ACQUISITION.md.
 #
 #   scripts/fetch_models.sh            # everything (~5 GB on disk)
-#   scripts/fetch_models.sh knnvc asv  # a subset: knnvc asv resnet b3 whisper
+#   scripts/fetch_models.sh knnvc asv  # a subset: knnvc asv resnet b3 whisper smoke
 set -euo pipefail
 cd "$(dirname "$0")/.."
 M=models
@@ -70,6 +70,10 @@ if [ -z "$SEL" ] || want b3; then  # VoicePrivacy 2024 B3 / STTTS (GPL-3.0)
     for z in asr tts anonymization; do unzip -oq $DL/$z.zip -d $M/vpc2024/exp/sttts_models; done
   else echo "ok (present) $M/vpc2024/exp/sttts_models"; fi
   echo "B3 also needs: apt espeak-ng libportaudio2; a venv with speechbrain==0.5.16 espnet==202310 (see docs)"
+fi
+
+if [ -z "$SEL" ] || want smoke; then  # Stage-0 smoke data: 3 LibriSpeech excerpts (CC BY 4.0) in librosa/data (repo CC0)
+  clone $GH/librosa/data 38f4b06556fa0ff1acda5e677d8ba05d1bc0fff0 $M/librosa-data
 fi
 
 if [ -z "$SEL" ] || want whisper; then  # Whisper small.en (MIT) as ONNX by k2-fsa/sherpa-onnx (Apache-2.0)

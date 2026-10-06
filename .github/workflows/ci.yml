@@ -56,6 +56,18 @@ jobs:
           python -m pip install --quiet numpy soundfile librosa pyyaml onnx onnxscript onnxruntime
       - name: Architecture tests
         run: python training/tests/test_architecture.py
+      - name: Fetch Stage-0 smoke data (librosa/data, pinned commit)
+        run: |
+          git clone -q https://github.com/librosa/data models/librosa-data
+          git -C models/librosa-data checkout -q 38f4b06556fa0ff1acda5e677d8ba05d1bc0fff0
+      - name: Readiness tests (metrics, leakage, abort, telemetry guard, resume)
+        env:
+          ORT_DISABLE_TELEMETRY: "1"
+        run: python training/tests/test_readiness.py
+      - name: Stage-0 smoke run (mechanics only, no scientific meaning)
+        env:
+          ORT_DISABLE_TELEMETRY: "1"
+        run: python training/trainers/train.py --config training/configs/smoke.yaml --smoke --out runs/smoke
 
   android:
     name: Android APK + JVM unit tests
