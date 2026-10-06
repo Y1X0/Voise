@@ -1,0 +1,18 @@
+{
+ "_doc": "Proposed on-device inference runtime for StreamAnon (docs/ANDROID_RUNTIME_PRIVACY_AUDIT.md). NOT integrated into the app (forbidden until TRAINING_READINESS = READY and the user decides U5). Every artifact must pass `scripts/audit_native_runtime.py --policy strict` with the sha256 below; CI re-downloads from Maven Central and re-audits.",
+ "decision": "PROPOSED (USER_DECISION_REQUIRED U5)",
+ "artifacts": [
+  {"maven": "org.pytorch:executorch-android:1.5.1", "file": "executorch-android-1.5.1.aar",
+   "url": "https://repo1.maven.org/maven2/org/pytorch/executorch-android/1.5.1/executorch-android-1.5.1.aar",
+   "sha256": "d67d39eb51e00c996162e1d9898519a622918b20e4e18ea479f5fee4fe920e72", "licence": "BSD-3-Clause (pytorch/executorch LICENSE)"},
+  {"maven": "com.facebook.fbjni:fbjni:0.7.0", "file": "fbjni-0.7.0.aar",
+   "url": "https://repo1.maven.org/maven2/com/facebook/fbjni/fbjni/0.7.0/fbjni-0.7.0.aar",
+   "sha256": "7e319ae110ac5e5ef18904170aea5c3e753e915d196699d7fd39d36c8e1dfe36", "licence": "Apache-2.0 (facebookincubator/fbjni)"},
+  {"maven": "com.facebook.soloader:nativeloader:0.10.5", "file": "nativeloader-0.10.5.jar",
+   "url": "https://repo1.maven.org/maven2/com/facebook/soloader/nativeloader/0.10.5/nativeloader-0.10.5.jar",
+   "sha256": "971ded86009c0ac56fb2275e128f852e7dcbc41a40cd799688f8a1aebde5195d", "licence": "Apache-2.0 (facebook/SoLoader)"}
+ ],
+ "rejected": [
+  {"maven": "com.microsoft.onnxruntime:onnxruntime-android:1.30.0", "reason": "1DS telemetry (OneCollector, events.data.microsoft.com, device-id, offline storage) in libonnxruntime.so and ai/onnxruntime/telemetry/* HTTP client + ConnectivityManager in classes.jar"}
+ ]
+}

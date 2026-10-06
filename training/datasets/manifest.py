@@ -23,22 +23,22 @@ from collections import defaultdict
 REQUIRED = ("path", "speaker", "session", "corpus", "language", "duration", "sr", "split")
 SPLITS = {"train", "valid", "test", "attacker_train"}
 
-# Licence class per corpus as documented in docs/STREAMING_NEURAL_TRAINING_PLAN.md.
-# "verify" = terms must be re-checked and accepted by the project owner before use.
+# Licence status per corpus, from docs/DATASET_LICENSE_MATRIX.md (official-source review, E1 only).
 LICENSES = {
-    "librispeech": "CC-BY-4.0",
-    "librittsr": "CC-BY-4.0",
-    "vctk": "CC-BY-4.0",
-    "commonvoice": "CC0-1.0",
-    "ami": "CC-BY-4.0",
-    "voxceleb": "verify (research use; audio from YouTube)",
-    "fleurs": "CC-BY-4.0",
-    "masc": "verify (CC-BY-4.0 reported)",
-    "mgb2": "verify (QCRI agreement, research)",
-    "qasr": "verify (QCRI agreement, research)",
-    "sada": "verify",
-    "musan": "CC-BY-4.0",
-    "openslr28_rir": "Apache-2.0",
+    "librispeech": "LICENSE_NOT_VERIFIED (CC-BY-4.0 reported; publisher page unreachable; U1)",
+    "librittsr": "LICENSE_NOT_VERIFIED (CC-BY-4.0 reported; U1)",
+    "vctk": "COMMERCIAL_ALLOWED_WITH_CONDITIONS (CC-BY-4.0, E1)",
+    "commonvoice": "LICENSE_NOT_VERIFIED (audio CC0 E1; Mozilla Data Collective terms unread; U3)",
+    "ami": "COMMERCIAL_ALLOWED_WITH_CONDITIONS (CC-BY-4.0, E1)",
+    "voxceleb": "LICENSE_NOT_VERIFIED (video copyright with owners)",
+    "fleurs": "COMMERCIAL_ALLOWED_WITH_CONDITIONS (CC-BY-4.0, E1; evaluation only by rule)",
+    "masc": "LICENSE_NOT_VERIFIED",
+    "mgb2": "LICENSE_NOT_VERIFIED (research agreement; treat as NON_COMMERCIAL)",
+    "qasr": "NON_COMMERCIAL (cc-by-nc-2.0, E1)",
+    "sada": "NON_COMMERCIAL (CC-BY-NC-SA reported)",
+    "musan": "LICENSE_NOT_VERIFIED (CC-BY-4.0 reported)",
+    "dns_noise_freesound_cc0": "COMMERCIAL_ALLOWED (CC0 per microsoft/DNS-Challenge, E1)",
+    "openslr28_rir": "COMMERCIAL_ALLOWED_WITH_CONDITIONS (Apache-2.0 per microsoft/DNS-Challenge, E1)",
     "own_recordings": "consent forms (project)",
     "minilibrispeech": "CC-BY-4.0",
     "librosa_example": "CC-BY-4.0 (LibriSpeech excerpts in the librosa/data repository; smoke runs only)",

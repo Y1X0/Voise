@@ -20,10 +20,11 @@ Weights and data never go into git.
 | `scripts/` | `compute_teacher_units.py`, `make_pseudo_pool.py`, `measure_training_cost.py` (measured FLOPs/memory per step) |
 | `native/` | C binding of the app's unchanged YIN pitch tracker and noise suppressor (runtime-identical features) |
 | `smoke/` | Stage-0 smoke manifest (3 CC-BY LibriSpeech excerpts from librosa/data) |
-| `tests/` | `test_architecture.py` (26 graph tests), `test_readiness.py` (29: metrics, leakage, gates, abort, telemetry guard, resume) |
+| `tests/` | `test_architecture.py` (26 graph tests), `test_readiness.py` (29: metrics, leakage, gates, abort, telemetry guard, resume), `test_data_pipeline.py` (17: augmentation, CTC targets, manifests, leakage fail-fast, licence path), `test_validation.py` (17: evaluator roles, VALID-only selection, locked final eval, A6 protocol), `test_runtime_privacy.py` (10: strict runtime audit, pinned runtime, ExecuTorch export) |
 
 ```bash
 python3 training/tests/test_architecture.py && python3 training/tests/test_readiness.py   # tests (CPU)
+python3 training/tests/test_data_pipeline.py && python3 training/tests/test_validation.py && python3 training/tests/test_runtime_privacy.py
 python3 training/trainers/train.py --config training/configs/smoke.yaml --smoke --out runs/smoke   # Stage 0 (CPU, ~2 min)
 python3 training/datasets/manifest.py validate data/manifests/train.jsonl     # data
 python3 training/trainers/train.py --config training/configs/stream_anon_s.yaml --out runs/s   # GPU only

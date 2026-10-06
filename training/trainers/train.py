@@ -6,7 +6,8 @@
 Pre-flight checks happen BEFORE anything is computed:
   * a CUDA GPU is present (training on CPU is refused, by design);
   * every manifest, teacher-unit file and frozen training-time model in the config exists;
-  * manifests validate (speaker-disjoint splits, licence entries).
+  * manifests validate (speaker-disjoint splits, licence entries) and their sha256 match
+    manifest_index.json (datasets/build_manifests.py verify(): any leakage -> refuse).
 If any check fails the trainer prints exactly what is missing and exits with status 2.
 
 Stages (configs/*.yaml `stages`):
@@ -37,6 +38,15 @@ def preflight(cfg, require_gpu=True):
     for key in ("train_manifest", "valid_manifest"):
         if not os.path.exists(d.get(key, "")):
             missing.append(f"data.{key}: {d.get(key)}")
+    idx_dir = os.path.dirname(d.get("train_manifest", "")) or "."
+    if not os.path.exists(os.path.join(idx_dir, "manifest_index.json")):
+        missing.append(f"{idx_dir}/manifest_index.json (build with datasets/build_manifests.py)")
+    else:
+        from datasets.build_manifests import LeakageError, verify
+        try:
+            verify(idx_dir)
+        except LeakageError as e:
+            missing.append(f"manifest verification FAILED: {e}")
     aug = d.get("augment", {})
     for key in ("noise_manifest", "rir_manifest"):
         if aug.get(key) and not os.path.exists(aug[key]):
@@ -47,8 +57,9 @@ def preflight(cfg, require_gpu=True):
     for enc in d.get("speaker_encoders_train", []):
         if not os.path.exists(os.path.join("models_train", enc)):
             missing.append(f"training-time speaker encoder: models_train/{enc}")
-    if t.get("content_model") and not os.path.exists(os.path.join("models_train", t["content_model"])):
-        missing.append(f"content teacher: models_train/{t['content_model']}")
+    if t.get("unit_teacher") and not os.path.exists(t.get("units", "")) and \
+            not os.path.exists(os.path.join("models_train", t["unit_teacher"])):
+        missing.append(f"unit teacher: models_train/{t['unit_teacher']} (or precomputed {t.get('units')})")
     return missing
 
 

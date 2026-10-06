@@ -1,6 +1,6 @@
 # Training readiness gate
 
-## TRAINING_READINESS: **READY_WITH_BLOCKERS**
+## TRAINING_READINESS: **READY_WITH_BLOCKERS** (engineering blockers B4/B5 resolved; remaining blockers need the owner: see `TRAINING_GO_NO_GO.md`, verdict **NO-GO**)
 
 | Ready | Not ready |
 |---|---|
@@ -167,26 +167,20 @@ The data was 45 s, with 2 train speakers and 1 valid speaker. Raw output:
 
 ## 8. Blockers (exact) and what removes each
 
-| # | Blocker | Removed by | Who |
-|---|---|---|---|
-| **B1** | No GPU, and dataset/model hosts are blocked in this environment | a GPU machine (≥ 1 × 24 GB; recommended A100 40/80 GB) with access to openslr.org, datashare.ed.ac.uk, Hugging Face (or equivalent official mirrors); ≥ 0.5 TB SSD | owner |
-| **B2** | Licence decisions D1–D6 (`DATASET_LICENSE_MATRIX.md` §6), especially **D3 content teacher** (stage 1 cannot start without one) and **D1 Common Voice** (needed to reach plan scale) | recorded decisions in that file | owner (legal advice for D1/D3) |
-| **B3** | Training-time frozen models unavailable (content teacher; two training speaker encoders) and their loader (`trainers/assets.GpuAssets`) not written | after B1 + B2: download, record SHA-256, write the loader (small, CPU-testable) | engineering, after the owner's decisions |
-| **B4** | Data-pipeline features not implemented: noise/RIR/codec augmentation; English G2P / Arabic grapheme CTC targets; manifest builders for the chosen corpora | engineering (no GPU needed) | engineering |
-| **B5** | Validation-time hooks for stage-3 gates and abort rules (VALID Whisper WER, held-out-ASV EER, bottleneck speaker probe, attribution) not wired into `Trainer.validate` | engineering (no GPU needed; reuses the existing scripts) | engineering |
-| **B6** | **ARABIC_NOT_READY**: no Arabic data on the commercial path; no Jordanian/Levantine recordings | D5 (consent form + recording budget) and D4; or an explicit decision to train English-first and redo stage 1 multilingually later | owner |
-| B7 (release, not training) | Telemetry-free ONNX Runtime Android build, verified | build/verify in CI before any app integration | engineering |
+Status updated 2026-10-06. The GO/NO-GO verdict is in `TRAINING_GO_NO_GO.md`.
 
-B4 and B5 are engineering work that can be done without a GPU or new data. B1–B3 and B6
-need the owner.
+| # | Blocker | Status | What removes it |
+|---|---|---|---|
+| **B1** | No GPU; dataset hosts blocked in this environment | **OPEN** (U7) | a GPU machine; see `TRAINING_GO_NO_GO.md` |
+| **B2** | Licence decisions | **REVIEWED** with official evidence (`DATASET_LICENSE_MATRIX.md`); **OPEN**: U1 LibriSpeech/LibriTTS-R, U3 Common Voice/MDC terms | owner |
+| **B3** | Content teacher and training encoders | **RESOLVED technically.** Teacher: Whisper-small encoder (MIT, E1), offline units (`CONTENT_TEACHER_DECISION.md`); mHuBERT-147 rejected (NC). Training encoders: in-house (U6). Owner confirmation: U2, U6. `GpuAssets` loader is written on the GPU machine. | owner confirmation |
+| **B4** | Data pipeline | **RESOLVED** (no GPU needed). Augmentation (noise/SNR, RIR, codec, gain; speed/pitch stage 1 only) in `datasets/augment.py`; EN+AR grapheme CTC targets in `datasets/ctc_targets.py` (69 tokens); manifest builders, speaker- and session-disjoint splits, licence-path gate, hashed manifests, statistics, `--verify` in `datasets/build_manifests.py`. The pipeline FAILS on any leakage. 17 tests. | — |
+| **B5** | Validation pipeline | **RESOLVED** (code + tests). `evaluation/validator.py` (TRAIN/VALID/HELD_OUT roles, VALID-only selection), `evaluation/final_eval.py` (one-time, locked), `Trainer.validate` wiring, `evaluation/protocol.py` (baselines A–E, A6 S1–S5). 17 tests. The VALID in-house ASV is trained on the GPU machine. | — |
+| **B6** | **ARABIC_NOT_READY** | **OPEN** (U4) | own consented recordings and/or Common Voice ar |
+| **B7** | Android runtime privacy | **STATIC AUDIT DONE.** ExecuTorch clean, official ORT AAR rejected (telemetry); pinned and CI-audited (`ANDROID_RUNTIME_PRIVACY_AUDIT.md`). **OPEN:** on-device network test; owner choice U5. | device + owner |
 
 ## 9. Very first concrete step required from the owner
 
-**Record decision D3 (which content teacher may be used: mHuBERT-147, HuBERT-base or
-WavLM-base+, and under which licence) and decision D1 (Common Voice) in
-`DATASET_LICENSE_MATRIX.md` §6.**
-
-* Without a permitted content teacher, stage 1 cannot start on any GPU.
-* Without D1, the commercial English data is ≈ 510 h / 1 700 speakers, about a third of
-  the plan.
-* Arranging the GPU machine (B1) comes right after; the compute estimate gives the size.
+**U1:** open openslr.org/12, /141, /17 and /28 from a normal network, save the licence text
+with the date, and record it in `DATASET_LICENSE_MATRIX.md`. Then decide **U3** (Common Voice
+/ MDC terms) and provide the GPU (**U7**).

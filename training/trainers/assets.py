@@ -1,7 +1,7 @@
 """Frozen training-time assets behind one interface.
 
-GpuAssets (real training): content teacher (mHuBERT-147 units + layer features), two
-frozen speaker encoders that are NOT evaluators, protected-voice centroids. They are
+GpuAssets (real training): precomputed teacher units (Whisper-small encoder + k-means, offline),
+the frozen stage-1 encoder as content teacher, two in-house frozen speaker encoders (role TRAIN, never evaluators), protected-voice centroids. They are
 loaded from models_train/ on the GPU machine; until they exist, preflight() fails.
 
 SmokeAssets (Stage 0 only): PLACEHOLDERS that let the loop run end to end. They have no
@@ -67,5 +67,5 @@ class SmokeAssets:
 
 class GpuAssets:
     def __init__(self, cfg):
-        raise SystemExit("GpuAssets: load mHuBERT-147 units/features and the training speaker encoders from "
+        raise SystemExit("GpuAssets: load precomputed teacher units and the training speaker encoders from "
                          "models_train/ on the GPU machine (docs/TRAINING_READINESS_GATE.md, blockers B2/B3)")

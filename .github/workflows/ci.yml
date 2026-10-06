@@ -64,6 +64,27 @@ jobs:
         env:
           ORT_DISABLE_TELEMETRY: "1"
         run: python training/tests/test_readiness.py
+      - name: Data pipeline tests (augmentation, CTC targets, manifests, leakage fail-fast)
+        run: python training/tests/test_data_pipeline.py
+      - name: Validation / evaluator-role / protocol (A6) tests
+        env:
+          ORT_DISABLE_TELEMETRY: "1"
+        run: python training/tests/test_validation.py
+      - name: Pinned Android runtime - download, verify sha256, strict privacy audit
+        run: |
+          mkdir -p models/runtime_audit
+          python - <<'PY'
+          import hashlib, json, urllib.request
+          lock = json.load(open("training/android/runtime_lock.json"))
+          for a in lock["artifacts"]:
+              local = "executorch-1.5.1.aar" if a["file"].startswith("executorch-android") else a["file"]
+              data = urllib.request.urlopen(a["url"]).read()
+              assert hashlib.sha256(data).hexdigest() == a["sha256"], a["url"]
+              open("models/runtime_audit/" + local, "wb").write(data)
+          PY
+          python scripts/audit_native_runtime.py --policy strict models/runtime_audit/*.aar models/runtime_audit/*.jar
+      - name: Runtime privacy tests (auditor must fail on network/telemetry; lock; app has no runtime)
+        run: python training/tests/test_runtime_privacy.py
       - name: Stage-0 smoke run (mechanics only, no scientific meaning)
         env:
           ORT_DISABLE_TELEMETRY: "1"
@@ -81,6 +102,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Build debug APK and run unit tests
         run: ./gradlew --no-daemon --stacktrace assembleDebug assembleDebugAndroidTest testDebugUnitTest
+      - name: Privacy audit of the APK (native libraries + merged manifest; no network permission)
+        run: python3 scripts/audit_native_runtime.py --policy strict --skip-java app/build/outputs/apk/debug/*.apk
       - uses: actions/upload-artifact@v4
         with:
           name: voice-anonymizer-debug-apk

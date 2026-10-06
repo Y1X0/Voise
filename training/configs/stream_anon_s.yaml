@@ -20,7 +20,7 @@ model:
   prosody_emb: 32
   delay_frames: 2     # 20 ms learned look-ahead -> 40 ms algorithmic latency
   n_units: 500        # k-means units of the content teacher (training head)
-  n_phones: 72        # multilingual phone inventory incl. Arabic (CTC head, training only)
+  n_phones: 69        # CTC grapheme tokens EN+AR (datasets/ctc_targets.py n_tokens()), training head only
   n_speakers: 3000    # adversarial speaker classifier classes (training only)
 
 data:
@@ -35,11 +35,13 @@ data:
     codec_p: 0.2                                   # AMR-WB / Opus 16 kbit/s simulation
     gain_db: [-12, 6]
   teacher:
-    units: data/teacher/units_k500.npy             # precomputed, see scripts/compute_teacher_units.py
-    content_model: mhubert-147                     # frozen, for the output content loss (layer 9)
-  speaker_encoders_train:                          # used INSIDE the losses; never used for evaluation
-    - wespeaker_resnet34_voxceleb
-    - ecapa_trained_inhouse
+    units: data/teacher/units_k500.npy             # precomputed OFFLINE, see scripts/compute_teacher_units.py
+    unit_teacher: whisper-small-encoder            # MIT (code + weights); training-time only, never shipped
+                                                   # (docs/CONTENT_TEACHER_DECISION.md; mHuBERT-147 is CC-BY-NC-SA)
+    content_model: student-stage1-encoder          # stage-3 content-output loss: frozen copy of the stage-1 encoder
+  speaker_encoders_train:                          # role TRAIN: used INSIDE the losses; never used for evaluation
+    - ecapa_train_inhouse                          # trained in-house on commercial-path train speakers (USER_DECISION U6)
+    - resnet34_train_inhouse                       # (WeSpeaker VoxCeleb checkpoints: LICENSE_NOT_VERIFIED)
   f0: runtime_yin                                  # the app's C++ YIN, built as a Python extension
 
 losses:   # initial weights; see docs/STREAMING_NEURAL_TRAINING_PLAN.md section 6
@@ -77,3 +79,12 @@ pseudo_speaker:
   reject_similarity_to_any_train_speaker: auto     # > p99 of unrelated-speaker similarity -> reject
   min_density_quantile: 0.05                       # reject implausible (too atypical) voices
   per_session: true
+
+evaluators:   # role separation, enforced by evaluation/validator.py (one model = one role)
+  VALID:      # validation curves, early stopping, checkpoint + hyper-parameter selection
+    asv: [ecapa_valid_inhouse]                     # trained on a speaker-disjoint commercial-path subset
+    asr: whisper_base_valid                        # MIT; normalised by datasets/ctc_targets.normalize
+  HELD_OUT:   # used ONCE by evaluation/final_eval.py on TEST speakers; never for any selection
+    asv: [vpc2024_ecapa_eval, satools_resnet_eval] # Phase-3 evaluators (evaluation-only, never shipped)
+    asr: whisper_small_eval
+    attacker: semi_informed_ecapa                  # trained on processed attacker_train speech

@@ -24,7 +24,7 @@ STAGES = ("content_distillation", "reconstruction", "anonymization")
 
 class Trainer:
     def __init__(self, cfg, out_dir, train, valid, assets, seed=0, device="cpu", disc_scale=1.0,
-                 batch_size=None, smoke=False):
+                 batch_size=None, smoke=False, validator=None, selector=None):
         torch.manual_seed(seed)
         self.cfg, self.out, self.seed, self.dev, self.smoke = cfg, out_dir, seed, device, smoke
         self.train_data, self.valid_data, self.assets = train, valid, assets
@@ -50,6 +50,11 @@ class Trainer:
         self.teacher = None          # frozen content teacher (stage 3)
         self.centroids = None        # protected training-speaker centroids (stage 3)
         self.tau = None
+        # evaluation/validator.py: VALID-role evaluators + VALID-split speakers only (checked there);
+        # the selector (early stopping / best checkpoint) refuses non-VALID metrics.
+        self.validator, self.selector = validator, selector
+        if validator is not None and validator.ctx != "validation":
+            raise ValueError("the trainer may only hold a validation-context validator (never final_eval)")
 
     # ------------------------------------------------------------------ helpers
     def _freeze(self, stage):
@@ -235,7 +240,22 @@ class Trainer:
             m["output_rms"] = float(y_a.pow(2).mean().sqrt())
             m["output_spec_std"] = float(self.mel(y_a).std(0).mean())
             m["val_loss"] = m["val_mel_l1"]
+            if self.validator is not None:
+                m["validator"] = self.validator.run(self.render_utterance)
         return m
+
+    @torch.no_grad()
+    def render_utterance(self, wav, spk=None):
+        """Offline render of one utterance (validation): spk None = own-speaker reconstruction."""
+        from datasets.segments import utterance_features
+        x = torch.from_numpy(np.asarray(wav, np.float32))[None].to(self.dev)
+        mel = self.mel(x)
+        pros = torch.from_numpy(utterance_features(np.asarray(wav, np.float32)))[None, :mel.shape[1]].to(self.dev)
+        mel = mel[:, :pros.shape[1]]
+        s = self.cond(mel) if spk is None else torch.as_tensor(np.asarray(spk), dtype=torch.float32)[None].to(self.dev)
+        y = self._render(mel, pros, s)[0]
+        d = self.cfg.model.delay_frames * self.cfg.model.hop
+        return y[d:].cpu().numpy()
 
     # ------------------------------------------------------------------ checkpoints
     def ckpt_path(self, tag="last"):
@@ -302,6 +322,12 @@ class Trainer:
                 m = self.validate()
                 logs["validation"] = m
                 ev = self.monitor.validation(m, stage)
+                if self.selector is not None and "validator" in m:
+                    stop = self.selector.update(m["validator"], self.step)   # VALID metrics only
+                    if self.selector.best_step == self.step:
+                        self.save("best")
+                    if stop:
+                        ev = (ev or []) + ["early_stop: no VALID improvement"]
                 if ev:
                     self.save("last")
                     return {"aborted": ev}
