@@ -1,5 +1,10 @@
 # Dataset and model licence matrix (B2: official-source review)
 
+> **Extended by `DATASET_EXPANSION_2026.md` and `data/dataset_registry.json`** (43 speech
+> sources, four-class vocabulary COMMERCIAL_SAFE / COMMERCIAL_WITH_CONDITIONS / RESEARCH_ONLY /
+> LICENSE_UNVERIFIED). Main addition: MLS English (E1, CC BY 4.0, 44,691 h). The model and
+> runtime sections below remain current.
+
 **Review date:** 2026-10-06. Nothing was downloaded for training; only licence texts, model
 cards and READMEs were read.
 

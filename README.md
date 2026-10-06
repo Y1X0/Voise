@@ -36,6 +36,7 @@ child effects) and it is **not encryption**.
 | `docs/NEURAL_ANONYMIZATION_RESULTS.md` | Threat-model research (attacker knows the transform): candidates, pseudo-speaker experiment, classification D |
 | `docs/NEURAL_MODEL_ACQUISITION.md` | Models obtained from official sources (SHA-256, licenses), what stayed blocked; `scripts/fetch_models.sh` |
 | `docs/TRAINING_READINESS_GATE.md` | Pre-training gate: stages/exit criteria, leakage rules, abort conditions, Stage-0 smoke result, **READY_WITH_BLOCKERS**; with `PRE_TRAINING_TECHNICAL_REVIEW.md`, `DATASET_LICENSE_MATRIX.md`, `TRAINING_COMPUTE_ESTIMATE.md` |
+| `docs/DATASET_EXPANSION_2026.md` | Dataset hunt (English + Arabic by dialect), licence classes, `data/dataset_registry.json`; with `FREE_GPU_OPTIONS_2026.md` (`training/gpu_profiles.json`) and `CONSENTED_RECORDING_PLAN.md` |
 | `docs/TRAINING_GO_NO_GO.md` | **NO-GO** verdict, owner decisions U1–U8, exact GPU requirement; with `CONTENT_TEACHER_DECISION.md`, `ANDROID_RUNTIME_PRIVACY_AUDIT.md`, `BASELINE_PROTOCOL.md` |
 | `docs/STREAMING_NEURAL_ANONYMIZER_ARCHITECTURE.md` | Design phase (not trained): streaming on-device neural anonymizer: architecture, measured prototype compute, decision B; plus `STREAMING_NEURAL_{TRAINING,EVALUATION,ANDROID,ARABIC}_PLAN.md` and `training/` |
 | `docs/NEURAL_MODEL_EVALUATION.md` | Phase 3: kNN-VC and VoicePrivacy B3 vs app DSP under 4 speaker evaluators and an informed attacker, Whisper WER, classification B |

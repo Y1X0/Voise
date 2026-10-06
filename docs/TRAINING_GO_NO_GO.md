@@ -19,6 +19,22 @@ training, full dataset downloads, model release and Android integration therefor
 | 6 | Android runtime privacy path validated | **PARTIAL** | Static strict audit: ExecuTorch 1.5.1 (+ fbjni, nativeloader) is **CLEAN**, and the official ORT AAR is **REJECTED** (1DS telemetry). Pinned in `training/android/runtime_lock.json`; CI-audited. The StreamAnon step exports and runs (INT8 7.55 MB, rel. error 0.0069). The on-device network test is pending (no device), and the decision is the owner's (U5). |
 | 7 | GPU available | **NO** | U7 |
 
+## Update 2026-10-06 (data expansion + free GPU phase)
+
+Sources: `DATASET_EXPANSION_2026.md`, `FREE_GPU_OPTIONS_2026.md`, `CONSENTED_RECORDING_PLAN.md`.
+
+**Verdict: still NO-GO.**
+
+| Condition | Change |
+|---|---|
+| 1 Licences | **English unblocked.** MLS English has an E1 publisher licence: 44,691 h and 5,574 speakers. The E1 commercial path is ≈ 44,876 h with ≈ 8,490 known speakers. U1 (LibriSpeech) is now needed only for the VPC-style attacker pool and test sets. **Arabic stays ARABIC_NOT_READY**: 12 h commercial (1 speaker), 0 h Jordanian/Levantine. |
+| 7 GPU | **Still NO.** Guaranteed free tiers found: ≈ 74 A100-eq h/month nominal (Kaggle, Lightning, Modal; E2, terms NOT_VERIFIED for commercial training). Need: 62–141 A100-eq h. **0 hours verified usable for a commercial model.** |
+
+New engineering:
+* atomic, sha256-verified, rotating checkpoints with RNG state;
+* per-speaker consent gate for own recordings;
+* a registry validator that keeps unverified corpora out of the commercial path.
+
 ## USER_DECISION_REQUIRED
 
 ### U1: How to accept LibriSpeech / LibriTTS-R licence evidence

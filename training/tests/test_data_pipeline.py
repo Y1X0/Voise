@@ -130,6 +130,47 @@ def fixture(root, n_spk=40, sessions=3, utts=2, subset="train-clean-100", corpus
     return base
 
 
+def consent_record(cid, pseudonym, commercial=True, withdrawn=False, evaluation=True):
+    return {"consent_id": cid, "speaker_pseudonym": pseudonym, "form_version": "consent-ar-en-v1.0", "form_sha256": "0" * 64,
+            "consented_at": "2026-10-01", "adult_confirmed": True, "language": ["ar"], "dialect_primary": "Jordanian",
+            "scopes": {"evaluation": evaluation, "ml_training": True, "commercial_ml_training": commercial,
+                       "audio_redistribution": False},
+            "withdrawal": {"withdrawn": withdrawn, "withdrawn_at": None}, "retention_until": "2031-10-01",
+            "withdrawal_token_sha256": "a" * 64, "collector": "campaign-2026-amman-1"}
+
+
+class Consent(unittest.TestCase):
+    def test_schema_valid_record_and_rejections(self):
+        from datasets import consent as CO
+        rec = consent_record("CNS-0123456789ab", "own_recordings:spk-0123456789")
+        self.assertEqual(CO.validate_record(rec), [])
+        self.assertTrue(CO.validate_record(dict(rec, name="Ahmad")))              # no extra personal fields
+        self.assertTrue(CO.validate_record(dict(rec, adult_confirmed=False)))
+        self.assertTrue(CO.validate_record(dict(rec, notes="call me 0791234567")))
+        self.assertTrue(CO.validate_record(dict(rec, speaker_pseudonym="own_recordings:ahmad")))
+        bad = dict(rec, scopes=dict(rec["scopes"], ml_training=False))
+        self.assertTrue(any("requires ml_training" in e for e in CO.validate_record(bad)))
+
+    def test_check_rows(self):
+        from datasets import consent as CO
+        p = "own_recordings:spk-0123456789"
+        row = {"corpus": "own_recordings", "speaker": p, "consent_id": "CNS-0123456789ab", "split": "train"}
+        ok = {"CNS-0123456789ab": consent_record("CNS-0123456789ab", p)}
+        self.assertEqual(CO.check_rows([row], ok, "commercial"), [])
+        self.assertTrue(CO.check_rows([dict(row, consent_id="CNS-ffffffffffff")], ok))
+        nc = {"CNS-0123456789ab": consent_record("CNS-0123456789ab", p, commercial=False)}
+        self.assertTrue(CO.check_rows([row], nc, "commercial"))
+        self.assertEqual(CO.check_rows([row], nc, "research"), [])
+        wd = {"CNS-0123456789ab": consent_record("CNS-0123456789ab", p, withdrawn=True)}
+        self.assertTrue(CO.check_rows([row], wd, "research"))
+        other = {"CNS-0123456789ab": consent_record("CNS-0123456789ab", "own_recordings:spk-aaaaaaaaaa")}
+        self.assertTrue(CO.check_rows([row], other, "research"))
+        ne = {"CNS-0123456789ab": consent_record("CNS-0123456789ab", p, evaluation=False)}
+        self.assertTrue(CO.check_rows([dict(row, split="test")], ne, "research"))
+        old = {"CNS-0123456789ab": dict(consent_record("CNS-0123456789ab", p), retention_until="2020-01-01")}
+        self.assertTrue(CO.check_rows([row], old, "research"))
+
+
 class ManifestBuilder(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -137,9 +178,18 @@ class ManifestBuilder(unittest.TestCase):
         cls.libri = fixture(cls.tmp)
         cls.attack = fixture(cls.tmp, n_spk=6, sessions=1, subset="train-clean-360", corpus_dir="LibriSpeech", first=500)
         g = os.path.join(cls.tmp, "own")
+        cls.consents = {}
         for s in range(4):
+            spk = f"spk-{s:010x}"
             for sess in ("day1", "day2"):
-                write_wav(os.path.join(g, f"u{s}", sess, "a.wav"), 0.3, 900 + s)
+                write_wav(os.path.join(g, spk, sess, "a.wav"), 0.3, 900 + s)
+            cid = f"CNS-{s:012x}"
+            open(os.path.join(g, spk, "consent_id.txt"), "w").write(cid)
+            cls.consents[cid] = consent_record(cid, f"own_recordings:{spk}", commercial=(s % 2 == 0))
+        cls.store = os.path.join(cls.tmp, "consents.jsonl")
+        with open(cls.store, "w") as f:
+            for rec in cls.consents.values():
+                f.write(json.dumps(rec) + "\n")
         cls.generic = g
         cls.rows = (BM.build_librispeech(cls.libri, "librittsr", ["train-clean-100"])
                     + BM.build_librispeech(cls.attack, "librispeech", ["train-clean-360"])
@@ -215,7 +265,12 @@ class ManifestBuilder(unittest.TestCase):
     def test_licence_paths(self):
         rows, _ = self.split()
         self.assertTrue(BM.licence_check(rows, "commercial"))      # librittsr / own recordings unverified
-        self.assertEqual(BM.licence_check(rows, "research"), [])
+        self.assertTrue(BM.licence_check(rows, "research"))        # own recordings need consent records
+        self.assertEqual(BM.licence_check(rows, "research", self.consents), [])
+        opted_out = [dict(r, split="train") for r in rows if r["corpus"] == "own_recordings"
+                     and not self.consents[r["consent_id"]]["scopes"]["commercial_ml_training"]]
+        self.assertTrue(opted_out)
+        self.assertTrue(any("commercial_ml_training" in e for e in BM.licence_check(opted_out, "commercial", self.consents)))
         ok = [dict(r, corpus="vctk", speaker="vctk:" + r["speaker"].split(":")[1]) for r in rows]
         self.assertEqual(BM.licence_check(ok, "commercial"), [])
         nc = [dict(rows[0], corpus="qasr", split="train")]
@@ -254,6 +309,7 @@ class ManifestBuilder(unittest.TestCase):
         self.assertEqual(r.returncode, 1)          # default commercial path: unverified corpora refused
         self.assertIn("LICENCE", r.stderr)
         r = subprocess.run([sys.executable, script, "--out", out, "--seed", "5", "--licence-path", "research",
+                            "--consent-store", self.store,
                             "--librispeech", f"{self.libri}:librittsr:train-clean-100",
                             "--generic", f"{self.generic}:own_recordings:ar"], capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stderr)

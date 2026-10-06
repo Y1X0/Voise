@@ -12,7 +12,8 @@ layout and emits rows in the manifest format (datasets/manifest.py):
   commonvoice   <root>/<lang>/validated.tsv (client_id, path, sentence) + clips/; session unknown
   segments      a TSV  path<TAB>speaker<TAB>session<TAB>start<TAB>end<TAB>text  (e.g. AMI IHM
                 segments derived from the official annotations; session = meeting)
-  generic       <root>/<speaker>/<session>/<file>.wav (+ same-name .txt)  (own recordings)
+  generic       <root>/<speaker>/<session>/<file>.wav (+ same-name .txt)  (own recordings;
+                <root>/<speaker>/consent_id.txt links the speaker to a consent record)
 
 Splitting (deterministic given --seed):
   * excluded speakers / reserved subsets come from datasets/excluded_speakers.json;
@@ -143,10 +144,15 @@ def build_generic(root, corpus, language):
         spk = os.path.basename(os.path.dirname(os.path.dirname(a)))
         tp = os.path.splitext(a)[0] + ".txt"
         d, sr = _dur(a)
-        rows.append({"path": a, "speaker": f"{corpus}:{spk}", "session": sess, "corpus": corpus, "subset": "all",
-                     "language": language, "duration": round(d, 3), "sr": sr,
-                     "text": open(tp, encoding="utf-8").read().strip() if os.path.exists(tp) else None,
-                     "style": "conversational"})
+        row = {"path": a, "speaker": f"{corpus}:{spk}", "session": sess, "corpus": corpus, "subset": "all",
+               "language": language, "duration": round(d, 3), "sr": sr,
+               "text": open(tp, encoding="utf-8").read().strip() if os.path.exists(tp) else None,
+               "style": "conversational"}
+        cp = os.path.join(root, spk, "consent_id.txt")      # own recordings: per-speaker consent id
+        if os.path.exists(cp):
+            with open(cp, encoding="utf-8") as f:
+                row["consent_id"] = f.read().strip()
+        rows.append(row)
     return rows
 
 
@@ -222,14 +228,24 @@ def assert_no_leakage(rows):
         raise LeakageError("; ".join(errs[:20]))
 
 
-def licence_check(rows, path):
+def licence_check(rows, path, consents=None):
     """commercial path: every train/valid row must come from a corpus whose recorded status is
-    COMMERCIAL_ALLOWED* (docs/DATASET_LICENSE_MATRIX.md). research path: NOT_ALLOWED only."""
+    COMMERCIAL_SAFE or COMMERCIAL_WITH_CONDITIONS (docs/DATASET_EXPANSION_2026.md). research path:
+    anything except NOT_ALLOWED. own_recordings rows are additionally checked per speaker
+    (consent record must allow commercial ML training) by consent.check_rows."""
     errs = set()
+    if consents is not None:
+        from datasets.consent import check_rows
+        errs.update(check_rows(rows, consents, path))
     for r in rows:
-        st = LICENSES.get(r["corpus"], "LICENSE_NOT_VERIFIED")
+        st = LICENSES.get(r["corpus"], "LICENSE_UNVERIFIED")
+        if r["corpus"] == "own_recordings" and consents is not None:
+            continue                     # governed per speaker by the consent records
+        if r["corpus"] == "own_recordings" and r["split"] in ("train", "valid", "test"):
+            errs.add("own_recordings rows need --consent-store (per-speaker consent records)")
+            continue
         if r["split"] in ("train", "valid"):
-            if path == "commercial" and not st.startswith("COMMERCIAL_ALLOWED"):
+            if path == "commercial" and not st.startswith("COMMERCIAL_"):
                 errs.add(f"corpus {r['corpus']} ({st}) not allowed in the commercial training path")
             if st.startswith("NOT_ALLOWED"):
                 errs.add(f"corpus {r['corpus']} is NOT_ALLOWED")
@@ -296,6 +312,7 @@ def main(argv=None):
     ap.add_argument("--commonvoice", action="append", default=[], help="ROOT:LANG")
     ap.add_argument("--segments", action="append", default=[], help="TSV:CORPUS[:LANG]")
     ap.add_argument("--generic", action="append", default=[], help="ROOT:CORPUS:LANG")
+    ap.add_argument("--consent-store", help="private JSONL of consent records for own_recordings (data/consent_schema.json)")
     ap.add_argument("--licence-path", choices=["commercial", "research"], default="commercial",
                     help="research-path models must never ship (docs/DATASET_LICENSE_MATRIX.md)")
     a = ap.parse_args(argv)
@@ -330,7 +347,11 @@ def main(argv=None):
     except LeakageError as e:
         print("LEAKAGE: " + str(e), file=sys.stderr)
         sys.exit(1)
-    lic = licence_check(split_rows, a.licence_path)
+    consents = None
+    if a.consent_store:
+        from datasets.consent import load_store
+        consents = load_store(a.consent_store)
+    lic = licence_check(split_rows, a.licence_path, consents)
     if lic:
         print("LICENCE: " + "; ".join(lic), file=sys.stderr)
         sys.exit(1)

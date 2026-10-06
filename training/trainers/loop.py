@@ -261,13 +261,22 @@ class Trainer:
     def ckpt_path(self, tag="last"):
         return os.path.join(self.out, self.stage, f"{tag}.pt")
 
-    def save(self, tag="last"):
-        os.makedirs(os.path.join(self.out, self.stage), exist_ok=True)
-        torch.save({"generator": self.model.state_dict(), "cond": self.cond.state_dict(), "disc": self.disc.state_dict(),
-                    "opt_g": self.opt_g.state_dict(), "opt_d": self.opt_d.state_dict(), "step": self.step,
-                    "stage": self.stage, "step_in_stage": self.step_in_stage, "prior": (self.prior_mu, self.prior_var),
-                    "teacher": None if self.teacher is None else self.teacher.state_dict(),
-                    "centroids": self.centroids, "tau": self.tau, "history": self.history}, self.ckpt_path(tag))
+    def save(self, tag="last", keep=3):
+        """Atomic checkpoint + sha256 sidecar (trainers/checkpoint.py). Numbered tags
+        ("step_<n>") are rotated to the newest `keep`; named tags are kept."""
+        from trainers.checkpoint import atomic_save, rotate
+        state = {"generator": self.model.state_dict(), "cond": self.cond.state_dict(), "disc": self.disc.state_dict(),
+                 "opt_g": self.opt_g.state_dict(), "opt_d": self.opt_d.state_dict(), "step": self.step,
+                 "stage": self.stage, "step_in_stage": self.step_in_stage, "prior": (self.prior_mu, self.prior_var),
+                 "teacher": None if self.teacher is None else self.teacher.state_dict(),
+                 "centroids": self.centroids, "tau": self.tau, "history": self.history,
+                 "torch_rng": torch.get_rng_state(),
+                 "cuda_rng": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None}
+        meta = {"step": self.step, "stage": self.stage, "step_in_stage": self.step_in_stage, "seed": self.seed,
+                "smoke": self.smoke, "run_info": getattr(self, "run_info", None)}
+        atomic_save(state, self.ckpt_path(tag), meta)
+        if tag.startswith("step_"):
+            rotate(os.path.dirname(self.ckpt_path(tag)), keep)
         return self.ckpt_path(tag)
 
     def load(self, path):
@@ -281,6 +290,10 @@ class Trainer:
         self.prior_mu, self.prior_var = c["prior"]
         self.history = c["history"]
         self.centroids, self.tau = c["centroids"], c["tau"]
+        if c.get("torch_rng") is not None:
+            torch.set_rng_state(c["torch_rng"])
+        if c.get("cuda_rng") is not None and torch.cuda.is_available():
+            torch.cuda.set_rng_state_all(c["cuda_rng"])
         if c["teacher"] is not None:
             self._make_teacher()
             self.teacher.load_state_dict(c["teacher"])
@@ -332,6 +345,7 @@ class Trainer:
                     self.save("last")
                     return {"aborted": ev}
             if self.step_in_stage % ckpt_every == 0 or self.step_in_stage == steps:
+                self.save(f"step_{self.step}")      # numbered, rotated (keep 3): survives a torn "last"
                 self.save("last")
             if self.step_in_stage == steps // 2 and not resume:
                 self.save("half")  # kept for the resume check

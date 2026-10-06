@@ -23,25 +23,36 @@ from collections import defaultdict
 REQUIRED = ("path", "speaker", "session", "corpus", "language", "duration", "sr", "split")
 SPLITS = {"train", "valid", "test", "attacker_train"}
 
-# Licence status per corpus, from docs/DATASET_LICENSE_MATRIX.md (official-source review, E1 only).
+# Licence status per corpus. Speech corpora mirror data/dataset_registry.json (same ids, same
+# classification; tests/test_registry.py checks it); noise/RIR and project-internal entries are
+# listed here only. Vocabulary: COMMERCIAL_SAFE | COMMERCIAL_WITH_CONDITIONS | RESEARCH_ONLY |
+# LICENSE_UNVERIFIED (docs/DATASET_EXPANSION_2026.md). Only COMMERCIAL_* may enter the
+# commercial training path (datasets/build_manifests.py licence_check).
 LICENSES = {
-    "librispeech": "LICENSE_NOT_VERIFIED (CC-BY-4.0 reported; publisher page unreachable; U1)",
-    "librittsr": "LICENSE_NOT_VERIFIED (CC-BY-4.0 reported; U1)",
-    "vctk": "COMMERCIAL_ALLOWED_WITH_CONDITIONS (CC-BY-4.0, E1)",
-    "commonvoice": "LICENSE_NOT_VERIFIED (audio CC0 E1; Mozilla Data Collective terms unread; U3)",
-    "ami": "COMMERCIAL_ALLOWED_WITH_CONDITIONS (CC-BY-4.0, E1)",
-    "voxceleb": "LICENSE_NOT_VERIFIED (video copyright with owners)",
-    "fleurs": "COMMERCIAL_ALLOWED_WITH_CONDITIONS (CC-BY-4.0, E1; evaluation only by rule)",
-    "masc": "LICENSE_NOT_VERIFIED",
-    "mgb2": "LICENSE_NOT_VERIFIED (research agreement; treat as NON_COMMERCIAL)",
-    "qasr": "NON_COMMERCIAL (cc-by-nc-2.0, E1)",
-    "sada": "NON_COMMERCIAL (CC-BY-NC-SA reported)",
-    "musan": "LICENSE_NOT_VERIFIED (CC-BY-4.0 reported)",
-    "dns_noise_freesound_cc0": "COMMERCIAL_ALLOWED (CC0 per microsoft/DNS-Challenge, E1)",
-    "openslr28_rir": "COMMERCIAL_ALLOWED_WITH_CONDITIONS (Apache-2.0 per microsoft/DNS-Challenge, E1)",
-    "own_recordings": "consent forms (project)",
-    "minilibrispeech": "CC-BY-4.0",
-    "librosa_example": "CC-BY-4.0 (LibriSpeech excerpts in the librosa/data repository; smoke runs only)",
+    "mls_en": "COMMERCIAL_WITH_CONDITIONS (Public Domain / CC-BY-4.0, E1 publisher card)",
+    "librispeech": "LICENSE_UNVERIFIED (CC-BY-4.0 reported; publisher page unreachable; U1)",
+    "librittsr": "LICENSE_UNVERIFIED (CC-BY-4.0 reported; U1)",
+    "vctk": "COMMERCIAL_WITH_CONDITIONS (CC-BY-4.0, E1)",
+    "ami": "COMMERCIAL_WITH_CONDITIONS (CC-BY-4.0, E1)",
+    "peoples_speech_cc_by": "COMMERCIAL_WITH_CONDITIONS (CC-BY per item, E1; no speaker ids: train only)",
+    "speech_commands": "COMMERCIAL_WITH_CONDITIONS (CC-BY-4.0, E1)",
+    "dns_read_speech": "COMMERCIAL_SAFE (LibriVox public domain per microsoft/DNS-Challenge, E1)",
+    "clartts": "COMMERCIAL_WITH_CONDITIONS (CC-BY-4.0, E1)",
+    "commonvoice": "LICENSE_UNVERIFIED (audio CC0 E1; Mozilla Data Collective terms unread; U3)",
+    "voxpopuli_en": "LICENSE_UNVERIFIED (CC0 + unread European Parliament legal notice)",
+    "voxceleb": "LICENSE_UNVERIFIED (video copyright with owners)",
+    "fleurs": "COMMERCIAL_WITH_CONDITIONS (CC-BY-4.0, E1; evaluation only by rule)",
+    "masc": "LICENSE_UNVERIFIED",
+    "mgb2": "RESEARCH_ONLY (QCRI research agreement, reported)",
+    "qasr": "RESEARCH_ONLY (cc-by-nc-2.0, E1)",
+    "sada": "RESEARCH_ONLY (CC-BY-NC-SA, mirror card)",
+    "casablanca": "RESEARCH_ONLY (cc-by-nc-nd-4.0, E1)",
+    "musan": "LICENSE_UNVERIFIED (CC-BY-4.0 reported)",
+    "dns_noise_freesound_cc0": "COMMERCIAL_SAFE (CC0 per microsoft/DNS-Challenge, E1)",
+    "openslr28_rir": "COMMERCIAL_WITH_CONDITIONS (Apache-2.0 per microsoft/DNS-Challenge, E1)",
+    "own_recordings": "LICENSE_UNVERIFIED until a speaker's consent record allows commercial ML training (docs/CONSENTED_RECORDING_PLAN.md)",
+    "minilibrispeech": "LICENSE_UNVERIFIED (CC-BY-4.0 reported)",
+    "librosa_example": "COMMERCIAL_WITH_CONDITIONS (CC-BY-4.0 LibriSpeech excerpts, librosa/data .toml; smoke runs only)",
     "cmuarctic": "reserved (evaluation)",
     "mssnsd": "reserved (evaluation)",
     "pyannote": "reserved (evaluation)",

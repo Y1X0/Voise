@@ -1,10 +1,14 @@
 {
- "_doc": "Speakers / subsets that must never appear in model-training or validation manifests (split train|valid). See docs/TRAINING_READINESS_GATE.md §5. Speaker ids are corpus-prefixed; corpora in 'same_speaker_space' share speaker ids.",
+ "_doc": "Speakers / subsets that must never appear in model-training or validation manifests (split train|valid). See docs/TRAINING_READINESS_GATE.md \u00a75. Speaker ids are corpus-prefixed; corpora in 'same_speaker_space' share speaker ids.",
  "same_speaker_space": {
   "libritts": "librispeech",
   "librittsr": "librispeech",
   "minilibrispeech": "librispeech",
-  "librosa_example": "librispeech"
+  "librosa_example": "librispeech",
+  "mls_en": "librispeech",
+  "librilight": "librispeech",
+  "libriheavy": "librispeech",
+  "dns_read_speech": "librispeech"
  },
  "speakers": {
   "phase1_3_evaluation_corpus": [
@@ -68,5 +72,6 @@
  ],
  "contaminated_evaluators": {
   "ge2e_resemblyzer": "trained on LibriSpeech and VoxCeleb data according to its project documentation (exact subsets to be re-checked); this overlaps any LibriSpeech/LibriTTS training data, so GE2E is reported but never decisive"
- }
+ },
+ "_doc_same_speaker_space": "LibriVox-derived corpora share LibriVox reader ids (assumption for MLS/Libri-Light/Libriheavy/DNS: verify on download by id overlap + embedding dedup; if wrong, the mapping is only over-conservative)"
 }

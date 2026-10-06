@@ -66,6 +66,10 @@ jobs:
         run: python training/tests/test_readiness.py
       - name: Data pipeline tests (augmentation, CTC targets, manifests, leakage fail-fast)
         run: python training/tests/test_data_pipeline.py
+      - name: Dataset registry, GPU profiles, resumable checkpoints
+        run: |
+          python scripts/dataset_registry_summary.py > /dev/null
+          python training/tests/test_registry.py
       - name: Validation / evaluator-role / protocol (A6) tests
         env:
           ORT_DISABLE_TELEMETRY: "1"
