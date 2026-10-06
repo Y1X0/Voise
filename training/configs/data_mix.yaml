@@ -1,0 +1,16 @@
+# Training data mix (datasets/mix.py). Each source is a VERIFIED manifest directory
+# (build_manifests.py / mls.py / arabic_import.py output with manifest_index.json).
+# language_weights = target share of training SEGMENTS per language (not of hours).
+# Every source passes the strict dataset gate for licence_path; held-out (test) speakers of
+# every source stay held-out; speaker identity must be disjoint across ALL sources
+# (canonical speaker spaces + optional embedding-dedup merges in same_person file).
+licence_path: commercial
+seed: 2026
+language_weights: {en: 0.7, ar: 0.3}
+sources:
+  - {name: mls_en_10pct, manifests: data/manifests/mls, language: en}
+  - {name: vctk, manifests: data/manifests/vctk, language: en}
+  - {name: ami, manifests: data/manifests/ami, language: en}
+  - {name: own_ar_v1, manifests: /secure/own_recordings_v1/manifests, language: ar, consent_store: /secure/consents.jsonl}
+same_person: data/manifests/same_person.json   # optional: [[speakerA, speakerB], ...] from embedding dedup
+out: data/manifests/mix_v1

@@ -208,7 +208,7 @@ class ManifestBuilder(unittest.TestCase):
             for rec in cls.consents.values():
                 f.write(json.dumps(rec) + "\n")
         cls.generic = g
-        cls.rows = (BM.build_librispeech(cls.libri, "librittsr", ["train-clean-100"])
+        cls.rows = (BM.build_librispeech(cls.libri, "mls_en", ["train-clean-100"])
                     + BM.build_librispeech(cls.attack, "librispeech", ["train-clean-360"])
                     + BM.build_generic(g, "own_recordings", "ar"))
 
@@ -246,7 +246,7 @@ class ManifestBuilder(unittest.TestCase):
 
     def test_cross_corpus_same_speaker_space_overlap_fails(self):
         rows, _ = self.split()
-        t = next(r for r in rows if r["split"] == "test" and r["corpus"] == "librittsr")
+        t = next(r for r in rows if r["split"] == "test" and r["corpus"] == "mls_en")
         sid = t["speaker"].split(":")[1]
         alias = dict(t, corpus="librispeech", speaker=f"librispeech:{sid}", subset="train-clean-100", split="train")
         alias.pop("role", None)
@@ -273,7 +273,7 @@ class ManifestBuilder(unittest.TestCase):
 
     def test_attacker_pool_speaker_dropped_from_model_splits(self):
         a = next(r for r in self.rows if r["subset"] == "train-clean-360")
-        same = dict(a, corpus="librittsr", speaker="librittsr:" + a["speaker"].split(":")[1], subset="train-clean-100",
+        same = dict(a, corpus="mls_en", speaker="mls_en:" + a["speaker"].split(":")[1], subset="train-clean-100",
                     session="77", path=a["path"] + "#x")
         rows, dropped = BM.assign_splits(self.rows + [same], 3)
         self.assertGreaterEqual(dropped.get("speaker_also_in_attacker_pool", 0), 1)
@@ -281,7 +281,7 @@ class ManifestBuilder(unittest.TestCase):
 
     def test_licence_paths(self):
         rows, _ = self.split()
-        self.assertTrue(BM.licence_check(rows, "commercial"))      # librittsr / own recordings unverified
+        self.assertTrue(BM.licence_check(rows, "commercial"))      # mls_en is COMMERCIAL_PENDING (not downloaded/verified)
         self.assertTrue(BM.licence_check(rows, "research"))        # own recordings need consent records
         self.assertEqual(BM.licence_check(rows, "research", self.consents), [])
         opted_out = [dict(r, split="train") for r in rows if r["corpus"] == "own_recordings"
@@ -289,7 +289,11 @@ class ManifestBuilder(unittest.TestCase):
         self.assertTrue(opted_out)
         self.assertTrue(any("NOT_COMMERCIAL_TRAINING_ELIGIBLE" in e for e in BM.licence_check(opted_out, "commercial", self.consents)))
         ok = [dict(r, corpus="vctk", speaker="vctk:" + r["speaker"].split(":")[1]) for r in rows]
-        self.assertEqual(BM.licence_check(ok, "commercial"), [])
+        self.assertTrue(BM.licence_check(ok, "commercial"))                       # E1 licence but provenance pending
+        prov = {"vctk": {"archive_sha256": "a" * 64, "licence_text_sha256": "b" * 64}}
+        self.assertEqual(BM.licence_check(ok, "commercial", prov=prov), [])       # verified -> admitted
+        unv = [dict(rows[0], corpus="masc", split="train")]
+        self.assertTrue(BM.licence_check(unv, "research"))                        # LICENSE_UNVERIFIED: no path at all
         nc = [dict(rows[0], corpus="qasr", split="train")]
         self.assertTrue(BM.licence_check(nc, "commercial"))
 
@@ -321,13 +325,13 @@ class ManifestBuilder(unittest.TestCase):
         out = os.path.join(self.tmp, "cli")
         script = os.path.join(TRAINING, "datasets", "build_manifests.py")
         r = subprocess.run([sys.executable, script, "--out", out, "--seed", "5",
-                            "--librispeech", f"{self.libri}:librittsr:train-clean-100",
+                            "--librispeech", f"{self.libri}:mls_en:train-clean-100",
                             "--generic", f"{self.generic}:own_recordings:ar"], capture_output=True, text=True)
         self.assertEqual(r.returncode, 1)          # default commercial path: unverified corpora refused
         self.assertIn("LICENCE", r.stderr)
         r = subprocess.run([sys.executable, script, "--out", out, "--seed", "5", "--licence-path", "research",
                             "--consent-store", self.store,
-                            "--librispeech", f"{self.libri}:librittsr:train-clean-100",
+                            "--librispeech", f"{self.libri}:mls_en:train-clean-100",
                             "--generic", f"{self.generic}:own_recordings:ar"], capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stderr)
         r = subprocess.run([sys.executable, script, "--verify", out], capture_output=True, text=True)

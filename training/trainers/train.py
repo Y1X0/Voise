@@ -55,8 +55,11 @@ def preflight(cfg, require_gpu=True):
     if t.get("units") and not os.path.exists(t["units"]):
         missing.append(f"teacher units: {t['units']} (scripts/compute_teacher_units.py)")
     for enc in d.get("speaker_encoders_train", []):
-        if not os.path.exists(os.path.join("models_train", enc)):
-            missing.append(f"training-time speaker encoder: models_train/{enc}")
+        if not os.path.exists(os.path.join("models_train", enc + ".pt")):
+            missing.append(f"training-time speaker encoder (TorchScript): models_train/{enc}.pt")
+    for key in ("train_index", "valid_index"):
+        if not os.path.exists(d.get(key, "")):
+            missing.append(f"data.{key}: {d.get(key)} (datasets/feature_cache.py)")
     if t.get("unit_teacher") and not os.path.exists(t.get("units", "")) and \
             not os.path.exists(os.path.join("models_train", t["unit_teacher"])):
         missing.append(f"unit teacher: models_train/{t['unit_teacher']} (or precomputed {t.get('units')})")
@@ -67,7 +70,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", required=True)
     ap.add_argument("--out", required=True)
-    ap.add_argument("--stage", help="run only this stage")
+    ap.add_argument("--stage", action="append", help="run only these stages (default: all four, gated)")
+    ap.add_argument("--gpu-profile", help="training/configs/gpu/<name>.yaml (t4_16gb | a100_40gb | a100_80gb)")
+    ap.add_argument("--licence-path", default=None, choices=["commercial", "research"])
+    ap.add_argument("--resume", action="store_true", help="continue from the newest valid checkpoint of each stage")
     ap.add_argument("--smoke", action="store_true",
                     help="Stage 0 smoke run (configs/smoke.yaml, placeholders, CPU allowed, NO scientific meaning)")
     a = ap.parse_args()
@@ -76,18 +82,27 @@ def main():
         r = smoke_main(a.out)
         print(json.dumps({"smoke_passed": r["passed"], "checks": r["checks"]}, indent=1, default=str))
         sys.exit(0 if r["passed"] else 1)
+    from trainers.real_run import NotReady, run
     cfg = load_config(a.config)
-    missing = preflight(cfg)
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "scripts"))
+    import orchestrate_training as OT
+    missing = OT.preflight() + preflight(cfg)        # readiness verdict + every missing prerequisite, reported together
+    if not a.gpu_profile:
+        missing.append("--gpu-profile (training/configs/gpu/<t4_16gb|a100_40gb|a100_80gb>)")
     if missing:
         print("NOT STARTING TRAINING. Missing prerequisites:", file=sys.stderr)
         for m in missing:
             print("  - " + m, file=sys.stderr)
         sys.exit(2)
-    # The training loop is written against real assets and run on the GPU machine; it is
-    # deliberately not included as executable code before those assets exist, so that
-    # nothing in this repository can produce an untrained "result".
-    print(json.dumps({"ready": True, "stages": [s["name"] for s in cfg.stages]}))
-    raise SystemExit("training loop: implement/run on the GPU machine (docs/STREAMING_NEURAL_TRAINING_PLAN.md §9)")
+    try:
+        reps = run(a.config, a.out, a.gpu_profile, a.licence_path or cfg.data.get("licence_path", "commercial"),
+                   resume=a.resume, stages=a.stage)
+    except NotReady as e:
+        print("NOT STARTING TRAINING: " + str(e), file=sys.stderr)
+        sys.exit(2)
+    print(json.dumps({s: {"passed": r["passed"], "exit_criteria": {k: v["status"] for k, v in r["exit_criteria"].items()}}
+                      for s, r in reps.items()}, indent=1))
+    sys.exit(0 if reps and all(r["passed"] for r in reps.values()) else 1)
 
 
 if __name__ == "__main__":

@@ -41,6 +41,14 @@ class AbortMonitor:
     last_eer: Optional[float] = None
     events: List[str] = field(default_factory=list)
 
+    def state_dict(self):
+        """Counters and bests (resumed with the checkpoint; the config is not part of the state)."""
+        return {k: (list(v) if isinstance(v, list) else v) for k, v in vars(self).items() if k != "cfg"}
+
+    def load_state_dict(self, d):
+        for k, v in d.items():
+            setattr(self, k, list(v) if isinstance(v, list) else v)
+
     def step(self, losses: Dict[str, float]) -> List[str]:
         ev = [f"non-finite loss {k}={v}" for k, v in losses.items() if not math.isfinite(v)]
         self.events += ev

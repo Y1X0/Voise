@@ -1,0 +1,20 @@
+{
+ "_doc": "LOCKED acceptance criteria (training/evaluation/acceptance.py). Thresholds are never changed because results are bad: a missed threshold is FAIL. The sha256 of this file is pinned in acceptance.py; any edit makes evaluation refuse to run until the pin is changed in a reviewed commit with the reason documented as PROPOSED_CHANGE (docs/TRAINING_GO_NO_GO.md).",
+ "version": 1,
+ "criteria": {
+  "informed_attacker_eer":        {"group": "privacy", "direction": "min", "threshold": 0.25, "target": 0.30, "ci_lower_min": 0.20, "desc": "A2/A3 semi-informed attacker EER, cross-session, unseen speakers"},
+  "strong_pretrained_attacker_eer": {"group": "privacy", "direction": "min", "threshold": 0.35, "target": 0.40, "ci_lower_min": 0.25, "desc": "A1: each held-out pretrained ASV (value = minimum over ASVs)"},
+  "top1_identification":          {"group": "privacy", "direction": "max", "threshold": 0.15, "target": 0.08, "min_speakers": 40, "desc": "Top-1 identification rate, >= 40 enrolled speakers"},
+  "matched_pseudo_eer":           {"group": "privacy", "direction": "min", "threshold": 0.20, "target": 0.30, "ci_lower_min": 0.15, "desc": "A6 matched pseudo-speaker (protocol S3/S4)"},
+  "multi_session_eer":            {"group": "privacy", "direction": "min", "threshold": 0.25, "target": 0.30, "desc": "A5 multi-session attacker (N = 3)"},
+  "librispeech_wer_delta_abs":    {"group": "intelligibility", "direction": "max", "threshold": 0.03, "desc": "Whisper WER on LibriSpeech test-clean: anonymised minus original (absolute)"},
+  "spontaneous_wer_rel":          {"group": "intelligibility", "direction": "max", "threshold": 0.20, "target": 0.12, "desc": "relative WER increase, spontaneous/noisy sets"},
+  "estoi":                        {"group": "intelligibility", "direction": "min", "threshold": 0.55},
+  "human_mos":                    {"group": "quality", "direction": "min", "threshold": 3.0, "min_raters": 20, "desc": "human listening test (MOS), anonymised output"},
+  "algorithmic_latency_ms":       {"group": "realtime", "direction": "max", "threshold": 50.0},
+  "android_rtf":                  {"group": "realtime", "direction": "max_exclusive", "threshold": 0.5, "requires_device": true, "desc": "real-time factor on a representative Android big core (real device only)"},
+  "int8_model_mb":                {"group": "model", "direction": "max", "threshold": 50.0},
+  "streaming_causal":             {"group": "realtime", "direction": "true", "desc": "causal streaming == full-sequence, no full-utterance dependency"},
+  "no_cloud_dependency":          {"group": "privacy_runtime", "direction": "true", "desc": "strict runtime audit passes, no network permission, no runtime network dependency"}
+ }
+}

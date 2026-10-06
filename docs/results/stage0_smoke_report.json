@@ -8,69 +8,15 @@
   "no CTC transcripts"
  ],
  "data": "3 LibriSpeech excerpts (CC-BY-4.0) from github.com/librosa/data, 45 s, 2 train + 1 valid speaker",
- "stages": {
-  "content_distillation": {
-   "main_loss": "unit_ce",
-   "main_loss_first10": 3.475530815124512,
-   "main_loss_last10": 3.1764899015426638,
-   "exit_criteria": {
-    "S1_loss_decreases": true,
-    "S2_all_trainable_modules_have_gradient": true,
-    "S3_no_abort": true
-   },
-   "passed": true,
-   "steps": 150,
-   "seconds": 7.745806694030762
-  },
-  "reconstruction": {
-   "main_loss": "mel_l1",
-   "main_loss_first10": 3.511050891876221,
-   "main_loss_last10": 1.6457966923713685,
-   "exit_criteria": {
-    "S1_loss_decreases": true,
-    "S2_all_trainable_modules_have_gradient": true,
-    "S3_no_abort": true
-   },
-   "passed": true,
-   "steps": 80,
-   "seconds": 31.816157579421997
-  },
-  "anonymization": {
-   "main_loss": "mel_l1",
-   "main_loss_first10": 1.6627466201782226,
-   "main_loss_last10": 1.37179434299469,
-   "exit_criteria": {
-    "S1_loss_decreases": true,
-    "S2_all_trainable_modules_have_gradient": true,
-    "S3_no_abort": true
-   },
-   "passed": true,
-   "steps": 60,
-   "seconds": 44.922431230545044
-  }
- },
- "checks": {
-  "S4_resume_bit_exact": true,
-  "S4_max_param_diff": 0.0,
-  "S5_streaming_equals_full": true,
-  "S5_max_diff": 6.198883056640625e-06,
-  "S6_onnx_matches_torch": true,
-  "S6_max_abs_diff": 3.337860107421875e-06,
-  "S7_int8_runs_finite": true,
-  "S7_int8_bytes": 7245981,
-  "S7_float_nodes_kept": 30,
-  "S8_stage_reports_complete": true
- },
- "passed": true,
  "run_info": {
   "seed": 1234,
-  "git_sha": "1a5dee07e4da8479bd1681e477fc8ae5a8db3304",
+  "smoke": true,
+  "git_sha": "a314b8bc5c831037e8f4ed0f7c29c2f2c1eff96c",
   "git_dirty": true,
-  "config_sha256": "8d4c14af10972f6fec96bc8e9789ed2adea841adbf76ec4d09d4df3671a7eb03",
+  "config_sha256": "c182613bca4ae037149aefdf2c07fd299ae84c3eeeecffd97e0b7f825d03863e",
   "manifest_sha256": {
    "smoke_manifest.jsonl": "2071bf3cf6db9b650c2c9888199d0d2a1db755b4ddd4dc2372a4cca1086689e3"
   },
-  "env_lock_sha256": "d68a1b69974ecee048e46dbaec8918d0befafa53a234ab14f9636c27a4d7bf9a",
   "env": {
    "python": "3.11.15",
    "platform": "Linux-6.18.44-fc-v70-x86_64-with-glibc2.39",
@@ -81,6 +27,77 @@
    "quantization": "onnxruntime.quantization 1.30.0",
    "cuda": "13.0",
    "gpu": null
+  },
+  "env_lock_sha256": "d68a1b69974ecee048e46dbaec8918d0befafa53a234ab14f9636c27a4d7bf9a"
+ },
+ "stages": {
+  "content_distillation": {
+   "main_loss": "unit_ce",
+   "main_loss_first10": 3.4755307912826536,
+   "main_loss_last10": 3.1765352725982665,
+   "exit_criteria": {
+    "S1_loss_decreases": true,
+    "S2_all_trainable_modules_have_gradient": true,
+    "S3_no_abort": true
+   },
+   "passed": true,
+   "steps": 150,
+   "seconds": 8.411974668502808
+  },
+  "reconstruction": {
+   "main_loss": "mel_l1",
+   "main_loss_first10": 3.506602478027344,
+   "main_loss_last10": 1.596407449245453,
+   "exit_criteria": {
+    "S1_loss_decreases": true,
+    "S2_all_trainable_modules_have_gradient": true,
+    "S3_no_abort": true
+   },
+   "passed": true,
+   "steps": 80,
+   "seconds": 35.299264907836914
+  },
+  "anonymization": {
+   "main_loss": "mel_l1",
+   "main_loss_first10": 1.5856653094291686,
+   "main_loss_last10": 1.3710910201072692,
+   "exit_criteria": {
+    "S1_loss_decreases": true,
+    "S2_all_trainable_modules_have_gradient": true,
+    "S3_no_abort": true
+   },
+   "passed": true,
+   "steps": 60,
+   "seconds": 49.64745235443115
+  },
+  "qat_int8": {
+   "main_loss": "mel_l1",
+   "main_loss_first10": 1.3241868376731873,
+   "main_loss_last10": 1.3516673684120177,
+   "exit_criteria": {
+    "S1_loss_decreases": true,
+    "S2_all_trainable_modules_have_gradient": true,
+    "S3_no_abort": true
+   },
+   "passed": true,
+   "steps": 20,
+   "seconds": 10.036186456680298
   }
- }
+ },
+ "checks": {
+  "S4_resume_bit_exact": true,
+  "S4_max_param_diff": 0.0,
+  "S9_qat_weights_int8_grid": true,
+  "S9_qat_max_grid_error": 7.62939453125e-06,
+  "S9_vq_index_agreement_vs_preqat": 0.8799999952316284,
+  "S5_streaming_equals_full": true,
+  "S5_max_diff": 4.76837158203125e-06,
+  "S6_onnx_matches_torch": true,
+  "S6_max_abs_diff": 3.0994415283203125e-06,
+  "S7_int8_runs_finite": true,
+  "S7_int8_bytes": 7245981,
+  "S7_float_nodes_kept": 30,
+  "S8_stage_reports_complete": true
+ },
+ "passed": true
 }

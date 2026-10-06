@@ -70,6 +70,8 @@ stages:
   steps: 80
 - name: anonymization
   steps: 60
+- name: qat_int8
+  steps: 20
 pseudo_speaker:
   pool_size: 10000
   dim: 128

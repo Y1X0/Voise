@@ -19,7 +19,20 @@ from models.frontend import CausalLogMel, istft_ola
 from models.stream_anon import StreamAnon
 from trainers.abort import AbortConfig, AbortMonitor
 
-STAGES = ("content_distillation", "reconstruction", "anonymization")
+STAGES = ("content_distillation", "reconstruction", "anonymization", "qat_int8")
+MODEL_VERSION = "StreamAnon/1"            # bump on any architecture change that breaks checkpoints
+QAT_BLOCKS = ("enc_in", "enc", "dec_in", "dec")   # same blocks as INT8 export; to_bn / VQ / head stay float
+
+
+class FakeQuantPerChannel(torch.nn.Module):
+    """Symmetric per-output-channel INT8 weight fake-quantisation with a straight-through
+    estimator (stage-4 QAT). Matches the dynamic per-channel INT8 used at export."""
+
+    def forward(self, w):
+        dims = tuple(range(1, w.dim()))
+        scale = w.detach().abs().amax(dim=dims, keepdim=True).clamp_min(1e-8) / 127.0
+        q = torch.clamp(torch.round(w / scale), -127, 127) * scale
+        return w + (q - w).detach()
 
 
 class Trainer:
@@ -35,11 +48,17 @@ class Trainer:
         self.disc = Discriminators(scale=disc_scale).to(device)
         self.mel = CausalLogMel(m.sr, m.win, m.hop, m.n_mels).to(device)
         og, od = cfg.optim.get("generator", {}), cfg.optim.get("discriminator", {})
+        self.grad_clip = cfg.optim.get("grad_clip")
         self.opt_g = torch.optim.AdamW(list(self.model.parameters()) + list(self.cond.parameters()),
                                        lr=og.get("lr", 2e-4), betas=tuple(og.get("betas", (0.8, 0.99))),
                                        weight_decay=og.get("weight_decay", 0.0))
         self.opt_d = torch.optim.AdamW(self.disc.parameters(), lr=od.get("lr", 2e-4), betas=tuple(od.get("betas", (0.8, 0.99))))
+        decay = float(cfg.optim.get("lr_decay", 1.0))
+        self.sched_g = torch.optim.lr_scheduler.ExponentialLR(self.opt_g, gamma=decay)
+        self.sched_d = torch.optim.lr_scheduler.ExponentialLR(self.opt_d, gamma=decay)
         self.w = cfg.losses
+        self.qat_enabled = False
+        self.run_info = None
         self.monitor = AbortMonitor(AbortConfig(**cfg.raw.get("abort", {})))
         self.step = 0
         self.step_in_stage = 0
@@ -83,18 +102,69 @@ class Trainer:
             return contextlib.nullcontext()
         return torch.autocast(device_type="cuda" if self.dev.startswith("cuda") else "cpu", dtype=self.amp_dtype)
 
+    def _clip(self, opt):
+        if self.grad_clip:
+            params = [p for g in opt.param_groups for p in g["params"] if p.grad is not None]
+            torch.nn.utils.clip_grad_norm_(params, float(self.grad_clip))
+
     def _opt_step(self, loss, opt, scaler, check=True):
         opt.zero_grad(set_to_none=True)
         if scaler.is_enabled():
             scaler.scale(loss).backward()
             scaler.unscale_(opt)        # inf/nan steps are skipped by the scaler (expected occasionally in fp16)
+            self._clip(opt)
             scaler.step(opt)
             scaler.update()
             return
         loss.backward()
         if check:
             self._check_grads()
+        self._clip(opt)
         opt.step()
+
+    # ------------------------------------------------------------------ QAT (stage 4)
+    def _qat_modules(self):
+        from torch.nn.utils import parametrize
+        mods = []
+        for name in QAT_BLOCKS:
+            root = getattr(self.model, name, None)
+            if root is None:
+                continue
+            for m in root.modules():
+                if isinstance(m, (torch.nn.Conv1d, torch.nn.Linear)) and (
+                        parametrize.is_parametrized(m, "weight") or "weight" in dict(m.named_parameters(recurse=False))):
+                    mods.append(m)
+        return mods
+
+    def enable_qat(self):
+        from torch.nn.utils import parametrize
+        if self.qat_enabled:
+            return
+        for m in self._qat_modules():
+            parametrize.register_parametrization(m, "weight", FakeQuantPerChannel())
+        self.qat_enabled = True
+        # optimiser param refs are unchanged: the parametrisation keeps the original tensor as .original
+
+    def bake_qat(self):
+        """Replace fake-quant parametrisations by their (INT8-representable) values for export."""
+        from torch.nn.utils import parametrize
+        for m in self._qat_modules():
+            if parametrize.is_parametrized(m, "weight"):
+                parametrize.remove_parametrizations(m, "weight", leave_parametrized=True)
+        self.qat_enabled = False
+
+    def checkpoint_meta(self):
+        """Provenance stored IN every checkpoint and its sidecar."""
+        import hashlib
+        import json as _json
+        ri = self.run_info or {}
+        mcfg = dict(vars(self.cfg.model)) if hasattr(self.cfg.model, "__dict__") else dict(self.cfg.model)
+        return {"model_version": MODEL_VERSION, "model_class": type(self.model).__name__,
+                "model_cfg_sha256": hashlib.sha256(_json.dumps(mcfg, sort_keys=True, default=str).encode()).hexdigest(),
+                "n_params_generator": sum(p.numel() for p in self.model.parameters()),
+                "config_sha256": ri.get("config_sha256"), "manifest_sha256": ri.get("manifest_sha256"),
+                "git_sha": ri.get("git_sha"), "git_dirty": ri.get("git_dirty"), "env_lock_sha256": ri.get("env_lock_sha256"),
+                "gpu": (ri.get("env") or {}).get("gpu"), "precision": self.precision, "qat": self.qat_enabled}
 
     # ------------------------------------------------------------------ helpers
     def _freeze(self, stage):
@@ -102,7 +172,9 @@ class Trainer:
                self.model.unit_head, self.model.ctc_head]
         dec = [self.model.pros, self.model.dec_in, self.model.dec, self.model.dec_norm, self.model.head, self.cond]
         adv = [self.model.spk_head, self.model.hist_head]
-        train = {"content_distillation": enc, "reconstruction": dec, "anonymization": enc + dec + adv}[stage]
+        train = {"content_distillation": enc, "reconstruction": dec, "anonymization": enc + dec + adv,
+                 # QAT: VQ codebook and unit/CTC heads stay frozen (no loss reaches them in stage 4)
+                 "qat_int8": [self.model.enc_in, self.model.enc, self.model.gru, self.model.to_bn] + dec}[stage]
         for p in self.model.parameters():
             p.requires_grad_(False)
         for p in self.cond.parameters():
@@ -149,7 +221,8 @@ class Trainer:
     def step_content(self, b):
         mel = self.mel(b["wav"].to(self.dev))
         out = self.model.training_heads(mel, grl_lambda=0.0)
-        units = self.assets.units(mel)
+        units = b["units"].to(self.dev) if "units" in b else self.assets.units(mel)
+        units = units[:, :mel.shape[1]]
         d = self.cfg.model.delay_frames
         terms = {"unit_ce": L.unit_ce(out["unit_logits"][:, d:], units[:, :units.shape[1] - d])}
         if "z_e" in out:
@@ -245,6 +318,26 @@ class Trainer:
         acc = float((heads["spk_logits"].argmax(-1) == spk).float().mean())
         return {k: float(v) for k, v in terms.items()} | {"disc": d_loss, "grl_lambda": lam, "adv_acc": acc}
 
+    def step_qat(self, b):
+        """Stage 4: fine-tune with INT8 fake-quantised encoder/decoder weights (no GAN; losses
+        from the config's qat_int8 stage: mel_l1, mrstft, content_output, speaker_suppression)."""
+        terms, y_a, x_a = self._recon_terms(b)
+        x = b["wav"].to(self.dev)
+        mel, pros = self.mel(x), b["prosody"].to(self.dev)
+        g = torch.Generator().manual_seed(self.seed * 7919 + self.step)
+        s_p = self.prior_mu + self.prior_var.sqrt() * torch.randn(x.shape[0], self.cfg.model.spk_dim, generator=g)
+        yp_a, _ = self._align(self._render(mel, pros, s_p), x)
+        mel_y = self.mel(yp_a)
+        with torch.no_grad():
+            t_in = self.teacher(mel)
+        terms["content_output"] = L.content_output(self.teacher(mel_y), t_in)
+        e_src = [E(mel).detach() for E in self.assets.speaker_encoders]
+        e_out = [E(mel_y) for E in self.assets.speaker_encoders]
+        terms["speaker_suppression"] = L.speaker_suppression(e_out, e_src, self.w.get("speaker_suppression", {}).get("margin", 0.25))
+        loss = sum(self._weight(k) * v for k, v in terms.items())
+        self._opt_step(loss, self.opt_g, self.scaler_g)
+        return {k: float(v) for k, v in terms.items()}
+
     def _check_grads(self):
         bad = [n for n, p in list(self.model.named_parameters()) + list(self.cond.named_parameters())
                if p.grad is not None and not torch.isfinite(p.grad).all()]
@@ -261,6 +354,7 @@ class Trainer:
         m = {"vq_codes": self.cfg.model.vq_codes, "step_in_stage": self.step_in_stage}
         if out.get("vq_idx") is not None:
             m["vq_perplexity"] = float(out["vq_perplexity"])
+            m["vq_perplexity_frac"] = float(out["vq_perplexity"]) / self.cfg.model.vq_codes
             used = int((torch.bincount(out["vq_idx"].flatten(), minlength=self.cfg.model.vq_codes) > 0).sum())
             m["code_usage_frac"] = used / min(self.cfg.model.vq_codes, out["vq_idx"].numel())  # of what is possible
             m["vq_codes"] = min(self.cfg.model.vq_codes, out["vq_idx"].numel())
@@ -304,9 +398,12 @@ class Trainer:
                  "centroids": self.centroids, "tau": self.tau, "history": self.history,
                  "torch_rng": torch.get_rng_state(), "precision": self.precision,
                  "scaler_g": self.scaler_g.state_dict(), "scaler_d": self.scaler_d.state_dict(),
-                 "cuda_rng": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None}
+                 "cuda_rng": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None,
+                 "sched_g": self.sched_g.state_dict(), "sched_d": self.sched_d.state_dict(),
+                 "monitor": self.monitor.state_dict() if hasattr(self.monitor, "state_dict") else None,
+                 "meta": self.checkpoint_meta()}
         meta = {"step": self.step, "stage": self.stage, "step_in_stage": self.step_in_stage, "seed": self.seed,
-                "smoke": self.smoke, "run_info": getattr(self, "run_info", None)}
+                "smoke": self.smoke, **self.checkpoint_meta()}
         atomic_save(state, self.ckpt_path(tag), meta)
         if tag.startswith("step_"):
             rotate(os.path.dirname(self.ckpt_path(tag)), keep)
@@ -314,6 +411,11 @@ class Trainer:
 
     def load(self, path):
         c = torch.load(path, map_location=self.dev, weights_only=False)
+        meta = c.get("meta") or {}
+        if meta.get("model_version", MODEL_VERSION) != MODEL_VERSION:
+            raise ValueError(f"checkpoint model_version {meta.get('model_version')} != {MODEL_VERSION}")
+        if meta.get("qat"):
+            self.enable_qat()
         self.model.load_state_dict(c["generator"])
         self.cond.load_state_dict(c["cond"])
         self.disc.load_state_dict(c["disc"])
@@ -323,6 +425,11 @@ class Trainer:
         self.prior_mu, self.prior_var = c["prior"]
         self.history = c["history"]
         self.centroids, self.tau = c["centroids"], c["tau"]
+        if c.get("monitor"):
+            self.monitor.load_state_dict(c["monitor"])
+        if c.get("sched_g"):
+            self.sched_g.load_state_dict(c["sched_g"])
+            self.sched_d.load_state_dict(c["sched_d"])
         if c.get("scaler_g"):
             self.scaler_g.load_state_dict(c["scaler_g"])
             self.scaler_d.load_state_dict(c["scaler_d"])
@@ -347,6 +454,12 @@ class Trainer:
             if self.teacher is None:
                 self._make_teacher()
             self.centroids, self.tau = self.assets.protected_centroids(self.train_data, self.mel)
+        if stage == "qat_int8":
+            if self.teacher is None:
+                self._make_teacher()
+            if self.centroids is None:
+                self.centroids, self.tau = self.assets.protected_centroids(self.train_data, self.mel)
+            self.enable_qat()
 
     def run_stage(self, stage, steps, log_every=10, val_every=50, ckpt_every=50, resume=False):
         if not resume:
@@ -354,16 +467,23 @@ class Trainer:
             check_stage_gate(self.out, stage, STAGES)   # stage n+1 only after stage n passed
             self.begin_stage(stage)
         else:
+            if stage == "qat_int8":
+                self.enable_qat()
             self._freeze(stage)
         fn = {"content_distillation": self.step_content, "reconstruction": self.step_recon,
-              "anonymization": self.step_anon}[stage]
+              "anonymization": self.step_anon, "qat_int8": self.step_qat}[stage]
         t0 = time.time()
+        from datasets.stream_sampler import prefetching_batches
+        batches = prefetching_batches(self.train_data, self.step, max(0, steps - self.step_in_stage), self.bs,
+                                      int(self.cfg.data.get("num_workers", 0) or 0))
         while self.step_in_stage < steps:
-            b = self.train_data.batch(self.step, self.bs)
+            b = next(batches)                       # == self.train_data.batch(self.step, self.bs)
             with self._amp():
                 logs = fn(b)
             ev = self.monitor.step({k: v for k, v in logs.items() if isinstance(v, float)})
             self.history[stage].append(logs)
+            self.sched_g.step()
+            self.sched_d.step()
             self.step += 1
             self.step_in_stage += 1
             if ev:

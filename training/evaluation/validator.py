@@ -245,6 +245,11 @@ class Validator:
             m[f"{s.name}/wer_anon"], m[f"{s.name}/cer_anon"] = w_an, c_an
             m[f"{s.name}/wer_recon"] = w_rc
             m[f"{s.name}/wer_rel_increase"] = (w_an - w_in) / max(w_in, 0.02)
+        rel = [m[f"{s.name}/wer_rel_increase"] for s in self.asr]
+        if rel:
+            m["wer_rel_increase"] = float(max(rel))
+            m["wer_recon_rel"] = float(max((m[f"{s.name}/wer_recon"] - m[f"{s.name}/wer_input"]) / max(m[f"{s.name}/wer_input"], 0.02)
+                                           for s in self.asr))
         eers = []
         for s in self.asv:
             m.update(self._asv_metrics(s, anon))

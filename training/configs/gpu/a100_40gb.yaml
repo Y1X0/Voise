@@ -1,0 +1,21 @@
+# GPU profile: NVIDIA A100 40 GB. Labels as in t4_16gb.yaml.
+name: a100_40gb
+gpu: {value: "NVIDIA A100 40GB", label: NOT_VERIFIED}
+vram_gb: {value: 40, label: NOT_VERIFIED}
+peak_bf16_tflops: {value: 312, label: NOT_VERIFIED}
+precision: {value: bf16, label: ESTIMATED, note: "bf16 autocast, no loss scaling"}
+batch_size: {value: 16, label: ESTIMATED, note: "configs keep 16 (hyper-parameters fixed); 32 would fit (~22-26 GB) but changes the GAN recipe -> ablation only"}
+grad_accumulation: {value: 1, label: ESTIMATED}
+num_workers: {value: 8, label: ESTIMATED}
+checkpoint_every_steps: {value: 2000, label: ESTIMATED}
+memory_gb_by_stage:
+  content_distillation: {value: [2.0, 3.0], label: ESTIMATED, note: "0.16 GB activations MEASURED + 0.33 GB params/grads/Adam MEASURED + 1.5-2.5 GB CUDA context/workspace ASSUMED"}
+  reconstruction: {value: [7.5, 8.5], label: ESTIMATED, note: "5.66 GB activations MEASURED + overhead"}
+  anonymization: {value: [10.7, 12.7], label: ESTIMATED}
+  qat_int8: {value: [7.5, 12.7], label: ESTIMATED, note: "not measured separately; bounded by stages 2 and 3"}
+seconds_per_step:
+  content_distillation: {value: [0.0007, 0.0014], label: ESTIMATED, note: "I/O bound in practice"}
+  reconstruction: {value: [0.066, 0.13], label: ESTIMATED}
+  anonymization: {value: [0.11, 0.21], label: ESTIMATED}
+  qat_int8: {value: [0.066, 0.13], label: ESTIMATED}
+training_hours_full_programme: {value: [62, 141], label: ESTIMATED, note: "x1.3 contingency"}

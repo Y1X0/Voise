@@ -44,7 +44,7 @@ from collections import defaultdict
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 from datasets.leakage import canonical, check as leakage_check, load_exclusions  # noqa: E402
-from datasets.manifest import LICENSES, validate  # noqa: E402
+from datasets.manifest import validate  # noqa: E402
 
 AUDIO = (".wav", ".flac", ".mp3", ".ogg")
 
@@ -228,27 +228,19 @@ def assert_no_leakage(rows):
         raise LeakageError("; ".join(errs[:20]))
 
 
-def licence_check(rows, path, consents=None):
-    """commercial path: every train/valid row must come from a corpus whose recorded status is
-    COMMERCIAL_SAFE or COMMERCIAL_WITH_CONDITIONS (docs/DATASET_EXPANSION_2026.md). research path:
-    anything except NOT_ALLOWED. own_recordings rows are additionally checked per speaker
-    (consent record must allow commercial ML training) by consent.check_rows."""
-    errs = set()
-    if consents is not None:
+def licence_check(rows, path, consents=None, prov=None):
+    """Strict dataset gate (datasets/gate.py): commercial path admits only COMMERCIAL_VERIFIED
+    corpora and consent-eligible own recordings; research path also COMMERCIAL_PENDING and
+    RESEARCH_ONLY. LICENSE_UNVERIFIED / unknown corpora are NOT_ELIGIBLE on every path.
+    own_recordings rows always need per-speaker consent records (datasets/consent.py)."""
+    from datasets.gate import check_rows as gate_rows
+    errs = set(gate_rows([r for r in rows if r["corpus"] != "own_recordings"], path, prov))
+    own = [r for r in rows if r["corpus"] == "own_recordings"]
+    if own and consents is None:
+        errs.add("own_recordings rows need --consent-store (per-speaker consent records)")
+    elif own:
         from datasets.consent import check_rows
-        errs.update(check_rows(rows, consents, path))
-    for r in rows:
-        st = LICENSES.get(r["corpus"], "LICENSE_UNVERIFIED")
-        if r["corpus"] == "own_recordings" and consents is not None:
-            continue                     # governed per speaker by the consent records
-        if r["corpus"] == "own_recordings" and r["split"] in ("train", "valid", "test"):
-            errs.add("own_recordings rows need --consent-store (per-speaker consent records)")
-            continue
-        if r["split"] in ("train", "valid"):
-            if path == "commercial" and not st.startswith("COMMERCIAL_"):
-                errs.add(f"corpus {r['corpus']} ({st}) not allowed in the commercial training path")
-            if st.startswith("NOT_ALLOWED"):
-                errs.add(f"corpus {r['corpus']} is NOT_ALLOWED")
+        errs.update(check_rows(own, consents, path))
     return sorted(errs)
 
 

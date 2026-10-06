@@ -11,6 +11,8 @@ then checks:
   S6 ONNX export of the trained weights matches PyTorch (streaming, state I/O)
   S7 INT8 export runs, is finite, keeps the bottleneck/VQ/head in float, < 30 MB
   S8 every stage report contains all mandatory reproducibility fields
+  S9 stage-4 QAT: baked weights lie on the INT8 grid; VQ index agreement vs pre-QAT recorded
+Stages 1-4 run (content distillation, reconstruction, anonymisation, QAT/INT8).
 Output: <out>/smoke_report.json (+ per-stage reports and checkpoints, git-ignored).
 """
 import copy
@@ -36,7 +38,7 @@ from trainers.config import load_config  # noqa: E402
 from trainers.loop import STAGES, Trainer  # noqa: E402
 from trainers.run_info import sha256_file, validate_report, write_run_info  # noqa: E402
 
-MAIN_LOSS = {"content_distillation": "unit_ce", "reconstruction": "mel_l1", "anonymization": "mel_l1"}
+MAIN_LOSS = {"content_distillation": "unit_ce", "reconstruction": "mel_l1", "anonymization": "mel_l1", "qat_int8": "mel_l1"}
 NOT_MEASURED = "NOT_MEASURED: smoke run with placeholder assets has no scientific meaning"
 
 
@@ -75,12 +77,16 @@ def main(out_dir, config=os.path.join(TRAINING, "configs", "smoke.yaml")):
     rows = read(man)
     assert not validate(rows) and not leakage_check(rows), "smoke manifest invalid"
     info = write_run_info(out_dir, ROOT, cfg.raw, [man], seed, smoke=True)
+    tr.run_info = info
     report = {"smoke": True, "scientific_claims_allowed": False, "placeholders": SmokeAssets.PLACEHOLDERS,
               "data": "3 LibriSpeech excerpts (CC-BY-4.0) from github.com/librosa/data, 45 s, 2 train + 1 valid speaker",
               "run_info": info, "stages": {}, "checks": {}}
     steps = {s["name"]: s["steps"] for s in cfg.stages}
+    anon_state = None
     for stage in STAGES:
         res = tr.run_stage(stage, steps[stage], val_every=20, ckpt_every=steps[stage] // 2)
+        if stage == "anonymization":
+            anon_state = copy.deepcopy(tr.model.state_dict())       # S4 reference (before QAT changes weights)
         hist = [h[MAIN_LOSS[stage]] for h in tr.history[stage]]
         first, last = float(np.mean(hist[:10])), float(np.mean(hist[-10:]))
         grads = trainable_grad_report(tr)
@@ -93,7 +99,7 @@ def main(out_dir, config=os.path.join(TRAINING, "configs", "smoke.yaml")):
               "privacy": NOT_MEASURED, "intelligibility": NOT_MEASURED,
               "main_loss": MAIN_LOSS[stage], "main_loss_first10": first, "main_loss_last10": last,
               "grad_norms_last_step": grads, "abort_events": res["aborted"], "seconds": res.get("seconds"),
-              "exit_criteria": {"S1_loss_decreases": last < first,
+              "exit_criteria": {"S1_loss_decreases": (last < first) if stage != "qat_int8" else (last <= 1.05 * first),
                                 "S2_all_trainable_modules_have_gradient": all(v > 0 for v in grads.values()),
                                 "S3_no_abort": not res["aborted"]}}
         sr["passed"] = all(sr["exit_criteria"].values())
@@ -112,11 +118,28 @@ def main(out_dir, config=os.path.join(TRAINING, "configs", "smoke.yaml")):
     if os.path.exists(half):
         tr2.load(half)
         tr2.run_stage("anonymization", steps["anonymization"], val_every=20, ckpt_every=10 ** 9, resume=True)
-        diff = max(float((a - b).abs().max()) for a, b in zip(tr.model.state_dict().values(), tr2.model.state_dict().values()))
+        diff = max(float((a - b).abs().max()) for a, b in zip(anon_state.values(), tr2.model.state_dict().values()))
         report["checks"]["S4_resume_bit_exact"] = diff == 0.0
         report["checks"]["S4_max_param_diff"] = diff
 
-    # S5 streaming == full on the trained generator
+    # S9 QAT: fake-quant weights are INT8-representable after baking; record index agreement vs pre-QAT
+    tr.bake_qat()
+    worst_grid = 0.0
+    for mod in tr._qat_modules():
+        w = mod.weight.detach()
+        scale = w.abs().amax(dim=tuple(range(1, w.dim())), keepdim=True).clamp_min(1e-8) / 127.0
+        worst_grid = max(worst_grid, float(((w / scale) - torch.round(w / scale)).abs().max()))
+    report["checks"]["S9_qat_weights_int8_grid"] = bool(tr._qat_modules()) and worst_grid < 1e-3
+    report["checks"]["S9_qat_max_grid_error"] = worst_grid
+    ref_model = copy.deepcopy(tr.model)
+    ref_model.load_state_dict(anon_state)
+    with torch.no_grad():
+        mel9 = torch.randn(1, 50, 80, generator=torch.Generator().manual_seed(9))
+        i_q = tr.model.training_heads(mel9, grl_lambda=0.0).get("vq_idx")
+        i_f = ref_model.training_heads(mel9, grl_lambda=0.0).get("vq_idx")
+    report["checks"]["S9_vq_index_agreement_vs_preqat"] = None if i_q is None else float((i_q == i_f).float().mean())
+
+    # S5 streaming == full on the trained (QAT-baked) generator
     m = tr.model.eval()
     g = torch.Generator().manual_seed(0)
     mel, pros, spk = torch.randn(1, 37, 80, generator=g), torch.randn(1, 37, 3, generator=g), torch.randn(1, 128, generator=g)
@@ -156,9 +179,9 @@ def main(out_dir, config=os.path.join(TRAINING, "configs", "smoke.yaml")):
     report["checks"]["S7_float_nodes_kept"] = len(float_nodes(onnx_path))
     report["checks"]["S8_stage_reports_complete"] = all(
         os.path.exists(os.path.join(out_dir, s, "stage_report.json")) for s in STAGES)
-    report["passed"] = (all(v["passed"] for v in report["stages"].values()) and len(report["stages"]) == 3
+    report["passed"] = (all(v["passed"] for v in report["stages"].values()) and len(report["stages"]) == len(STAGES)
                         and all(v for k, v in report["checks"].items() if k.split("_")[0] in
-                                ("S4", "S5", "S6", "S7", "S8") and isinstance(v, bool)))
+                                ("S4", "S5", "S6", "S7", "S8", "S9") and isinstance(v, bool)))
     json.dump(report, open(os.path.join(out_dir, "smoke_report.json"), "w"), indent=1, default=str)
     return report
 

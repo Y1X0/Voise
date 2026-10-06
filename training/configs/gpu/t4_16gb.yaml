@@ -1,0 +1,25 @@
+# GPU profile: NVIDIA T4 16 GB (e.g. Kaggle / GitHub GPU runner / HF T4). Every value carries a label:
+#   MEASURED      measured in this repository (docs/results/*.json)
+#   ESTIMATED     derived from measurements + stated assumptions (NOT verified compute)
+#   NOT_VERIFIED  vendor / provider figure not checked on real hardware here
+# Estimated hours are never "verified compute". Training code: trainers/gpu_profile.py.
+name: t4_16gb
+gpu: {value: "NVIDIA Tesla T4", label: NOT_VERIFIED}
+vram_gb: {value: 16, label: NOT_VERIFIED}
+peak_fp16_tflops: {value: 65, label: NOT_VERIFIED}
+precision: {value: fp16, label: ESTIMATED, note: "T4 has no bf16 tensor cores; fp16 autocast + GradScaler (trainers/loop.py)"}
+batch_size: {value: 16, label: ESTIMATED, note: "stage-3 activations MEASURED 7.8 GB half at b16 (CPU saved-tensor bytes) + 2.9-4.9 GB ESTIMATED overhead = 10.7-12.7 GB"}
+grad_accumulation: {value: 1, label: ESTIMATED, note: "not needed at b16; accumulation is not implemented in the GAN loop"}
+num_workers: {value: 4, label: ESTIMATED}
+checkpoint_every_steps: {value: 1000, label: ESTIMATED, note: "~5-17 min of T4 time per interval"}
+memory_gb_by_stage:
+  content_distillation: {value: [2.0, 3.0], label: ESTIMATED, note: "0.16 GB activations MEASURED + 0.33 GB params/grads/Adam MEASURED + 1.5-2.5 GB CUDA context/workspace ASSUMED"}
+  reconstruction: {value: [7.5, 8.5], label: ESTIMATED, note: "5.66 GB activations MEASURED + overhead"}
+  anonymization: {value: [10.7, 12.7], label: ESTIMATED}
+  qat_int8: {value: [7.5, 12.7], label: ESTIMATED, note: "not measured separately; bounded by stages 2 and 3"}
+seconds_per_step:   # FLOPs/step MEASURED (docs/results/training_cost_measured.json) / (peak x MFU 10-20 %)
+  content_distillation: {value: [0.003, 0.006], label: ESTIMATED, note: "compute-trivial; I/O bound in practice"}
+  reconstruction: {value: [0.32, 0.63], label: ESTIMATED}
+  anonymization: {value: [0.52, 1.03], label: ESTIMATED}
+  qat_int8: {value: [0.32, 0.63], label: ESTIMATED}
+training_hours_full_programme: {value: [300, 680], label: ESTIMATED, note: "incl. ablations, encoders, attackers, x1.3 contingency"}

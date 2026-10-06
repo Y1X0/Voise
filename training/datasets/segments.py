@@ -44,10 +44,12 @@ def utterance_features(wav, sr=16000, hop=160, win=320, smooth_frames=1, bins=0)
 
 class SegmentSampler:
     def __init__(self, manifest, split, seg_seconds=2.0, sr=16000, hop=160, seed=0, root=None,
-                 smooth_frames=1, bins=0):
+                 smooth_frames=1, bins=0, licence_path="smoke"):
         rows = [r for r in read(manifest) if r["split"] == split]
         if not rows:
             raise ValueError(f"no rows with split={split} in {manifest}")
+        from datasets.gate import assert_trainable          # in-memory sampler: smoke / small sets only
+        assert_trainable({r["corpus"] for r in rows}, licence_path, split)
         root = root or os.path.dirname(os.path.abspath(manifest))
         self.sr, self.hop, self.seed = sr, hop, seed
         self.seg = int(seg_seconds * sr) // hop * hop

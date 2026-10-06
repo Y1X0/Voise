@@ -74,6 +74,10 @@ jobs:
         env:
           ORT_DISABLE_TELEMETRY: "1"
         run: python training/tests/test_compute_readiness.py
+      - name: Training readiness (resume after interrupt, dataset gate, MLS/Arabic importers, mix, acceptance, real driver on CPU)
+        env:
+          ORT_DISABLE_TELEMETRY: "1"
+        run: python training/tests/test_training_ready.py
       - name: Validation / evaluator-role / protocol (A6) tests
         env:
           ORT_DISABLE_TELEMETRY: "1"

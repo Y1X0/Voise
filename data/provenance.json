@@ -1,0 +1,16 @@
+{
+ "_doc": "Download-provenance records required for COMMERCIAL_VERIFIED (datasets/gate.py). An entry is added ONLY after the archive was downloaded from the official source and its sha256 + the official licence text sha256 were recorded (datasets/mls.py verify_and_record). Never edited by hand to make a corpus eligible.",
+ "verified": {
+  "librosa_example": {
+   "licence_class": "COMMERCIAL_WITH_CONDITIONS",
+   "licence": "CC-BY-4.0 (per-file .toml in librosa/data)",
+   "source": "https://github.com/librosa/data @ 38f4b06556fa0ff1acda5e677d8ba05d1bc0fff0",
+   "archive_sha256": "1ab7a90e446d7d33c3c6ead8bae56d99033372d33a9f2eb05038ba387c5f30fa",
+   "archive_note": "sha256 over the three .hq.ogg files used by the smoke manifest, in manifest order",
+   "licence_text_sha256": "ab5d7b8ad655a50dfbf9f25a32a292270181e34924cc09e93698c06962925bec",
+   "licence_text_note": "sha256 over their three .toml metadata files",
+   "verified_at": "2026-10-06",
+   "scope": "Stage-0 smoke only"
+  }
+ }
+}

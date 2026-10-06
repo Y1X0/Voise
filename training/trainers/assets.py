@@ -11,6 +11,7 @@ linguistic or speaker knowledge, so nothing measured with them is evidence of an
   speaker encoder  a frozen RANDOMLY initialised CondEncoder (fixed seed)
 """
 import copy
+import os
 
 import numpy as np
 import torch
@@ -66,6 +67,49 @@ class SmokeAssets:
 
 
 class GpuAssets:
-    def __init__(self, cfg):
-        raise SystemExit("GpuAssets: load precomputed teacher units and the training speaker encoders from "
-                         "models_train/ on the GPU machine (docs/TRAINING_READINESS_GATE.md, blockers B2/B3)")
+    """Real training assets (GPU machine). Nothing here is downloaded; every file must exist.
+
+    units            precomputed teacher units, delivered WITH each batch (b["units"], from the
+                     feature cache built by datasets/feature_cache.py --units-dir); never computed here
+    content teacher  frozen copy of the trained stage-1 encoder (pre-VQ features), as designed
+                     (docs/CONTENT_TEACHER_DECISION.md: no external teacher in the training loop)
+    speaker encoders role-TRAIN TorchScript models models_train/<name>.pt, mel [B,T,80] -> [B,D];
+                     frozen; never used for evaluation (evaluation/validator.py roles)
+    centroids        protected training-speaker centroids from encoder 0 over a few fixed segments
+                     per speaker (sampler.speaker_audio); tau = p99 of unrelated-speaker similarity
+    """
+    PLACEHOLDERS = []
+
+    def __init__(self, cfg, device="cuda", models_dir="models_train"):
+        names = cfg.data.get("speaker_encoders_train", [])
+        if not names:
+            raise ValueError("data.speaker_encoders_train is empty")
+        self.speaker_encoders = []
+        for n in names:
+            p = os.path.join(models_dir, n + ".pt")
+            if not os.path.exists(p):
+                raise FileNotFoundError(f"training-time speaker encoder missing: {p}")
+            enc = torch.jit.load(p, map_location=device).eval()
+            for prm in enc.parameters():
+                prm.requires_grad_(False)
+            self.speaker_encoders.append(enc)
+        self.device = device
+
+    def units(self, mel):
+        raise RuntimeError("real training reads teacher units from the batch (feature cache --units-dir)")
+
+    def content_teacher(self, model):
+        return SmokeAssets.content_teacher(self, model)
+
+    def protected_centroids(self, train_data, mel, max_per_speaker=3):
+        E = self.speaker_encoders[0]
+        cents = []
+        with torch.no_grad():
+            for spk, wavs in sorted(train_data.speaker_audio(max_per_speaker).items()):
+                emb = torch.stack([E(mel(torch.from_numpy(w)[None].to(self.device)))[0] for w in wavs])
+                cents.append(F.normalize(emb.mean(0), dim=0))
+        cents = torch.stack(cents)
+        sims = cents @ cents.T
+        off = sims[~torch.eye(len(cents), dtype=bool, device=sims.device)]
+        tau = float(torch.quantile(off.float().cpu()[:1_000_000], 0.99)) if len(off) else 0.9
+        return cents, tau

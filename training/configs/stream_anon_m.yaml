@@ -21,11 +21,14 @@ model:
   delay_frames: 2     # 20 ms learned look-ahead -> 40 ms algorithmic latency
   n_units: 500        # k-means units of the content teacher (training head)
   n_phones: 69        # CTC grapheme tokens EN+AR (datasets/ctc_targets.py n_tokens()), training head only
-  n_speakers: 3000    # adversarial speaker classifier classes (training only)
+  n_speakers: 8192    # adversarial speaker classifier classes (training only; >= training speakers, MLS 10 % ~5.5k + VCTK/AMI)
 
 data:
   train_manifest: data/manifests/train.jsonl
   valid_manifest: data/manifests/valid.jsonl
+  train_index: data/features/train/index.jsonl   # datasets/feature_cache.py (streaming sampler)
+  valid_index: data/features/valid/index.jsonl
+  licence_path: commercial                       # datasets/gate.py
   segment_seconds: 2.0
   batch_size: 16
   num_workers: 8
@@ -88,3 +91,30 @@ evaluators:   # role separation, enforced by evaluation/validator.py (one model 
     asv: [vpc2024_ecapa_eval, satools_resnet_eval] # Phase-3 evaluators (evaluation-only, never shipped)
     asr: whisper_small_eval
     attacker: semi_informed_ecapa                  # trained on processed attacker_train speech
+
+seed: 0
+val_every: 5000
+stage_gates:   # verbatim from docs/TRAINING_READINESS_GATE.md §1 (VALID speakers). NOT_MEASURED = not passed.
+  content_distillation:
+    unit_top1_vs_reference: {metric: unit_top1_rel_reference, min: 0.6}
+    ctc_probe_cer_en: {metric: ctc_probe_cer, max: 0.25}
+    vq_perplexity_frac: {metric: vq_perplexity_frac, min: 0.3}
+    vq_code_usage: {metric: code_usage_frac, min: 0.5}
+  reconstruction:
+    whisper_rel_wer_recon: {metric: wer_recon_rel, max: 0.10}
+    estoi_recon: {metric: estoi_recon, min: 0.75}
+    pesq_wb_recon: {metric: pesq_wb_recon, min: 2.8}
+    clicks_per_s: {metric: click_rate, max: 0.5}
+    vuv_agreement: {metric: vuv_agreement, min: 0.90}
+  anonymization:
+    a1_heldout_style_valid_eer: {metric: eer_min_over_asv, min: 0.35}
+    a6_matched_pseudo_eer: {metric: eer_matched_pseudo, min: 0.20}
+    bottleneck_probe_above_chance: {metric: bottleneck_probe_above_chance, max: 0.10}
+    whisper_rel_wer: {metric: wer_rel_increase, max: 0.15}
+    f0_corr: {metric: f0_corr, min: 0.7}
+    vuv_agreement: {metric: vuv_agreement, min: 0.90}
+  qat_int8:
+    vq_index_agreement: {metric: int8_vq_agreement, min: 0.98}
+    delta_wer_points: {metric: int8_delta_wer, max: 0.02}
+    abs_delta_eer_points: {metric: int8_abs_delta_eer, max: 0.03}
+    export_size_mb: {metric: int8_size_mb, max: 30}

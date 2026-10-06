@@ -3,18 +3,20 @@
  "verdict": "NO-GO",
  "updated": "2026-10-06",
  "conditions": {
+  "pipeline_stages_1_4_cpu_smoke": true,
+  "real_driver_cpu_end_to_end": true,
+  "resume_after_interrupt_bit_exact": true,
+  "dataset_gate_enforced": true,
+  "acceptance_criteria_locked": true,
+  "mixed_precision_verified_on_real_gpu": false,
   "licence_blockers_resolved": false,
   "mls_download_provenance_verified": false,
-  "teacher_resolved": true,
-  "manifests_reproducible": true,
-  "leakage_tests_pass": true,
-  "validation_pipeline_complete": true,
-  "android_runtime_privacy_static": true,
-  "android_runtime_privacy_on_device": false,
-  "mixed_precision_implemented": true,
-  "resumable_checkpoints": true,
-  "gpu_verified_official_free_and_commercial": false,
+  "feature_cache_and_teacher_units_built": false,
+  "inhouse_speaker_encoders_trained": false,
+  "valid_evaluators_available": false,
+  "gpu_access_verified_for_commercial_training": false,
   "gpu_budget_approved_by_owner": false,
-  "arabic_scope_decided_by_owner": false
+  "arabic_scope_decided_by_owner": false,
+  "android_runtime_privacy_on_device": false
  }
 }
