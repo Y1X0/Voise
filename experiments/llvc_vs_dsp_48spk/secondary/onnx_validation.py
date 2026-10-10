@@ -21,6 +21,11 @@ IN = (glob.glob("/kaggle/input/**/eval/llvc_step_cf2.onnx", recursive=True) or [
 assert IN, "original run output not mounted"
 EV = os.path.dirname(IN)
 R = dict(status="SECONDARY post hoc ONNX validation; primary verdict unchanged", input_dir=EV, errors={})
+# provenance: the mounted run must hold exactly the 225 frozen clips (original + evaluated PyTorch output)
+present = {os.path.basename(p)[:-4] for p in glob.glob(f"{EV}/wav/*.wav")}
+want = {c["utt_id"] for c in clips} | {c["utt_id"] + "_llvc" for c in clips}
+R["provenance"] = dict(wav_files=len(present), expected=len(want), missing=len(want - present), unexpected=len(present - want))
+assert want <= present, "mounted output does not contain all frozen clips"
 subprocess.run("pip install -q speechbrain onnxruntime", shell=True, check=True)
 
 import numpy as np, torch, soundfile as sf
@@ -55,17 +60,27 @@ def run_onnx(a):
 
 wave = {}
 allms = []
+
+
+def sr_ok(c, a):  # input = 16 kHz original stored by evaluate.py; duration must match the frozen manifest
+    return abs(len(a) / 16000 - c["sec"]) < 0.02 and sf.info(f"{EV}/wav/{c['utt_id']}.wav").samplerate == 16000 \
+        and sf.info(f"{EV}/wav/{c['utt_id']}_llvc.wav").samplerate == 16000
 for c in clips:
     a, _ = sf.read(f"{EV}/wav/{c['utt_id']}.wav", dtype="float32")
     t, _ = sf.read(f"{EV}/wav/{c['utt_id']}_llvc.wav", dtype="float32")
-    o, ms = run_onnx(a); allms += ms
+    o_float, ms = run_onnx(a); allms += ms
+    assert sr_ok(c, a), c["utt_id"]
+    buf = io.BytesIO(); sf.write(buf, o_float, 16000, format="WAV"); buf.seek(0)
+    o, _ = sf.read(buf, dtype="float32")  # same encoding path as the stored PyTorch output (PCM_16)
+    float_vs_pcm = float(np.abs(o_float - o).max())
     d = o - t
     first = int(np.argmax(np.abs(d) > 1e-3)) if np.any(np.abs(d) > 1e-3) else -1
     c.update(orig_a=a, torch_a=t, onnx_a=o)
     wave[c["utt_id"]] = dict(max_abs=float(np.abs(d).max()), rms_diff=float(np.sqrt(np.mean(d ** 2))), rms_torch=float(np.sqrt(np.mean(t ** 2))),
                              snr_db=float(10 * np.log10(np.sum(t ** 2) / max(np.sum(d ** 2), 1e-20))), corr=float(np.corrcoef(t, o)[0, 1]),
-                             first_sample_absdiff_gt_1e-3=first, n=len(t),
-                             max_abs_first_half=float(np.abs(d[: len(d) // 2]).max()), max_abs_second_half=float(np.abs(d[len(d) // 2:]).max()))
+                             first_sample_absdiff_gt_1em3=first, n=len(t),
+                             max_abs_first_half=float(np.abs(d[: len(d) // 2]).max()), max_abs_second_half=float(np.abs(d[len(d) // 2:]).max()),
+                             onnx_float_vs_pcm16_max_abs=float_vs_pcm, len_equal=len(o) == len(t))
 W = np.array([[v["snr_db"], v["max_abs"], v["corr"]] for v in wave.values()])
 allms = np.array(allms)
 R["waveform"] = dict(snr_db_median=round(float(np.median(W[:, 0])), 2), snr_db_min=round(float(W[:, 0].min()), 2),
@@ -125,7 +140,7 @@ del wh, mm; torch.cuda.empty_cache()
 # ---------- 3. speaker linkability on ONNX outputs (same ASVs, same trial lists) ----------
 from speechbrain.inference.speaker import EncoderClassifier
 from transformers import Wav2Vec2FeatureExtractor, WavLMForXVector
-ecapa = EncoderClassifier.from_hparams(source="speechbrain/spkrec-ecapa-voxceleb", savedir="/kaggle/working/ecapa", run_opts={"device": dev})
+ecapa = EncoderClassifier.from_hparams(source="speechbrain/spkrec-ecapa-voxceleb", savedir="/tmp/ecapa", run_opts={"device": dev})
 wfe = Wav2Vec2FeatureExtractor.from_pretrained("microsoft/wavlm-base-plus-sv")
 wsv = WavLMForXVector.from_pretrained("microsoft/wavlm-base-plus-sv").to(dev).eval()
 
