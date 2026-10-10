@@ -19,6 +19,13 @@ object AudioRouting {
             }
     }
 
+    /**
+     * True when processing must stop: the output has fallen back to the phone speaker
+     * (e.g. headphones unplugged while running) and the user has not allowed speaker output.
+     */
+    fun mustStopForRoute(route: Route, allowSpeakerOutput: Boolean): Boolean =
+        !route.isHeadphones && !allowSpeakerOutput
+
     fun currentOutput(context: Context): Route {
         val am = context.getSystemService(AudioManager::class.java)
         val outs = am.getDevices(AudioManager.GET_DEVICES_OUTPUTS)

@@ -89,6 +89,11 @@ object VoiceAnon {
         _state.value = _state.value.copy(running = false, activeParams = null, bypass = false)
     }
 
+    /** Called by the service when it stops on its own (e.g. headphones disconnected). */
+    internal fun reportError(msg: String) {
+        _state.value = _state.value.copy(error = msg)
+    }
+
     fun update(transform: (UserSettings) -> UserSettings) {
         val next = transform(_state.value.settings)
         store.save(next)

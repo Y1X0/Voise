@@ -5,12 +5,21 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
+import android.media.AudioDeviceCallback
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
+import androidx.core.content.ContextCompat
 import com.voiceanon.app.R
 import com.voiceanon.app.ui.MainActivity
 
@@ -21,6 +30,38 @@ import com.voiceanon.app.ui.MainActivity
 class AnonymizerService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    /*
+     * Headphones can be unplugged while running. Oboe then reopens the output on the
+     * default device (the phone speaker), which feeds the processed voice back into the
+     * microphone and plays it out loud. The start-time headphone check cannot catch this,
+     * so the service watches route changes and stops unless speaker output is allowed.
+     */
+    private val deviceCallback = object : AudioDeviceCallback() {
+        override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>) = checkRoute()
+    }
+    private val noisyReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY) checkRoute()
+        }
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        getSystemService(AudioManager::class.java).registerAudioDeviceCallback(deviceCallback, Handler(Looper.getMainLooper()))
+        ContextCompat.registerReceiver(
+            this, noisyReceiver, IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY), ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+    }
+
+    private fun checkRoute() {
+        val st = VoiceAnon.state.value
+        if (!st.running) return
+        if (AudioRouting.mustStopForRoute(AudioRouting.currentOutput(this), st.settings.allowSpeakerOutput)) {
+            shutdown()
+            VoiceAnon.reportError("Headphones disconnected: stopped to avoid speaker feedback")
+        }
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
@@ -44,6 +85,8 @@ class AnonymizerService : Service() {
     }
 
     override fun onDestroy() {
+        getSystemService(AudioManager::class.java).unregisterAudioDeviceCallback(deviceCallback)
+        unregisterReceiver(noisyReceiver)
         if (VoiceAnon.state.value.running) VoiceAnon.stopEngine()
         super.onDestroy()
     }
