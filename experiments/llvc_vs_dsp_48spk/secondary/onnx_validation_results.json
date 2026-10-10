@@ -1,0 +1,171 @@
+{
+ "status": "SECONDARY post hoc (S4). Primary verdict INCONCLUSIVE unchanged. Aggregates only: no audio, embeddings, per-clip transcripts or trial scores.",
+ "kaggle_run": {
+  "kernel": "y1x00r/llvc-onnx-validation",
+  "version": 1,
+  "status": "COMPLETE",
+  "log_span_s": 1250,
+  "accelerator": "Tesla T4 (requested NvidiaTeslaT4)",
+  "gpu_quota_used_h_approx": 0.35,
+  "input_kernel": "y1x00r/llvc-dsp-48spk-eval v1 (mounted read-only)"
+ },
+ "script_commit": "bc21a4f",
+ "onnx_sha256": "e8476add6cf56f9d140ceaf579bd6be959fd1d681ba84f86a81575e63fa647ac",
+ "env": {
+  "ort": "1.31.0",
+  "torch": "2.11.0+cu128",
+  "cpu": "Model name:                              Intel(R) Xeon(R) CPU @ 2.00GHz"
+ },
+ "provenance": {
+  "wav_files": 450,
+  "expected": 450,
+  "missing": 0,
+  "unexpected": 0
+ },
+ "comparability": {
+  "input": "same 225 stored 16 kHz originals that produced the evaluated PyTorch output",
+  "chunking": "chunk x2, identical to evaluate.py",
+  "encoding": "ONNX output routed through the same PCM_16 WAV encoding as the stored PyTorch output",
+  "all_lengths_equal": true,
+  "onnx_float_vs_pcm16_max_abs": 3.0517345294356346e-05
+ },
+ "waveform": {
+  "snr_db_median": 94.39,
+  "snr_db_min": 85.51,
+  "snr_db_p5": 90.66,
+  "max_abs_median": 3.1e-05,
+  "max_abs_max": 3.1e-05,
+  "corr_min": 1.0,
+  "clips_snr_below_30db": 0,
+  "clips_snr_below_20db": 0,
+  "second_half_larger": 0
+ },
+ "timing_rerun_1thread": {
+  "p50": 11.451,
+  "p95": 12.738,
+  "rtf": 0.4461
+ },
+ "privacy": {
+  "ecapa": {
+   "same_utterance_cos_torch_vs_onnx": {
+    "median": 1.0,
+    "min": 0.99999
+   },
+   "ignorant": {
+    "eer_torch_rerun": 0.408,
+    "eer_onnx": 0.408,
+    "eer_committed": 0.408,
+    "torch_rerun_vs_committed_score_max_abs": 5e-05,
+    "onnx_minus_torch": {
+     "point": 0.0,
+     "ci95": [
+      -0.0004,
+      0.0004
+     ]
+    },
+    "score_abs_diff_onnx_vs_torch_median": 3e-05
+   },
+   "lazy_informed": {
+    "eer_torch_rerun": 0.2534,
+    "eer_onnx": 0.2534,
+    "eer_committed": 0.2534,
+    "torch_rerun_vs_committed_score_max_abs": 5e-05,
+    "onnx_minus_torch": {
+     "point": 0.0,
+     "ci95": [
+      -0.0005,
+      0.0006
+     ]
+    },
+    "score_abs_diff_onnx_vs_torch_median": 4e-05
+   }
+  },
+  "wavlm": {
+   "same_utterance_cos_torch_vs_onnx": {
+    "median": 1.0,
+    "min": 1.0
+   },
+   "ignorant": {
+    "eer_torch_rerun": 0.4846,
+    "eer_onnx": 0.4846,
+    "eer_committed": 0.4846,
+    "torch_rerun_vs_committed_score_max_abs": 5e-05,
+    "onnx_minus_torch": {
+     "point": -0.0001,
+     "ci95": [
+      -0.0001,
+      0.0002
+     ]
+    },
+    "score_abs_diff_onnx_vs_torch_median": 3e-05
+   },
+   "lazy_informed": {
+    "eer_torch_rerun": 0.3911,
+    "eer_onnx": 0.3911,
+    "eer_committed": 0.3911,
+    "torch_rerun_vs_committed_score_max_abs": 5e-05,
+    "onnx_minus_torch": {
+     "point": 0.0,
+     "ci95": [
+      -0.002,
+      0.001
+     ]
+    },
+    "score_abs_diff_onnx_vs_torch_median": 3e-05
+   }
+  }
+ },
+ "intelligibility": {
+  "whisper": {
+   "cer_median_torch_rerun": 0.4615,
+   "cer_median_onnx": 0.4615,
+   "corpus_wer_torch_rerun": 1.7369,
+   "corpus_wer_onnx": 1.7369,
+   "identical_hypotheses": 225,
+   "onnx_worse_better": [
+    0,
+    0
+   ]
+  },
+  "mms": {
+   "cer_median_torch_rerun": 0.3333,
+   "cer_median_onnx": 0.3333,
+   "corpus_wer_torch_rerun": 0.8087,
+   "corpus_wer_onnx": 0.8087,
+   "identical_hypotheses": 220,
+   "onnx_worse_better": [
+    2,
+    1
+   ]
+  }
+ },
+ "asr_reproducibility_vs_committed_v1": {
+  "whisper_identical_hypotheses": "225/225",
+  "mms_identical_hypotheses": "225/225"
+ },
+ "thresholds_from_ONNX_PLAN": {
+  "privacy": "|EER(ONNX)-EER(PyTorch)| <= 0.02, both ASVs, both attackers",
+  "intelligibility": "|median CER diff| <= 0.02, both ASRs",
+  "waveform": "median SNR >= 30 dB and no clip < 20 dB"
+ },
+ "subtests": {
+  "privacy": {
+   "ecapa/ignorant": true,
+   "ecapa/lazy_informed": true,
+   "wavlm/ignorant": true,
+   "wavlm/lazy_informed": true
+  },
+  "intelligibility": {
+   "whisper": true,
+   "mms": true
+  },
+  "waveform": true
+ },
+ "verdict": "NOT MATERIALLY DIFFERENT",
+ "v1_discrepancy_explanation": {
+  "observed_v1": "max |ONNX-PyTorch| 0.108, median per-clip 0.0015 (results.json onnx.cf2_fp32)",
+  "observed_now": "max 3.1e-5 (one PCM_16 step) on all 225 clips with zero initial states",
+  "probable_cause": "LLVC writes its context buffers in place (model.py ctx_buf[...] = ..., cached_convnet.py ctx[...] = ...). evaluate.py traced torch.onnx.export with the same dec/ctx tensors it then reused as ONNX initial states, so v1 ONNX runs started from non-zero states. The v1 discrepancy figures are a harness artifact; v1 timing is unaffected (same graph, same work).",
+  "status": "PROBABLE; mechanism confirmed in source code, not re-run with contaminated states"
+ }
+}

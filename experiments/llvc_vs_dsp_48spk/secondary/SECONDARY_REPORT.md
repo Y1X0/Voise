@@ -100,3 +100,16 @@ None of these intervals capture:
 - The exact ONNX graph and the evaluated PyTorch and DSP audio are retained in the private Kaggle output of `y1x00r/llvc-dsp-48spk-eval` v1. This was confirmed through the Kaggle API file listing, without downloading anything.
 
 The minimal rerun mounts that output (no SVQ download): about 25–35 min on a T4, about 0.5 h of free GPU quota. It is waiting for approval. The materiality thresholds are fixed in `ONNX_PLAN.md`.
+
+## S4 update (run on 2026-10-10)
+
+- **Run:** Kaggle `y1x00r/llvc-onnx-validation` v1 (COMPLETE, about 21 min, T4, about 0.35 GPU-h). Script at commit bc21a4f. Results are in `onnx_validation_results.json` (aggregates only).
+- **OBSERVED:**
+  - All three pre-set subtests pass: waveform (median SNR 94.4 dB, minimum 85.5 dB), privacy (largest |ΔEER| 0.0001) and intelligibility (Δ median CER 0.000 for both ASRs).
+  - Verdict under `ONNX_PLAN.md`: **NOT MATERIALLY DIFFERENT**.
+- **INTERPRETATION:**
+  - The v1 ONNX difference figures (`results.json` → `onnx.*.max_abs_diff_vs_torch`) were very probably caused by in-place mutation of the initial state tensors during `torch.onnx.export` tracing.
+  - The v1 timing figures are unaffected.
+- **LIMITATION:**
+  - The cause is inferred from the LLVC source, not reproduced.
+  - int8 was not re-validated.
