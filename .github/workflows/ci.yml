@@ -52,7 +52,9 @@ jobs:
           python-version: "3.11"
       - name: Install CPU-only dependencies
         run: |
-          python -m pip install --quiet torch --index-url https://download.pytorch.org/whl/cpu
+          # torchaudio from the same CPU index as torch: otherwise speechbrain pulls a CUDA torchaudio
+          # wheel from PyPI that fails to load (libcudart.so.13) next to the CPU torch.
+          python -m pip install --quiet torch torchaudio --index-url https://download.pytorch.org/whl/cpu
           python -m pip install --quiet numpy soundfile librosa pyyaml onnx onnxscript onnxruntime \
             transformers==5.18.0 speechbrain==1.1.1 scikit-learn==1.9.1
       - name: Architecture tests
