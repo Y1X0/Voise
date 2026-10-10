@@ -1,0 +1,711 @@
+{
+ "repo": "facebook/omnilingual-asr-corpus",
+ "revision": "8648ba8946377697b427ae952076e49fc0e5e44d",
+ "last_modified": "2025-11-14 18:52:06+00:00",
+ "card_license": "cc-by-4.0",
+ "columns_read": [
+  "language",
+  "iso_639_3",
+  "glottocode",
+  "speaker_id",
+  "prompt_id",
+  "segment_id",
+  "duration"
+ ],
+ "columns_never_read": [
+  "audio",
+  "raw_text",
+  "prompt"
+ ],
+ "configs": [
+  "aao_Arab",
+  "abv_Arab",
+  "acm_Arab",
+  "acw_Arab",
+  "acx_Arab",
+  "adf_Arab",
+  "aeb_Arab",
+  "aec_Arab",
+  "afb_Arab",
+  "apc_Arab",
+  "apd_Arab",
+  "arq_Arab",
+  "ars_Arab",
+  "ary_Arab",
+  "arz_Arab",
+  "avl_Arab",
+  "ayl_Arab",
+  "ayp_Arab",
+  "shu_Latn"
+ ],
+ "rules": {
+  "PRIMARY": [
+   5,
+   3,
+   120.0
+  ],
+  "LOOSE": [
+   3,
+   2,
+   60.0
+  ],
+  "STRICT": [
+   10,
+   5,
+   300.0
+  ]
+ },
+ "per_config": {
+  "aao_Arab": {
+   "rows": 298,
+   "rows_by_split": {
+    "train": 298
+   },
+   "missing_speaker_id": 0,
+   "missing_duration": 0,
+   "schema_has_required": true,
+   "distinct_speaker_ids": 1,
+   "duplicate_prompt_segment_speaker_rows": 0,
+   "speakers_by_split_membership": {
+    "train": 1
+   },
+   "speakers_in_more_than_one_split": 0,
+   "language_values": [
+    "aao_Arab"
+   ],
+   "glottocodes": [
+    "alge1240"
+   ],
+   "total_hours": 2.02,
+   "per_speaker_minutes": {
+    "min": 121.1,
+    "median": 121.1,
+    "max": 121.1
+   },
+   "usable": {
+    "PRIMARY": 1,
+    "LOOSE": 1,
+    "STRICT": 1
+   }
+  },
+  "abv_Arab": {
+   "rows": 1486,
+   "rows_by_split": {
+    "train": 1486
+   },
+   "missing_speaker_id": 0,
+   "missing_duration": 0,
+   "schema_has_required": true,
+   "distinct_speaker_ids": 8,
+   "duplicate_prompt_segment_speaker_rows": 0,
+   "speakers_by_split_membership": {
+    "train": 8
+   },
+   "speakers_in_more_than_one_split": 0,
+   "language_values": [
+    "abv_Arab"
+   ],
+   "glottocodes": [
+    "baha1259"
+   ],
+   "total_hours": 10.41,
+   "per_speaker_minutes": {
+    "min": 64.9,
+    "median": 71.3,
+    "max": 107.0
+   },
+   "usable": {
+    "PRIMARY": 8,
+    "LOOSE": 8,
+    "STRICT": 8
+   }
+  },
+  "acm_Arab": {
+   "rows": 596,
+   "rows_by_split": {
+    "train": 596
+   },
+   "missing_speaker_id": 0,
+   "missing_duration": 0,
+   "schema_has_required": true,
+   "distinct_speaker_ids": 3,
+   "duplicate_prompt_segment_speaker_rows": 0,
+   "speakers_by_split_membership": {
+    "train": 3
+   },
+   "speakers_in_more_than_one_split": 0,
+   "language_values": [
+    "acm_Arab"
+   ],
+   "glottocodes": [
+    "meso1252"
+   ],
+   "total_hours": 3.78,
+   "per_speaker_minutes": {
+    "min": 51.6,
+    "median": 55.0,
+    "max": 120.1
+   },
+   "usable": {
+    "PRIMARY": 3,
+    "LOOSE": 3,
+    "STRICT": 3
+   }
+  },
+  "acw_Arab": {
+   "rows": 2955,
+   "rows_by_split": {
+    "train": 2955
+   },
+   "missing_speaker_id": 0,
+   "missing_duration": 0,
+   "schema_has_required": true,
+   "distinct_speaker_ids": 20,
+   "duplicate_prompt_segment_speaker_rows": 0,
+   "speakers_by_split_membership": {
+    "train": 20
+   },
+   "speakers_in_more_than_one_split": 0,
+   "language_values": [
+    "acw_Arab"
+   ],
+   "glottocodes": [
+    "hija1235"
+   ],
+   "total_hours": 22.32,
+   "per_speaker_minutes": {
+    "min": 53.9,
+    "median": 65.9,
+    "max": 92.2
+   },
+   "usable": {
+    "PRIMARY": 20,
+    "LOOSE": 20,
+    "STRICT": 20
+   }
+  },
+  "acx_Arab": {
+   "rows": 2953,
+   "rows_by_split": {
+    "train": 2953
+   },
+   "missing_speaker_id": 0,
+   "missing_duration": 0,
+   "schema_has_required": true,
+   "distinct_speaker_ids": 11,
+   "duplicate_prompt_segment_speaker_rows": 0,
+   "speakers_by_split_membership": {
+    "train": 11
+   },
+   "speakers_in_more_than_one_split": 0,
+   "language_values": [
+    "acx_Arab"
+   ],
+   "glottocodes": [
+    "oman1239"
+   ],
+   "total_hours": 22.03,
+   "per_speaker_minutes": {
+    "min": 66.0,
+    "median": 130.9,
+    "max": 138.9
+   },
+   "usable": {
+    "PRIMARY": 11,
+    "LOOSE": 11,
+    "STRICT": 11
+   }
+  },
+  "adf_Arab": {
+   "rows": 50,
+   "rows_by_split": {
+    "train": 50
+   },
+   "missing_speaker_id": 0,
+   "missing_duration": 0,
+   "schema_has_required": true,
+   "distinct_speaker_ids": 1,
+   "duplicate_prompt_segment_speaker_rows": 0,
+   "speakers_by_split_membership": {
+    "train": 1
+   },
+   "speakers_in_more_than_one_split": 0,
+   "language_values": [
+    "adf_Arab"
+   ],
+   "glottocodes": [
+    "dhof1235"
+   ],
+   "total_hours": 0.31,
+   "per_speaker_minutes": {
+    "min": 18.8,
+    "median": 18.8,
+    "max": 18.8
+   },
+   "usable": {
+    "PRIMARY": 1,
+    "LOOSE": 1,
+    "STRICT": 1
+   }
+  },
+  "aeb_Arab": {
+   "rows": 2925,
+   "rows_by_split": {
+    "train": 2925
+   },
+   "missing_speaker_id": 0,
+   "missing_duration": 0,
+   "schema_has_required": true,
+   "distinct_speaker_ids": 20,
+   "duplicate_prompt_segment_speaker_rows": 0,
+   "speakers_by_split_membership": {
+    "train": 20
+   },
+   "speakers_in_more_than_one_split": 0,
+   "language_values": [
+    "aeb_Arab"
+   ],
+   "glottocodes": [
+    "tuni1259"
+   ],
+   "total_hours": 21.63,
+   "per_speaker_minutes": {
+    "min": 56.8,
+    "median": 66.4,
+    "max": 69.3
+   },
+   "usable": {
+    "PRIMARY": 20,
+    "LOOSE": 20,
+    "STRICT": 20
+   }
+  },
+  "aec_Arab": {
+   "rows": 1468,
+   "rows_by_split": {
+    "dev": 150,
+    "test": 150,
+    "train": 1168
+   },
+   "missing_speaker_id": 0,
+   "missing_duration": 0,
+   "schema_has_required": true,
+   "distinct_speaker_ids": 7,
+   "duplicate_prompt_segment_speaker_rows": 0,
+   "speakers_by_split_membership": {
+    "dev": 1,
+    "test": 1,
+    "train": 5
+   },
+   "speakers_in_more_than_one_split": 0,
+   "language_values": [
+    "aec_Arab"
+   ],
+   "glottocodes": [
+    "said1239"
+   ],
+   "total_hours": 9.28,
+   "per_speaker_minutes": {
+    "min": 33.8,
+    "median": 59.9,
+    "max": 178.7
+   },
+   "usable": {
+    "PRIMARY": 7,
+    "LOOSE": 7,
+    "STRICT": 7
+   }
+  },
+  "afb_Arab": {
+   "rows": 2815,
+   "rows_by_split": {
+    "train": 2815
+   },
+   "missing_speaker_id": 0,
+   "missing_duration": 0,
+   "schema_has_required": true,
+   "distinct_speaker_ids": 12,
+   "duplicate_prompt_segment_speaker_rows": 0,
+   "speakers_by_split_membership": {
+    "train": 12
+   },
+   "speakers_in_more_than_one_split": 0,
+   "language_values": [
+    "afb_Arab"
+   ],
+   "glottocodes": [
+    "gulf1241"
+   ],
+   "total_hours": 18.78,
+   "per_speaker_minutes": {
+    "min": 55.2,
+    "median": 80.5,
+    "max": 136.9
+   },
+   "usable": {
+    "PRIMARY": 12,
+    "LOOSE": 12,
+    "STRICT": 12
+   }
+  },
+  "apc_Arab": {
+   "rows": 517,
+   "rows_by_split": {
+    "dev": 82,
+    "test": 112,
+    "train": 323
+   },
+   "missing_speaker_id": 0,
+   "missing_duration": 0,
+   "schema_has_required": true,
+   "distinct_speaker_ids": 10,
+   "duplicate_prompt_segment_speaker_rows": 0,
+   "speakers_by_split_membership": {
+    "dev": 2,
+    "test": 2,
+    "train": 6
+   },
+   "speakers_in_more_than_one_split": 0,
+   "language_values": [
+    "apc_Arab"
+   ],
+   "glottocodes": [
+    "nort3139"
+   ],
+   "total_hours": 10.02,
+   "per_speaker_minutes": {
+    "min": 51.1,
+    "median": 62.2,
+    "max": 66.3
+   },
+   "usable": {
+    "PRIMARY": 10,
+    "LOOSE": 10,
+    "STRICT": 10
+   }
+  },
+  "apd_Arab": {
+   "rows": 1097,
+   "rows_by_split": {
+    "dev": 156,
+    "test": 125,
+    "train": 816
+   },
+   "missing_speaker_id": 0,
+   "missing_duration": 0,
+   "schema_has_required": true,
+   "distinct_speaker_ids": 12,
+   "duplicate_prompt_segment_speaker_rows": 0,
+   "speakers_by_split_membership": {
+    "dev": 2,
+    "test": 2,
+    "train": 8
+   },
+   "speakers_in_more_than_one_split": 0,
+   "language_values": [
+    "apd_Arab"
+   ],
+   "glottocodes": [
+    "suda1236"
+   ],
+   "total_hours": 10.05,
+   "per_speaker_minutes": {
+    "min": 21.3,
+    "median": 59.9,
+    "max": 60.7
+   },
+   "usable": {
+    "PRIMARY": 12,
+    "LOOSE": 12,
+    "STRICT": 12
+   }
+  },
+  "arq_Arab": {
+   "rows": 1489,
+   "rows_by_split": {
+    "train": 1489
+   },
+   "missing_speaker_id": 0,
+   "missing_duration": 0,
+   "schema_has_required": true,
+   "distinct_speaker_ids": 7,
+   "duplicate_prompt_segment_speaker_rows": 0,
+   "speakers_by_split_membership": {
+    "train": 7
+   },
+   "speakers_in_more_than_one_split": 0,
+   "language_values": [
+    "arq_Arab"
+   ],
+   "glottocodes": [
+    "alge1239"
+   ],
+   "total_hours": 10.06,
+   "per_speaker_minutes": {
+    "min": 32.5,
+    "median": 105.1,
+    "max": 135.4
+   },
+   "usable": {
+    "PRIMARY": 7,
+    "LOOSE": 7,
+    "STRICT": 7
+   }
+  },
+  "ars_Arab": {
+   "rows": 2831,
+   "rows_by_split": {
+    "train": 2831
+   },
+   "missing_speaker_id": 0,
+   "missing_duration": 0,
+   "schema_has_required": true,
+   "distinct_speaker_ids": 16,
+   "duplicate_prompt_segment_speaker_rows": 0,
+   "speakers_by_split_membership": {
+    "train": 16
+   },
+   "speakers_in_more_than_one_split": 0,
+   "language_values": [
+    "ars_Arab"
+   ],
+   "glottocodes": [
+    "najd1235"
+   ],
+   "total_hours": 20.53,
+   "per_speaker_minutes": {
+    "min": 51.4,
+    "median": 68.2,
+    "max": 132.3
+   },
+   "usable": {
+    "PRIMARY": 16,
+    "LOOSE": 16,
+    "STRICT": 16
+   }
+  },
+  "ary_Arab": {
+   "rows": 1922,
+   "rows_by_split": {
+    "test": 434,
+    "train": 1488
+   },
+   "missing_speaker_id": 0,
+   "missing_duration": 0,
+   "schema_has_required": true,
+   "distinct_speaker_ids": 7,
+   "duplicate_prompt_segment_speaker_rows": 0,
+   "speakers_by_split_membership": {
+    "test": 2,
+    "train": 5
+   },
+   "speakers_in_more_than_one_split": 0,
+   "language_values": [
+    "ary_Arab"
+   ],
+   "glottocodes": [
+    "moro1292"
+   ],
+   "total_hours": 10.15,
+   "per_speaker_minutes": {
+    "min": 29.9,
+    "median": 111.1,
+    "max": 124.9
+   },
+   "usable": {
+    "PRIMARY": 7,
+    "LOOSE": 7,
+    "STRICT": 7
+   }
+  },
+  "arz_Arab": {
+   "rows": 2980,
+   "rows_by_split": {
+    "dev": 298,
+    "test": 298,
+    "train": 2384
+   },
+   "missing_speaker_id": 0,
+   "missing_duration": 0,
+   "schema_has_required": true,
+   "distinct_speaker_ids": 20,
+   "duplicate_prompt_segment_speaker_rows": 0,
+   "speakers_by_split_membership": {
+    "dev": 2,
+    "test": 2,
+    "train": 16
+   },
+   "speakers_in_more_than_one_split": 0,
+   "language_values": [
+    "arz_Arab"
+   ],
+   "glottocodes": [
+    "egyp1253"
+   ],
+   "total_hours": 19.05,
+   "per_speaker_minutes": {
+    "min": 42.7,
+    "median": 58.5,
+    "max": 94.8
+   },
+   "usable": {
+    "PRIMARY": 20,
+    "LOOSE": 20,
+    "STRICT": 20
+   }
+  },
+  "avl_Arab": {
+   "rows": 300,
+   "rows_by_split": {
+    "train": 300
+   },
+   "missing_speaker_id": 0,
+   "missing_duration": 0,
+   "schema_has_required": true,
+   "distinct_speaker_ids": 2,
+   "duplicate_prompt_segment_speaker_rows": 0,
+   "speakers_by_split_membership": {
+    "train": 2
+   },
+   "speakers_in_more_than_one_split": 0,
+   "language_values": [
+    "avl_Arab"
+   ],
+   "glottocodes": [
+    "east2690"
+   ],
+   "total_hours": 1.86,
+   "per_speaker_minutes": {
+    "min": 20.2,
+    "median": 91.3,
+    "max": 91.3
+   },
+   "usable": {
+    "PRIMARY": 2,
+    "LOOSE": 2,
+    "STRICT": 2
+   }
+  },
+  "ayl_Arab": {
+   "rows": 2980,
+   "rows_by_split": {
+    "dev": 298,
+    "test": 298,
+    "train": 2384
+   },
+   "missing_speaker_id": 0,
+   "missing_duration": 0,
+   "schema_has_required": true,
+   "distinct_speaker_ids": 15,
+   "duplicate_prompt_segment_speaker_rows": 0,
+   "speakers_by_split_membership": {
+    "dev": 2,
+    "test": 1,
+    "train": 12
+   },
+   "speakers_in_more_than_one_split": 0,
+   "language_values": [
+    "ayl_Arab"
+   ],
+   "glottocodes": [
+    "liby1240"
+   ],
+   "total_hours": 20.13,
+   "per_speaker_minutes": {
+    "min": 59.1,
+    "median": 67.0,
+    "max": 121.2
+   },
+   "usable": {
+    "PRIMARY": 15,
+    "LOOSE": 15,
+    "STRICT": 15
+   }
+  },
+  "ayp_Arab": {
+   "rows": 1500,
+   "rows_by_split": {
+    "dev": 300,
+    "test": 300,
+    "train": 900
+   },
+   "missing_speaker_id": 0,
+   "missing_duration": 0,
+   "schema_has_required": true,
+   "distinct_speaker_ids": 11,
+   "duplicate_prompt_segment_speaker_rows": 0,
+   "speakers_by_split_membership": {
+    "dev": 2,
+    "test": 2,
+    "train": 7
+   },
+   "speakers_in_more_than_one_split": 0,
+   "language_values": [
+    "ayp_Arab"
+   ],
+   "glottocodes": [
+    "nort3142"
+   ],
+   "total_hours": 11.11,
+   "per_speaker_minutes": {
+    "min": 19.1,
+    "median": 67.6,
+    "max": 71.1
+   },
+   "usable": {
+    "PRIMARY": 11,
+    "LOOSE": 11,
+    "STRICT": 11
+   }
+  },
+  "shu_Latn": {
+   "rows": 297,
+   "rows_by_split": {
+    "train": 297
+   },
+   "missing_speaker_id": 0,
+   "missing_duration": 0,
+   "schema_has_required": true,
+   "distinct_speaker_ids": 1,
+   "duplicate_prompt_segment_speaker_rows": 0,
+   "speakers_by_split_membership": {
+    "train": 1
+   },
+   "speakers_in_more_than_one_split": 0,
+   "language_values": [
+    "shu_Latn"
+   ],
+   "glottocodes": [
+    "chad1249"
+   ],
+   "total_hours": 2.29,
+   "per_speaker_minutes": {
+    "min": 137.4,
+    "median": 137.4,
+    "max": 137.4
+   },
+   "usable": {
+    "PRIMARY": 1,
+    "LOOSE": 1,
+    "STRICT": 1
+   }
+  }
+ },
+ "bytes_footer_note": "parquet column projection: only the listed column chunks and footers are fetched",
+ "totals": {
+  "configs": 19,
+  "distinct_speaker_keys": 184,
+  "usable": {
+   "PRIMARY": 184,
+   "LOOSE": 184,
+   "STRICT": 184
+  },
+  "rows": 31459
+ },
+ "kaggle_run": {
+  "kernel": "y1x00r/omni-arabic-census",
+  "version": 1,
+  "status": "COMPLETE",
+  "log_span_s": 905
+ }
+}
