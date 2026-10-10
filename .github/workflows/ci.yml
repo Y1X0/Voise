@@ -129,6 +129,20 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Build debug APK and run unit tests
         run: ./gradlew --no-daemon --stacktrace assembleDebug assembleDebugAndroidTest testDebugUnitTest
+      - name: JVM unit-test counts (from JUnit XML; fails if no tests ran)
+        run: |
+          python3 - <<'EOF'
+          import glob, sys, xml.etree.ElementTree as ET
+          tot = dict(tests=0, failures=0, errors=0, skipped=0)
+          for f in sorted(glob.glob("app/build/test-results/testDebugUnitTest/TEST-*.xml")):
+              r = ET.parse(f).getroot()
+              c = {k: int(r.get(k, 0)) for k in tot}
+              print(r.get("name"), c)
+              for k in tot:
+                  tot[k] += c[k]
+          print("JVM TOTAL", tot)
+          sys.exit(1 if tot["tests"] == 0 or tot["failures"] or tot["errors"] else 0)
+          EOF
       - name: Privacy audit of the APK (native libraries + merged manifest; no network permission)
         run: python3 scripts/audit_native_runtime.py --policy strict --skip-java app/build/outputs/apk/debug/*.apk
       - uses: actions/upload-artifact@v4
