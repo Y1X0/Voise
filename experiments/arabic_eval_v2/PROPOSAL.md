@@ -22,13 +22,13 @@ Is the lazy-informed linkability gain of pretrained LLVC over DSP-strong real? T
 ### facebook/omnilingual-asr-corpus
 - **Licence:** CC BY 4.0 (HF card, verified).
 - **Speech:** spontaneous answers to survey prompts. Segments are about 90 s.
-- **Metadata:** `speaker_id` (local per language, for example `spk03`), `prompt_id`, `segment_id`, and a verbatim `raw_text` with tags such as `<laugh>`.
+- **Metadata:** `speaker_id` (local per language, for example `spkNN`), `prompt_id`, `segment_id`, and a verbatim `raw_text` with tags such as `<laugh>`.
 - **Arabic-variety configs** (verified from the HF dataset viewer):
   - aao, abv, acm, acw, acx, adf, aeb, aec, afb, apc, apd, arq, ars, ary, arz, avl, ayl, ayp;
   - row counts range from 50 (adf) to 3 000 (acw, acx).
 - **Speakers per variety: NOT VERIFIED.**
   - The collection targeted about 10 speakers per language; the paper notes that some languages fell short.
-  - A partial preview of `apc_Arab` dev showed speakers spk03 and spk05 only.
+  - A partial preview of `apc_Arab` dev showed only two speaker labels.
   - An exact count needs a metadata-only read of the `speaker_id` column. That is a Kaggle CPU job of a few minutes reading no audio, and it needs approval.
   - Upper bound if the target was met: about 18 × 10 ≈ 180 speakers.
 - **Unknowns:**

@@ -71,7 +71,7 @@ Speakers per variety:
 
 ### LIMITATION
 
-- `speaker_id` is a local label (for example `spk03`) scoped to a config. Whether two keys in different varieties are the same person cannot be decided from metadata.
+- `speaker_id` is a local label (for example `spkNN`) scoped to a config. Whether two keys in different varieties are the same person cannot be decided from metadata.
 - There is no gender field, so gender cannot be balanced or reported.
 - Distinct IDs are assumed, not verified, to be distinct people.
 
