@@ -12,10 +12,10 @@
 # Output: summary + per-clip results printed between RESULT_JSON markers; all trial scores gzip+base64
 #   between SCORES_B64 markers. No audio and no speaker embeddings are printed or kept.
 
-import base64, gzip, hashlib, io, json, os, subprocess, sys, time, traceback, unicodedata, urllib.request
+import base64, gzip, shutil, hashlib, io, json, os, subprocess, sys, time, traceback, unicodedata, urllib.request
 
-MANIFEST_COMMIT = "__MANIFEST_COMMIT__"
-MANIFEST_SHA256 = "__MANIFEST_SHA256__"
+MANIFEST_COMMIT = "f1c6c7aacbee54c912ba9f82284df13f7e9cc456"
+MANIFEST_SHA256 = "9cca9b92f1b1966deac6becb3baa0c0126bfeeb15f59ed2823909c32bc6fa685"
 MANIFEST_URL = f"https://raw.githubusercontent.com/Y1X0/Voise/{MANIFEST_COMMIT}/experiments/llvc_vs_dsp_48spk/manifest.json"
 OUT = "/kaggle/working/eval"
 LLVC = "/kaggle/working/LLVC"
@@ -217,13 +217,14 @@ EVAL = "/kaggle/working/voise/dsp/build/voiceanon_eval"
 dsp_speed = {}
 for preset in ("strong", "balanced"):
     d = f"{OUT}/dsp_{preset}"; os.makedirs(d, exist_ok=True)
-    p = subprocess.run(["taskset", "-c", "0", EVAL, "--preset", preset, "--render-only", "--out", d] + [c["orig"] for c in clips],
+    pin = ["taskset", "-c", "0"] if shutil.which("taskset") else []
+    p = subprocess.run(pin + [EVAL, "--preset", preset, "--render-only", "--out", d] + [c["orig"] for c in clips],
                        check=True, capture_output=True, text=True)
     rows = [json.loads(l) for l in p.stdout.splitlines() if l.startswith("{")]
     secs = {os.path.basename(c["orig"])[:-4] + "_" + preset: c["sec"] for c in clips}
     rt = [r_["rtf"] for r_ in rows]; w = [secs.get(r_["name"], 0) for r_ in rows]
-    dsp_speed[preset] = dict(latency_ms=sorted({r_["latencyMs"] for r_ in rows}), rtf_duration_weighted=round(float(np.average(rt, weights=w)), 5),
-                             rtf_max=round(max(rt), 5), n=len(rows), pinned_cpu="taskset -c 0")
+    dsp_speed[preset] = dict(latency_ms=sorted({r_["latencyMs"] for r_ in rows}), rtf_duration_weighted=round(float(np.average(rt, weights=w) if sum(w) else np.mean(rt)), 5),
+                             rtf_max=round(max(rt), 5), n=len(rows), pinned_cpu=" ".join(pin) or "not pinned")
     for c in clips:
         c[f"dsp_{preset}"] = f"{d}/{os.path.basename(c['orig'])[:-4]}_{preset}.wav"
         a, sr = sf.read(c[f"dsp_{preset}"], dtype="float32", always_2d=True)
@@ -322,6 +323,7 @@ I, J = np.meshgrid(np.arange(n), np.arange(n), indexing="ij")
 CROSS = (I != J)                      # ignorant: enrol clip i (original), trial clip j (processed), all ordered pairs, i != j
 WITHIN = (J > I)                      # within one condition: unordered pairs
 pairs = {"cross": (I[CROSS], J[CROSS]), "within": (I[WITHIN], J[WITHIN])}
+LOC = np.array([c["locale"] for c in clips])
 rng = np.random.default_rng(SEED)
 BOOT = [np.bincount(rng.integers(0, len(spks), len(spks)), minlength=len(spks)) for _ in range(B)]  # speaker multiplicities
 
@@ -384,13 +386,12 @@ for asv in ("ecapa", "wavlm"):
         for att, t in (("ignorant", trial_set(Eo, E[asv][s], "cross")), ("lazy_informed", trial_set(E[asv][s], E[asv][s], "within"))):
             e, _ = eer_w(t[0], t[1]); bv = boot_eers(t); bt[(s, att)] = bv
             tg, nt = t[0][t[1] == 1], t[0][t[1] == 0]
-            same_loc = np.array([clips[x]["locale"] for x in pairs["cross" if att == "ignorant" else "within"][0]]) == \
-                np.array([clips[x]["locale"] for x in pairs["cross" if att == "ignorant" else "within"][1]])
+            la, lb = LOC[pairs["cross" if att == "ignorant" else "within"][0]], LOC[pairs["cross" if att == "ignorant" else "within"][1]]
+            same_loc = la == lb
             res[att] = dict(eer=round(e, 4), eer_effective=round(min(e, 1 - e), 4), ci95=ci(bv),
                             far_at_orig_threshold=round(float(np.mean(nt >= thr)), 4), frr_at_orig_threshold=round(float(np.mean(tg < thr)), 4),
                             eer_same_locale_nontargets_only=round(eer_w(t[0][same_loc], t[1][same_loc])[0], 4),
-                            per_locale={l: round(eer_w(*[x[np.array([clips[q]["locale"] == l for q in pairs["cross" if att == "ignorant" else "within"][0]]) & same_loc] for x in t[:2]])[0], 4)
-                                        for l in LOCALES},
+                            per_locale_within={l: round(eer_w(t[0][same_loc & (la == l)], t[1][same_loc & (la == l)])[0], 4) for l in LOCALES},
                             top1=top1_ci(top1(Eo if att == "ignorant" else E[asv][s], E[asv][s], range(n))),
                             n_target=int(tg.size), n_nontarget=int(nt.size))
             scores[asv][f"{s}_{att}"] = np.round(t[0], 4).tolist()
