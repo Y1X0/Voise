@@ -55,7 +55,7 @@ what Android allows.
 | Speaker output + mic = acoustic feedback (howling) | Unsafe/unpleasant | Start is blocked without headphones unless the user opts in |
 | `VOICE_RECOGNITION` vs `VOICE_COMMUNICATION` input preset | The latter adds the platform's AEC/NS but more latency | Default: VOICE_RECOGNITION; switch available |
 | Exclusive mode not always granted | Slightly higher latency | Oboe falls back to shared mode automatically |
-| Headset plug/unplug invalidates streams | Stream error | Streams are reopened automatically on disconnect |
+| Headset plug/unplug invalidates streams | Stream error; after an unplug the output would fall back to the phone speaker | Streams are reopened automatically on disconnect; if the output has fallen back to the speaker and speaker output is not allowed, the service stops with a "Headphones disconnected" message (a short burst before the stop is possible; NOT VERIFIED on a phone) |
 | `am` from Termux: system `am` vs `termux-am` | Very old/odd ROMs may block `am` from app UIDs | CLI uses `am` from `PATH` (Termux ships its own); overridable with `VOICEANON_AM` |
 
 ## Anonymity limitations (not Android-specific)

@@ -114,8 +114,8 @@ void DuplexEngine::closeLocked() {
 }
 
 void DuplexEngine::setParams(const Params& p) {
-    params_ = p;
     std::lock_guard<std::mutex> g(lock_);
+    params_ = p;  // under the lock: restartAsync() reads params_ from another thread
     if (engine_) engine_->setParams(p);
 }
 
