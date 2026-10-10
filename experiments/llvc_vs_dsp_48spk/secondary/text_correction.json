@@ -1,0 +1,50 @@
+{
+ "status": "SECONDARY correction note; results.json is unchanged",
+ "n_corrupted_fields": 1,
+ "corrections": [
+  {
+   "utt_id": "utt_1567290046955459692",
+   "field": "text",
+   "corrupted_value_in_results_json": "ما هي أكبر مدن ولاية ��كساس؟",
+   "correct_value_from_frozen_manifest": "ما هي أكبر مدن ولاية تكساس؟",
+   "cause": "Kaggle log transport split a multi-byte UTF-8 character; the run computed metrics in memory from the intact manifest text",
+   "stored_metrics": {
+    "whisper_cer_orig": 0.3077,
+    "whisper_cer_llvc": 0.6923,
+    "whisper_cer_dsp_strong": 0.3077,
+    "whisper_cer_dsp_balanced": 0.3462,
+    "whisper_wer_orig": 0.8333,
+    "whisper_wer_llvc": 0.8333,
+    "whisper_wer_dsp_strong": 0.6667,
+    "whisper_wer_dsp_balanced": 0.6667,
+    "mms_cer_orig": 0.0385,
+    "mms_cer_llvc": 0.1154,
+    "mms_cer_dsp_strong": 0.0385,
+    "mms_cer_dsp_balanced": 0.0385,
+    "mms_wer_orig": 0.1667,
+    "mms_wer_llvc": 0.5,
+    "mms_wer_dsp_strong": 0.1667,
+    "mms_wer_dsp_balanced": 0.1667
+   },
+   "recomputed_with_manifest_text": {
+    "whisper_cer_orig": 0.3077,
+    "whisper_cer_llvc": 0.6923,
+    "whisper_cer_dsp_strong": 0.3077,
+    "whisper_cer_dsp_balanced": 0.3462,
+    "whisper_wer_orig": 0.8333,
+    "whisper_wer_llvc": 0.8333,
+    "whisper_wer_dsp_strong": 0.6667,
+    "whisper_wer_dsp_balanced": 0.6667,
+    "mms_cer_orig": 0.0385,
+    "mms_cer_llvc": 0.1154,
+    "mms_cer_dsp_strong": 0.0385,
+    "mms_cer_dsp_balanced": 0.0385,
+    "mms_wer_orig": 0.1667,
+    "mms_wer_llvc": 0.5,
+    "mms_wer_dsp_strong": 0.1667,
+    "mms_wer_dsp_balanced": 0.1667
+   },
+   "all_stored_metrics_match": true
+  }
+ ]
+}
