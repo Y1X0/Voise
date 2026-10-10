@@ -1,0 +1,334 @@
+{
+ "purpose": "speed + Arabic intelligibility only; NOT an anonymisation test",
+ "source": "Kaggle kernel sva-compile-benchmark v1 (private), T4, run log fetched via Kaggle API",
+ "env": {
+  "gpu": "Tesla T4",
+  "driver": "580.178.04",
+  "sm_clock_max_mhz": 1590,
+  "torch": "2.11.0+cu128",
+  "triton": "3.6.0",
+  "python": "3.13"
+ },
+ "repo_commit": "201705182c045298225071481e7cd59d537e935e",
+ "weights": "huggingface.co/Plachta/StreamVoiceAnon",
+ "inputs_sha256_16": {
+  "s1": {
+   "sha256_16": "90c2954ca4c453d9",
+   "sec": 7.248
+  },
+  "s2": {
+   "sha256_16": "1c1519def09ae576",
+   "sec": 7.984
+  },
+  "ref": {
+   "sha256_16": "15b52876559c40d2"
+  }
+ },
+ "same_inputs_as_first_test": "same texts, TTS seed 0, same pitch-shifted reference; settings delay 2, windows 128/64/256/768/32, decode_chunk_frames 1, alpha 1.0/0.5/0.0",
+ "method": [
+  "eager and compile_full in one session, eager first",
+  "compile_full = compile_ar + compile_encoder + compile_decoder (inductor, reduce-overhead), as the repo's streaming CLI",
+  "warm-up (1 offline + 1 stream pass per sentence) timed separately and excluded",
+  "per-chunk time measured with cuda synchronize around process_one_chunk",
+  "seed 1234 per run; AR sampling is stochastic"
+ ],
+ "summary": [
+  {
+   "mode": "eager",
+   "errors": 0,
+   "model_load_sec": 6.45,
+   "warmup_total_sec": 65.54,
+   "offline_rtf_mean": 1.344,
+   "stream_rtf_mean": 2.724,
+   "stream_chunk_ms_p50_mean": 125.475,
+   "stream_chunk_ms_p95_max": 130.96,
+   "stream_keeps_up_all": false,
+   "cer_offline_mean": 0.126,
+   "cer_stream_mean": 0.102,
+   "peak_vram_alloc_gb": 1.999,
+   "peak_vram_reserved_gb": 2.259
+  },
+  {
+   "mode": "compile_full",
+   "errors": 0,
+   "model_load_sec": 8.11,
+   "warmup_total_sec": 606.82,
+   "offline_rtf_mean": 1.844,
+   "stream_rtf_mean": 3.106,
+   "stream_chunk_ms_p50_mean": 143.668,
+   "stream_chunk_ms_p95_max": 151.33,
+   "stream_keeps_up_all": false,
+   "cer_offline_mean": 0.138,
+   "cer_stream_mean": 0.096,
+   "peak_vram_alloc_gb": 1.885,
+   "peak_vram_reserved_gb": 2.533
+  }
+ ],
+ "runs": [
+  {
+   "src": "s1",
+   "kind": "offline",
+   "alpha": 1.0,
+   "rtf": 1.352,
+   "error": null,
+   "mode": "eager",
+   "log_time_s": 158
+  },
+  {
+   "src": "s1",
+   "kind": "stream",
+   "alpha": 1.0,
+   "rtf": 2.736,
+   "error": null,
+   "mode": "eager",
+   "log_time_s": 178
+  },
+  {
+   "src": "s1",
+   "kind": "offline",
+   "alpha": 0.5,
+   "rtf": 1.363,
+   "error": null,
+   "mode": "eager",
+   "log_time_s": 188
+  },
+  {
+   "src": "s1",
+   "kind": "stream",
+   "alpha": 0.5,
+   "rtf": 2.737,
+   "error": null,
+   "mode": "eager",
+   "log_time_s": 208
+  },
+  {
+   "src": "s1",
+   "kind": "offline",
+   "alpha": 0.0,
+   "rtf": 1.345,
+   "error": null,
+   "mode": "eager",
+   "log_time_s": 218
+  },
+  {
+   "src": "s1",
+   "kind": "stream",
+   "alpha": 0.0,
+   "rtf": 2.719,
+   "error": null,
+   "mode": "eager",
+   "log_time_s": 238
+  },
+  {
+   "src": "s2",
+   "kind": "offline",
+   "alpha": 1.0,
+   "rtf": 1.345,
+   "error": null,
+   "mode": "eager",
+   "log_time_s": 248
+  },
+  {
+   "src": "s2",
+   "kind": "stream",
+   "alpha": 1.0,
+   "rtf": 2.737,
+   "error": null,
+   "mode": "eager",
+   "log_time_s": 270
+  },
+  {
+   "src": "s2",
+   "kind": "offline",
+   "alpha": 0.5,
+   "rtf": 1.343,
+   "error": null,
+   "mode": "eager",
+   "log_time_s": 281
+  },
+  {
+   "src": "s2",
+   "kind": "stream",
+   "alpha": 0.5,
+   "rtf": 2.702,
+   "error": null,
+   "mode": "eager",
+   "log_time_s": 303
+  },
+  {
+   "src": "s2",
+   "kind": "offline",
+   "alpha": 0.0,
+   "rtf": 1.316,
+   "error": null,
+   "mode": "eager",
+   "log_time_s": 313
+  },
+  {
+   "src": "s2",
+   "kind": "stream",
+   "alpha": 0.0,
+   "rtf": 2.715,
+   "error": null,
+   "mode": "eager",
+   "log_time_s": 335
+  },
+  {
+   "src": "s1",
+   "kind": "offline",
+   "alpha": 1.0,
+   "rtf": 1.863,
+   "error": null,
+   "mode": "compile_full",
+   "log_time_s": 963
+  },
+  {
+   "src": "s1",
+   "kind": "stream",
+   "alpha": 1.0,
+   "rtf": 3.133,
+   "error": null,
+   "mode": "compile_full",
+   "log_time_s": 986
+  },
+  {
+   "src": "s1",
+   "kind": "offline",
+   "alpha": 0.5,
+   "rtf": 1.858,
+   "error": null,
+   "mode": "compile_full",
+   "log_time_s": 1000
+  },
+  {
+   "src": "s1",
+   "kind": "stream",
+   "alpha": 0.5,
+   "rtf": 3.104,
+   "error": null,
+   "mode": "compile_full",
+   "log_time_s": 1022
+  },
+  {
+   "src": "s1",
+   "kind": "offline",
+   "alpha": 0.0,
+   "rtf": 1.83,
+   "error": null,
+   "mode": "compile_full",
+   "log_time_s": 1035
+  },
+  {
+   "src": "s1",
+   "kind": "stream",
+   "alpha": 0.0,
+   "rtf": 3.139,
+   "error": null,
+   "mode": "compile_full",
+   "log_time_s": 1058
+  },
+  {
+   "src": "s2",
+   "kind": "offline",
+   "alpha": 1.0,
+   "rtf": 1.863,
+   "error": null,
+   "mode": "compile_full",
+   "log_time_s": 1073
+  },
+  {
+   "src": "s2",
+   "kind": "stream",
+   "alpha": 1.0,
+   "rtf": 3.078,
+   "error": null,
+   "mode": "compile_full",
+   "log_time_s": 1098
+  },
+  {
+   "src": "s2",
+   "kind": "offline",
+   "alpha": 0.5,
+   "rtf": 1.834,
+   "error": null,
+   "mode": "compile_full",
+   "log_time_s": 1112
+  },
+  {
+   "src": "s2",
+   "kind": "stream",
+   "alpha": 0.5,
+   "rtf": 3.106,
+   "error": null,
+   "mode": "compile_full",
+   "log_time_s": 1137
+  },
+  {
+   "src": "s2",
+   "kind": "offline",
+   "alpha": 0.0,
+   "rtf": 1.817,
+   "error": null,
+   "mode": "compile_full",
+   "log_time_s": 1152
+  },
+  {
+   "src": "s2",
+   "kind": "stream",
+   "alpha": 0.0,
+   "rtf": 3.078,
+   "error": null,
+   "mode": "compile_full",
+   "log_time_s": 1176
+  }
+ ],
+ "derived_from_measured": {
+  "eager": {
+   "chunk_ms": 46.44,
+   "median_chunk_proc_over_deadline": 2.7,
+   "approx_final_lag_sec_per_run": [
+    12.58,
+    12.59,
+    12.46,
+    13.87,
+    13.59,
+    13.69
+   ],
+   "note": "final lag ~= stream processing time - audio duration (from measured RTF); chunks arrive every 46.44 ms"
+  },
+  "compile_full": {
+   "chunk_ms": 46.44,
+   "median_chunk_proc_over_deadline": 3.09,
+   "approx_final_lag_sec_per_run": [
+    15.46,
+    15.25,
+    15.5,
+    16.59,
+    16.81,
+    16.59
+   ],
+   "note": "final lag ~= stream processing time - audio duration (from measured RTF); chunks arrive every 46.44 ms"
+  }
+ },
+ "compile_warnings": [
+  "/usr/local/lib/python3.13/dist-packages/torch/_inductor/compile_fx.py:2941: UserWarning: Tesla T4 does not support bfloat16 compilation natively, skipping",
+  "/usr/local/lib/python3.13/dist-packages/torch/_inductor/lowering.py:2212: UserWarning: Torchinductor does not support code generation for complex operators. Performance may be worse than eager.",
+  "Online softmax is disabled on the fly since Inductor decides to",
+  "W1010 03:00:27.054000 7 torch/_inductor/cudagraph_utils.py:207] [__cudagraphs]     return x.mul_(self.gamma) if self.inplace else x * self.gamma",
+  "W1010 03:00:27.054000 7 torch/_inductor/cudagraph_utils.py:207] [__cudagraphs]    File \"/kaggle/working/StreamVoiceAnon/modules/vqgan/windowed_transformer.py\", line 273, in forward",
+  "W1010 03:00:27.054000 7 torch/_inductor/cudagraph_utils.py:207] [__cudagraphs] skipping cudagraphs due to mutated inputs (1 instances). Found from :"
+ ],
+ "compile_root_causes": [
+  "T4 has no native bfloat16: Inductor skipped graphs containing bf16 (RoPE cache cast to bf16 in dual_ar_stream.py:1001, bf16 cache defaults) -> AR decode step not effectively compiled",
+  "CUDA graphs skipped for the content encoder: in-place x.mul_(self.gamma) (mutated input) in windowed_transformer.py:273",
+  "complex ops (STFT front-end) not code-generated by Inductor",
+  "net effect: compile overhead without CUDA-graph benefit -> slower than eager"
+ ],
+ "unavailable": [
+  "per-chunk lag series, per-run CER and ASR text, dynamo counters, pip freeze: written to the Kaggle output files, but the output host www.kaggleusercontent.com is blocked by this environment's network policy",
+  "compile_ar_only fallback was not run because compile_full raised no error (it ran, but slower)"
+ ],
+ "notes": [
+  "eager per-chunk component times from the first test: content encoder ~25 ms + AR ~63 ms + vocoder ~38 ms ~= 126 ms vs 46.4 ms deadline; encoder+vocoder alone (~63 ms) already exceed the deadline"
+ ]
+}
