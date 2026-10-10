@@ -1,0 +1,1075 @@
+{
+ "purpose": "EXPLORATORY: small-sample speed / intelligibility / speaker-change check of pretrained LLVC on Arabic; NOT proof of privacy",
+ "licences": {
+  "llvc_code": "MIT (github.com/KoeAI/LLVC)",
+  "llvc_weights": "MIT (huggingface.co/KoeAI/llvc)",
+  "svq": "CC BY 4.0 (huggingface.co/datasets/google/svq), attribution: Heigold et al., MSEB",
+  "ecapa": "Apache-2.0 (speechbrain/spkrec-ecapa-voxceleb)",
+  "wavlm_sv": "CC BY-SA 3.0 (microsoft/UniSpeech)",
+  "whisper": "Apache-2.0 (openai/whisper-small)"
+ },
+ "env": {
+  "torch": "2.11.0+cu128",
+  "gpu": "Tesla T4",
+  "cpu": "Model name:                              Intel(R) Xeon(R) CPU @ 2.00GHz"
+ },
+ "settings": {
+  "seed": 20261010,
+  "speakers_per_locale": 3,
+  "clips_per_speaker": 5,
+  "min_sec": 1.5,
+  "environment": "clean",
+  "llvc_commit": "1627c5d",
+  "checkpoint": "models/checkpoints/llvc/G_500000.pth"
+ },
+ "sample": {
+  "n_clips": 60,
+  "n_speakers": 12,
+  "per_locale": {
+   "ar_eg": 3,
+   "ar_x_gulf": 3,
+   "ar_x_levant": 3,
+   "ar_x_maghrebi": 3
+  },
+  "gender": {
+   "male": 6,
+   "female": 6
+  },
+  "total_sec": 284.3,
+  "audio_bytes_read_compressed": 1118134880,
+  "manifest": [
+   {
+    "utt_id": "utt_5334717904852154934",
+    "speaker": "speaker_12946167880751414312",
+    "locale": "ar_eg",
+    "gender": "female",
+    "sec": 3.96
+   },
+   {
+    "utt_id": "utt_11278732989695397738",
+    "speaker": "speaker_12946167880751414312",
+    "locale": "ar_eg",
+    "gender": "female",
+    "sec": 5.82
+   },
+   {
+    "utt_id": "utt_14458816391647394061",
+    "speaker": "speaker_12946167880751414312",
+    "locale": "ar_eg",
+    "gender": "female",
+    "sec": 4.02
+   },
+   {
+    "utt_id": "utt_7528754306621189486",
+    "speaker": "speaker_12946167880751414312",
+    "locale": "ar_eg",
+    "gender": "female",
+    "sec": 3.54
+   },
+   {
+    "utt_id": "utt_9581991912976501873",
+    "speaker": "speaker_12946167880751414312",
+    "locale": "ar_eg",
+    "gender": "female",
+    "sec": 2.4
+   },
+   {
+    "utt_id": "utt_15926206289159740346",
+    "speaker": "speaker_4842876971921630765",
+    "locale": "ar_eg",
+    "gender": "male",
+    "sec": 5.88
+   },
+   {
+    "utt_id": "utt_11817809599601544373",
+    "speaker": "speaker_4842876971921630765",
+    "locale": "ar_eg",
+    "gender": "male",
+    "sec": 4.32
+   },
+   {
+    "utt_id": "utt_15599521222310851304",
+    "speaker": "speaker_4842876971921630765",
+    "locale": "ar_eg",
+    "gender": "male",
+    "sec": 3.6
+   },
+   {
+    "utt_id": "utt_5902466848883964411",
+    "speaker": "speaker_4842876971921630765",
+    "locale": "ar_eg",
+    "gender": "male",
+    "sec": 6.84
+   },
+   {
+    "utt_id": "utt_14251435146691851092",
+    "speaker": "speaker_4842876971921630765",
+    "locale": "ar_eg",
+    "gender": "male",
+    "sec": 4.74
+   },
+   {
+    "utt_id": "utt_9472891054916138470",
+    "speaker": "speaker_15891661198015312910",
+    "locale": "ar_eg",
+    "gender": "male",
+    "sec": 3.72
+   },
+   {
+    "utt_id": "utt_17937873339655831997",
+    "speaker": "speaker_15891661198015312910",
+    "locale": "ar_eg",
+    "gender": "male",
+    "sec": 3.36
+   },
+   {
+    "utt_id": "utt_14956388617432960951",
+    "speaker": "speaker_15891661198015312910",
+    "locale": "ar_eg",
+    "gender": "male",
+    "sec": 2.46
+   },
+   {
+    "utt_id": "utt_12431811001583542974",
+    "speaker": "speaker_15891661198015312910",
+    "locale": "ar_eg",
+    "gender": "male",
+    "sec": 2.76
+   },
+   {
+    "utt_id": "utt_13469287094975225632",
+    "speaker": "speaker_15891661198015312910",
+    "locale": "ar_eg",
+    "gender": "male",
+    "sec": 3.18
+   },
+   {
+    "utt_id": "utt_9590366393837347017",
+    "speaker": "speaker_2458346435201088971",
+    "locale": "ar_x_gulf",
+    "gender": "female",
+    "sec": 2.7
+   },
+   {
+    "utt_id": "utt_5025955792584080062",
+    "speaker": "speaker_2458346435201088971",
+    "locale": "ar_x_gulf",
+    "gender": "female",
+    "sec": 2.76
+   },
+   {
+    "utt_id": "utt_2442764770826746741",
+    "speaker": "speaker_2458346435201088971",
+    "locale": "ar_x_gulf",
+    "gender": "female",
+    "sec": 3.54
+   },
+   {
+    "utt_id": "utt_13889140708089713649",
+    "speaker": "speaker_2458346435201088971",
+    "locale": "ar_x_gulf",
+    "gender": "female",
+    "sec": 3.06
+   },
+   {
+    "utt_id": "utt_15410491265218981171",
+    "speaker": "speaker_2458346435201088971",
+    "locale": "ar_x_gulf",
+    "gender": "female",
+    "sec": 4.08
+   },
+   {
+    "utt_id": "utt_3622323313382196773",
+    "speaker": "speaker_15808885640774081048",
+    "locale": "ar_x_gulf",
+    "gender": "male",
+    "sec": 4.74
+   },
+   {
+    "utt_id": "utt_6031573435248298792",
+    "speaker": "speaker_15808885640774081048",
+    "locale": "ar_x_gulf",
+    "gender": "male",
+    "sec": 7.26
+   },
+   {
+    "utt_id": "utt_7169662370954399134",
+    "speaker": "speaker_15808885640774081048",
+    "locale": "ar_x_gulf",
+    "gender": "male",
+    "sec": 5.7
+   },
+   {
+    "utt_id": "utt_8028858355310720663",
+    "speaker": "speaker_15808885640774081048",
+    "locale": "ar_x_gulf",
+    "gender": "male",
+    "sec": 6.24
+   },
+   {
+    "utt_id": "utt_12349393405076129452",
+    "speaker": "speaker_15808885640774081048",
+    "locale": "ar_x_gulf",
+    "gender": "male",
+    "sec": 8.52
+   },
+   {
+    "utt_id": "utt_12254729058200743195",
+    "speaker": "speaker_6039153134491563640",
+    "locale": "ar_x_gulf",
+    "gender": "female",
+    "sec": 6.72
+   },
+   {
+    "utt_id": "utt_353301986895509785",
+    "speaker": "speaker_6039153134491563640",
+    "locale": "ar_x_gulf",
+    "gender": "female",
+    "sec": 5.52
+   },
+   {
+    "utt_id": "utt_3606899765803102956",
+    "speaker": "speaker_6039153134491563640",
+    "locale": "ar_x_gulf",
+    "gender": "female",
+    "sec": 4.92
+   },
+   {
+    "utt_id": "utt_3196802125634880554",
+    "speaker": "speaker_6039153134491563640",
+    "locale": "ar_x_gulf",
+    "gender": "female",
+    "sec": 3.3
+   },
+   {
+    "utt_id": "utt_783375215640602348",
+    "speaker": "speaker_6039153134491563640",
+    "locale": "ar_x_gulf",
+    "gender": "female",
+    "sec": 3.6
+   },
+   {
+    "utt_id": "utt_12092747190968713130",
+    "speaker": "speaker_16824510468550087243",
+    "locale": "ar_x_levant",
+    "gender": "female",
+    "sec": 4.74
+   },
+   {
+    "utt_id": "utt_13537275913559624479",
+    "speaker": "speaker_16824510468550087243",
+    "locale": "ar_x_levant",
+    "gender": "female",
+    "sec": 7.5
+   },
+   {
+    "utt_id": "utt_16450609675510947299",
+    "speaker": "speaker_16824510468550087243",
+    "locale": "ar_x_levant",
+    "gender": "female",
+    "sec": 8.82
+   },
+   {
+    "utt_id": "utt_15675194199076805141",
+    "speaker": "speaker_16824510468550087243",
+    "locale": "ar_x_levant",
+    "gender": "female",
+    "sec": 5.88
+   },
+   {
+    "utt_id": "utt_5687057825895576731",
+    "speaker": "speaker_16824510468550087243",
+    "locale": "ar_x_levant",
+    "gender": "female",
+    "sec": 4.92
+   },
+   {
+    "utt_id": "utt_15130281581811324791",
+    "speaker": "speaker_13130841967487208198",
+    "locale": "ar_x_levant",
+    "gender": "male",
+    "sec": 2.64
+   },
+   {
+    "utt_id": "utt_5616703198978667328",
+    "speaker": "speaker_13130841967487208198",
+    "locale": "ar_x_levant",
+    "gender": "male",
+    "sec": 2.7
+   },
+   {
+    "utt_id": "utt_2867782532011689550",
+    "speaker": "speaker_13130841967487208198",
+    "locale": "ar_x_levant",
+    "gender": "male",
+    "sec": 3.0
+   },
+   {
+    "utt_id": "utt_16473364997119858693",
+    "speaker": "speaker_13130841967487208198",
+    "locale": "ar_x_levant",
+    "gender": "male",
+    "sec": 3.54
+   },
+   {
+    "utt_id": "utt_14582768644436480771",
+    "speaker": "speaker_13130841967487208198",
+    "locale": "ar_x_levant",
+    "gender": "male",
+    "sec": 4.44
+   },
+   {
+    "utt_id": "utt_14320910514695309239",
+    "speaker": "speaker_853689585694880219",
+    "locale": "ar_x_levant",
+    "gender": "female",
+    "sec": 8.28
+   },
+   {
+    "utt_id": "utt_17131440425038428541",
+    "speaker": "speaker_853689585694880219",
+    "locale": "ar_x_levant",
+    "gender": "female",
+    "sec": 7.38
+   },
+   {
+    "utt_id": "utt_15676465164236187481",
+    "speaker": "speaker_853689585694880219",
+    "locale": "ar_x_levant",
+    "gender": "female",
+    "sec": 6.06
+   },
+   {
+    "utt_id": "utt_4717580439447226781",
+    "speaker": "speaker_853689585694880219",
+    "locale": "ar_x_levant",
+    "gender": "female",
+    "sec": 5.34
+   },
+   {
+    "utt_id": "utt_15597548287863155234",
+    "speaker": "speaker_853689585694880219",
+    "locale": "ar_x_levant",
+    "gender": "female",
+    "sec": 8.28
+   },
+   {
+    "utt_id": "utt_8971500655138475467",
+    "speaker": "speaker_14359377659576811430",
+    "locale": "ar_x_maghrebi",
+    "gender": "female",
+    "sec": 3.24
+   },
+   {
+    "utt_id": "utt_16019356516564229727",
+    "speaker": "speaker_14359377659576811430",
+    "locale": "ar_x_maghrebi",
+    "gender": "female",
+    "sec": 3.6
+   },
+   {
+    "utt_id": "utt_11717651103150385502",
+    "speaker": "speaker_14359377659576811430",
+    "locale": "ar_x_maghrebi",
+    "gender": "female",
+    "sec": 3.84
+   },
+   {
+    "utt_id": "utt_15906063098968940101",
+    "speaker": "speaker_14359377659576811430",
+    "locale": "ar_x_maghrebi",
+    "gender": "female",
+    "sec": 3.36
+   },
+   {
+    "utt_id": "utt_15851342045555727060",
+    "speaker": "speaker_14359377659576811430",
+    "locale": "ar_x_maghrebi",
+    "gender": "female",
+    "sec": 2.04
+   },
+   {
+    "utt_id": "utt_17276052560918446812",
+    "speaker": "speaker_4505729520436472217",
+    "locale": "ar_x_maghrebi",
+    "gender": "male",
+    "sec": 6.06
+   },
+   {
+    "utt_id": "utt_8588958230277468303",
+    "speaker": "speaker_4505729520436472217",
+    "locale": "ar_x_maghrebi",
+    "gender": "male",
+    "sec": 7.44
+   },
+   {
+    "utt_id": "utt_3591577876543801260",
+    "speaker": "speaker_4505729520436472217",
+    "locale": "ar_x_maghrebi",
+    "gender": "male",
+    "sec": 5.82
+   },
+   {
+    "utt_id": "utt_7105776007558824532",
+    "speaker": "speaker_4505729520436472217",
+    "locale": "ar_x_maghrebi",
+    "gender": "male",
+    "sec": 6.12
+   },
+   {
+    "utt_id": "utt_9261607354260374261",
+    "speaker": "speaker_4505729520436472217",
+    "locale": "ar_x_maghrebi",
+    "gender": "male",
+    "sec": 6.66
+   },
+   {
+    "utt_id": "utt_3056939080312490814",
+    "speaker": "speaker_10234514160366215559",
+    "locale": "ar_x_maghrebi",
+    "gender": "male",
+    "sec": 3.72
+   },
+   {
+    "utt_id": "utt_5285395030055023071",
+    "speaker": "speaker_10234514160366215559",
+    "locale": "ar_x_maghrebi",
+    "gender": "male",
+    "sec": 4.2
+   },
+   {
+    "utt_id": "utt_14045173383929506293",
+    "speaker": "speaker_10234514160366215559",
+    "locale": "ar_x_maghrebi",
+    "gender": "male",
+    "sec": 3.66
+   },
+   {
+    "utt_id": "utt_10676832426426831463",
+    "speaker": "speaker_10234514160366215559",
+    "locale": "ar_x_maghrebi",
+    "gender": "male",
+    "sec": 3.96
+   },
+   {
+    "utt_id": "utt_3947619796235914951",
+    "speaker": "speaker_10234514160366215559",
+    "locale": "ar_x_maghrebi",
+    "gender": "male",
+    "sec": 3.78
+   }
+  ]
+ },
+ "speed": {
+  "cpu_1thread_cf1": {
+   "chunk_ms": 13.0,
+   "lookahead_ms": 2.0,
+   "rtf": 1.3812,
+   "chunk_ms_p50": 17.787,
+   "chunk_ms_p95": 19.111,
+   "chunk_ms_max": 33.53,
+   "frac_chunks_over_deadline": 1.0,
+   "worst_clip_lag_ms_max": 3366.66,
+   "n_chunks": 21896,
+   "algorithmic_latency_ms": 15.0
+  },
+  "cpu_1thread_cf2": {
+   "chunk_ms": 26.0,
+   "lookahead_ms": 2.0,
+   "rtf": 0.7375,
+   "chunk_ms_p50": 18.944,
+   "chunk_ms_p95": 20.409,
+   "chunk_ms_max": 34.587,
+   "frac_chunks_over_deadline": 0.0052,
+   "worst_clip_lag_ms_max": 41.13,
+   "n_chunks": 10969,
+   "algorithmic_latency_ms": 28.0
+  },
+  "cuda_cf1": {
+   "chunk_ms": 13.0,
+   "lookahead_ms": 2.0,
+   "rtf": 0.6354,
+   "chunk_ms_p50": 8.103,
+   "chunk_ms_p95": 9.011,
+   "chunk_ms_max": 17.34,
+   "frac_chunks_over_deadline": 0.0017,
+   "worst_clip_lag_ms_max": 18.59,
+   "n_chunks": 21896,
+   "algorithmic_latency_ms": 15.0
+  },
+  "cuda_cf2": {
+   "chunk_ms": 26.0,
+   "lookahead_ms": 2.0,
+   "rtf": 0.3332,
+   "chunk_ms_p50": 8.609,
+   "chunk_ms_p95": 9.384,
+   "chunk_ms_max": 17.809,
+   "frac_chunks_over_deadline": 0.0,
+   "worst_clip_lag_ms_max": 17.81,
+   "n_chunks": 10969,
+   "algorithmic_latency_ms": 28.0
+  }
+ },
+ "stream_vs_full_max_abs_diff": 0.007965927943587303,
+ "intelligibility": {
+  "cer_orig_mean": 0.5613,
+  "cer_anon_mean": 1.2311,
+  "cer_abs_increase": 0.6699,
+  "cer_orig_median": 0.2,
+  "cer_anon_median": 0.4454,
+  "note": "CER is intelligibility only; it says nothing about anonymisation"
+ },
+ "speaker_change": {
+  "ecapa_voxceleb": {
+   "original_vs_original": {
+    "eer": 0.0336,
+    "ci95": [
+     0.0044,
+     0.0999
+    ],
+    "n_target": 120,
+    "n_nontarget": 1650,
+    "bootstrap": 1000
+   },
+   "ignorant_orig_enrol_vs_anon_trial": {
+    "eer": 0.4167,
+    "ci95": [
+     0.2556,
+     0.4975
+    ],
+    "n_target": 240,
+    "n_nontarget": 3300,
+    "bootstrap": 1000
+   },
+   "lazy_informed_anon_vs_anon": {
+    "eer": 0.2333,
+    "ci95": [
+     0.1336,
+     0.3135
+    ],
+    "n_target": 120,
+    "n_nontarget": 1650,
+    "bootstrap": 1000
+   },
+   "same_utterance_cos_orig_anon_mean": 0.2581,
+   "anon_vs_anon_different_speaker_cos_mean": 0.5254
+  },
+  "wavlm_base_plus_sv": {
+   "original_vs_original": {
+    "eer": 0.1333,
+    "ci95": [
+     0.0667,
+     0.21
+    ],
+    "n_target": 120,
+    "n_nontarget": 1650,
+    "bootstrap": 1000
+   },
+   "ignorant_orig_enrol_vs_anon_trial": {
+    "eer": 0.5,
+    "ci95": [
+     0.3465,
+     0.6089
+    ],
+    "n_target": 240,
+    "n_nontarget": 3300,
+    "bootstrap": 1000
+   },
+   "lazy_informed_anon_vs_anon": {
+    "eer": 0.3498,
+    "ci95": [
+     0.2375,
+     0.4444
+    ],
+    "n_target": 120,
+    "n_nontarget": 1650,
+    "bootstrap": 1000
+   },
+   "same_utterance_cos_orig_anon_mean": 0.6894,
+   "anon_vs_anon_different_speaker_cos_mean": 0.9169
+  }
+ },
+ "speaker_change_note": "EER ~0.5 = speakers not distinguishable; low EER = still linkable. Small sample (few speakers): wide CIs, exploratory only. Not the project's acceptance protocol (needs >= 40 speakers, A1-A6 attacks).",
+ "per_clip": [
+  {
+   "utt_id": "utt_5334717904852154934",
+   "speaker": "speaker_12946167880751414312",
+   "locale": "ar_eg",
+   "sec": 3.96,
+   "cer_orig": 0.0968,
+   "cer_anon": 0.6129
+  },
+  {
+   "utt_id": "utt_11278732989695397738",
+   "speaker": "speaker_12946167880751414312",
+   "locale": "ar_eg",
+   "sec": 5.82,
+   "cer_orig": 0.234,
+   "cer_anon": 0.234
+  },
+  {
+   "utt_id": "utt_14458816391647394061",
+   "speaker": "speaker_12946167880751414312",
+   "locale": "ar_eg",
+   "sec": 4.02,
+   "cer_orig": 0.4643,
+   "cer_anon": 20.9286
+  },
+  {
+   "utt_id": "utt_7528754306621189486",
+   "speaker": "speaker_12946167880751414312",
+   "locale": "ar_eg",
+   "sec": 3.54,
+   "cer_orig": 0.3704,
+   "cer_anon": 0.6296
+  },
+  {
+   "utt_id": "utt_9581991912976501873",
+   "speaker": "speaker_12946167880751414312",
+   "locale": "ar_eg",
+   "sec": 2.4,
+   "cer_orig": 0.3667,
+   "cer_anon": 0.6667
+  },
+  {
+   "utt_id": "utt_15926206289159740346",
+   "speaker": "speaker_4842876971921630765",
+   "locale": "ar_eg",
+   "sec": 5.88,
+   "cer_orig": 0.0,
+   "cer_anon": 0.2364
+  },
+  {
+   "utt_id": "utt_11817809599601544373",
+   "speaker": "speaker_4842876971921630765",
+   "locale": "ar_eg",
+   "sec": 4.32,
+   "cer_orig": 0.0645,
+   "cer_anon": 0.3871
+  },
+  {
+   "utt_id": "utt_15599521222310851304",
+   "speaker": "speaker_4842876971921630765",
+   "locale": "ar_eg",
+   "sec": 3.6,
+   "cer_orig": 0.0,
+   "cer_anon": 0.0952
+  },
+  {
+   "utt_id": "utt_5902466848883964411",
+   "speaker": "speaker_4842876971921630765",
+   "locale": "ar_eg",
+   "sec": 6.84,
+   "cer_orig": 0.0263,
+   "cer_anon": 0.1842
+  },
+  {
+   "utt_id": "utt_14251435146691851092",
+   "speaker": "speaker_4842876971921630765",
+   "locale": "ar_eg",
+   "sec": 4.74,
+   "cer_orig": 0.0,
+   "cer_anon": 0.3214
+  },
+  {
+   "utt_id": "utt_9472891054916138470",
+   "speaker": "speaker_15891661198015312910",
+   "locale": "ar_eg",
+   "sec": 3.72,
+   "cer_orig": 0.2059,
+   "cer_anon": 0.4118
+  },
+  {
+   "utt_id": "utt_17937873339655831997",
+   "speaker": "speaker_15891661198015312910",
+   "locale": "ar_eg",
+   "sec": 3.36,
+   "cer_orig": 0.1923,
+   "cer_anon": 0.4615
+  },
+  {
+   "utt_id": "utt_14956388617432960951",
+   "speaker": "speaker_15891661198015312910",
+   "locale": "ar_eg",
+   "sec": 2.46,
+   "cer_orig": 0.15,
+   "cer_anon": 0.15
+  },
+  {
+   "utt_id": "utt_12431811001583542974",
+   "speaker": "speaker_15891661198015312910",
+   "locale": "ar_eg",
+   "sec": 2.76,
+   "cer_orig": 0.1111,
+   "cer_anon": 0.7778
+  },
+  {
+   "utt_id": "utt_13469287094975225632",
+   "speaker": "speaker_15891661198015312910",
+   "locale": "ar_eg",
+   "sec": 3.18,
+   "cer_orig": 0.1905,
+   "cer_anon": 0.1905
+  },
+  {
+   "utt_id": "utt_9590366393837347017",
+   "speaker": "speaker_2458346435201088971",
+   "locale": "ar_x_gulf",
+   "sec": 2.7,
+   "cer_orig": 0.1905,
+   "cer_anon": 0.5238
+  },
+  {
+   "utt_id": "utt_5025955792584080062",
+   "speaker": "speaker_2458346435201088971",
+   "locale": "ar_x_gulf",
+   "sec": 2.76,
+   "cer_orig": 0.0,
+   "cer_anon": 0.25
+  },
+  {
+   "utt_id": "utt_2442764770826746741",
+   "speaker": "speaker_2458346435201088971",
+   "locale": "ar_x_gulf",
+   "sec": 3.54,
+   "cer_orig": 0.129,
+   "cer_anon": 0.1935
+  },
+  {
+   "utt_id": "utt_13889140708089713649",
+   "speaker": "speaker_2458346435201088971",
+   "locale": "ar_x_gulf",
+   "sec": 3.06,
+   "cer_orig": 0.1739,
+   "cer_anon": 0.2609
+  },
+  {
+   "utt_id": "utt_15410491265218981171",
+   "speaker": "speaker_2458346435201088971",
+   "locale": "ar_x_gulf",
+   "sec": 4.08,
+   "cer_orig": 0.1429,
+   "cer_anon": 0.4286
+  },
+  {
+   "utt_id": "utt_3622323313382196773",
+   "speaker": "speaker_15808885640774081048",
+   "locale": "ar_x_gulf",
+   "sec": 4.74,
+   "cer_orig": 0.375,
+   "cer_anon": 0.25
+  },
+  {
+   "utt_id": "utt_6031573435248298792",
+   "speaker": "speaker_15808885640774081048",
+   "locale": "ar_x_gulf",
+   "sec": 7.26,
+   "cer_orig": 0.0588,
+   "cer_anon": 0.1765
+  },
+  {
+   "utt_id": "utt_7169662370954399134",
+   "speaker": "speaker_15808885640774081048",
+   "locale": "ar_x_gulf",
+   "sec": 5.7,
+   "cer_orig": 0.25,
+   "cer_anon": 0.3333
+  },
+  {
+   "utt_id": "utt_8028858355310720663",
+   "speaker": "speaker_15808885640774081048",
+   "locale": "ar_x_gulf",
+   "sec": 6.24,
+   "cer_orig": 0.1081,
+   "cer_anon": 0.4324
+  },
+  {
+   "utt_id": "utt_12349393405076129452",
+   "speaker": "speaker_15808885640774081048",
+   "locale": "ar_x_gulf",
+   "sec": 8.52,
+   "cer_orig": 0.2632,
+   "cer_anon": 0.5614
+  },
+  {
+   "utt_id": "utt_12254729058200743195",
+   "speaker": "speaker_6039153134491563640",
+   "locale": "ar_x_gulf",
+   "sec": 6.72,
+   "cer_orig": 0.0769,
+   "cer_anon": 0.25
+  },
+  {
+   "utt_id": "utt_353301986895509785",
+   "speaker": "speaker_6039153134491563640",
+   "locale": "ar_x_gulf",
+   "sec": 5.52,
+   "cer_orig": 0.0476,
+   "cer_anon": 0.1429
+  },
+  {
+   "utt_id": "utt_3606899765803102956",
+   "speaker": "speaker_6039153134491563640",
+   "locale": "ar_x_gulf",
+   "sec": 4.92,
+   "cer_orig": 0.5517,
+   "cer_anon": 0.5862
+  },
+  {
+   "utt_id": "utt_3196802125634880554",
+   "speaker": "speaker_6039153134491563640",
+   "locale": "ar_x_gulf",
+   "sec": 3.3,
+   "cer_orig": 0.2174,
+   "cer_anon": 0.5217
+  },
+  {
+   "utt_id": "utt_783375215640602348",
+   "speaker": "speaker_6039153134491563640",
+   "locale": "ar_x_gulf",
+   "sec": 3.6,
+   "cer_orig": 0.0,
+   "cer_anon": 0.4583
+  },
+  {
+   "utt_id": "utt_12092747190968713130",
+   "speaker": "speaker_16824510468550087243",
+   "locale": "ar_x_levant",
+   "sec": 4.74,
+   "cer_orig": 0.2,
+   "cer_anon": 0.3
+  },
+  {
+   "utt_id": "utt_13537275913559624479",
+   "speaker": "speaker_16824510468550087243",
+   "locale": "ar_x_levant",
+   "sec": 7.5,
+   "cer_orig": 0.0682,
+   "cer_anon": 0.4318
+  },
+  {
+   "utt_id": "utt_16450609675510947299",
+   "speaker": "speaker_16824510468550087243",
+   "locale": "ar_x_levant",
+   "sec": 8.82,
+   "cer_orig": 0.0923,
+   "cer_anon": 0.1231
+  },
+  {
+   "utt_id": "utt_15675194199076805141",
+   "speaker": "speaker_16824510468550087243",
+   "locale": "ar_x_levant",
+   "sec": 5.88,
+   "cer_orig": 0.2778,
+   "cer_anon": 0.7778
+  },
+  {
+   "utt_id": "utt_5687057825895576731",
+   "speaker": "speaker_16824510468550087243",
+   "locale": "ar_x_levant",
+   "sec": 4.92,
+   "cer_orig": 0.0769,
+   "cer_anon": 0.0769
+  },
+  {
+   "utt_id": "utt_15130281581811324791",
+   "speaker": "speaker_13130841967487208198",
+   "locale": "ar_x_levant",
+   "sec": 2.64,
+   "cer_orig": 0.2,
+   "cer_anon": 0.24
+  },
+  {
+   "utt_id": "utt_5616703198978667328",
+   "speaker": "speaker_13130841967487208198",
+   "locale": "ar_x_levant",
+   "sec": 2.7,
+   "cer_orig": 0.3182,
+   "cer_anon": 0.5
+  },
+  {
+   "utt_id": "utt_2867782532011689550",
+   "speaker": "speaker_13130841967487208198",
+   "locale": "ar_x_levant",
+   "sec": 3.0,
+   "cer_orig": 0.0882,
+   "cer_anon": 0.1471
+  },
+  {
+   "utt_id": "utt_16473364997119858693",
+   "speaker": "speaker_13130841967487208198",
+   "locale": "ar_x_levant",
+   "sec": 3.54,
+   "cer_orig": 0.0,
+   "cer_anon": 0.129
+  },
+  {
+   "utt_id": "utt_14582768644436480771",
+   "speaker": "speaker_13130841967487208198",
+   "locale": "ar_x_levant",
+   "sec": 4.44,
+   "cer_orig": 0.0938,
+   "cer_anon": 0.625
+  },
+  {
+   "utt_id": "utt_14320910514695309239",
+   "speaker": "speaker_853689585694880219",
+   "locale": "ar_x_levant",
+   "sec": 8.28,
+   "cer_orig": 0.0,
+   "cer_anon": 0.1143
+  },
+  {
+   "utt_id": "utt_17131440425038428541",
+   "speaker": "speaker_853689585694880219",
+   "locale": "ar_x_levant",
+   "sec": 7.38,
+   "cer_orig": 0.027,
+   "cer_anon": 0.3243
+  },
+  {
+   "utt_id": "utt_15676465164236187481",
+   "speaker": "speaker_853689585694880219",
+   "locale": "ar_x_levant",
+   "sec": 6.06,
+   "cer_orig": 0.2,
+   "cer_anon": 0.48
+  },
+  {
+   "utt_id": "utt_4717580439447226781",
+   "speaker": "speaker_853689585694880219",
+   "locale": "ar_x_levant",
+   "sec": 5.34,
+   "cer_orig": 0.3,
+   "cer_anon": 0.75
+  },
+  {
+   "utt_id": "utt_15597548287863155234",
+   "speaker": "speaker_853689585694880219",
+   "locale": "ar_x_levant",
+   "sec": 8.28,
+   "cer_orig": 0.0408,
+   "cer_anon": 0.4286
+  },
+  {
+   "utt_id": "utt_8971500655138475467",
+   "speaker": "speaker_14359377659576811430",
+   "locale": "ar_x_maghrebi",
+   "sec": 3.24,
+   "cer_orig": 0.4857,
+   "cer_anon": 0.7714
+  },
+  {
+   "utt_id": "utt_16019356516564229727",
+   "speaker": "speaker_14359377659576811430",
+   "locale": "ar_x_maghrebi",
+   "sec": 3.6,
+   "cer_orig": 0.5769,
+   "cer_anon": 0.7308
+  },
+  {
+   "utt_id": "utt_11717651103150385502",
+   "speaker": "speaker_14359377659576811430",
+   "locale": "ar_x_maghrebi",
+   "sec": 3.84,
+   "cer_orig": 20.1818,
+   "cer_anon": 0.8182
+  },
+  {
+   "utt_id": "utt_15906063098968940101",
+   "speaker": "speaker_14359377659576811430",
+   "locale": "ar_x_maghrebi",
+   "sec": 3.36,
+   "cer_orig": 0.625,
+   "cer_anon": 0.8438
+  },
+  {
+   "utt_id": "utt_15851342045555727060",
+   "speaker": "speaker_14359377659576811430",
+   "locale": "ar_x_maghrebi",
+   "sec": 2.04,
+   "cer_orig": 0.3333,
+   "cer_anon": 0.75
+  },
+  {
+   "utt_id": "utt_17276052560918446812",
+   "speaker": "speaker_4505729520436472217",
+   "locale": "ar_x_maghrebi",
+   "sec": 6.06,
+   "cer_orig": 0.6364,
+   "cer_anon": 26.6364
+  },
+  {
+   "utt_id": "utt_8588958230277468303",
+   "speaker": "speaker_4505729520436472217",
+   "locale": "ar_x_maghrebi",
+   "sec": 7.44,
+   "cer_orig": 0.3,
+   "cer_anon": 0.6333
+  },
+  {
+   "utt_id": "utt_3591577876543801260",
+   "speaker": "speaker_4505729520436472217",
+   "locale": "ar_x_maghrebi",
+   "sec": 5.82,
+   "cer_orig": 0.4444,
+   "cer_anon": 0.6667
+  },
+  {
+   "utt_id": "utt_7105776007558824532",
+   "speaker": "speaker_4505729520436472217",
+   "locale": "ar_x_maghrebi",
+   "sec": 6.12,
+   "cer_orig": 0.4,
+   "cer_anon": 0.7
+  },
+  {
+   "utt_id": "utt_9261607354260374261",
+   "speaker": "speaker_4505729520436472217",
+   "locale": "ar_x_maghrebi",
+   "sec": 6.66,
+   "cer_orig": 0.4,
+   "cer_anon": 0.55
+  },
+  {
+   "utt_id": "utt_3056939080312490814",
+   "speaker": "speaker_10234514160366215559",
+   "locale": "ar_x_maghrebi",
+   "sec": 3.72,
+   "cer_orig": 0.5,
+   "cer_anon": 1.2667
+  },
+  {
+   "utt_id": "utt_5285395030055023071",
+   "speaker": "speaker_10234514160366215559",
+   "locale": "ar_x_maghrebi",
+   "sec": 4.2,
+   "cer_orig": 0.3667,
+   "cer_anon": 0.3
+  },
+  {
+   "utt_id": "utt_14045173383929506293",
+   "speaker": "speaker_10234514160366215559",
+   "locale": "ar_x_maghrebi",
+   "sec": 3.66,
+   "cer_orig": 0.3571,
+   "cer_anon": 0.6786
+  },
+  {
+   "utt_id": "utt_10676832426426831463",
+   "speaker": "speaker_10234514160366215559",
+   "locale": "ar_x_maghrebi",
+   "sec": 3.96,
+   "cer_orig": 0.5556,
+   "cer_anon": 0.7778
+  },
+  {
+   "utt_id": "utt_3947619796235914951",
+   "speaker": "speaker_10234514160366215559",
+   "locale": "ar_x_maghrebi",
+   "sec": 3.78,
+   "cer_orig": 0.4722,
+   "cer_anon": 0.6389
+  }
+ ]
+}
