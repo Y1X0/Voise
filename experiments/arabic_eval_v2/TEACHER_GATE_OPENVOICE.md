@@ -1,9 +1,18 @@
-# Teacher gate #2: OpenVoice V2 — pre-registration **FROZEN (protocol v1.0, 2026-10-11)**
+# Teacher gate #2: OpenVoice V2 — pre-registration **FROZEN (protocol v1.1, 2026-10-11)**
 
 **Status:**
 - Protocol frozen. **Running it is NOT approved.** Freezing is not permission to run.
-- The gate script will be written to this protocol and committed **before** any run.
+- The gate script is `openvoice_gate.py`, committed with this version and **not run**.
 - The owner's explicit approval is required before submission.
+
+**v1.1 amendment** (made before any teacher output exists; no gate, threshold, data or ASR/ASV changed):
+- Conversion device: v1.0 said "GPU if present". v1.1 uses CPU, 1 thread, with `torch.use_deterministic_algorithms(True)`, so the output does not depend on GPU kernel nondeterminism or thread scheduling.
+- Reproducibility check: now **mandatory**. A failure gives BLOCKED; v1.0 only recorded it.
+  - It re-converts with a fresh model instance, in reversed order.
+- Output post-processing: stated explicitly; it is the same as gate #1.
+- Library pins: `pyworld==0.3.5`, `librosa==0.11.0`, `soxr==1.1.0`.
+- §2: documents exactly where the target vector enters the model (`zero_g`).
+- `test_openvoice_gate.py` locks the gates, hashes and shared evaluation code.
 
 **Unchanged from `TEACHER_GATE.md`:**
 - the gates T1–T4 and their thresholds;
@@ -55,8 +64,21 @@ The gate script asserts P1, P3 and P3b. Any mismatch → **BLOCKED**.
    - `ToneColorConverter(…, enable_watermark=False)` raises `TypeError` at this commit. The official class therefore cannot run without `wavmark`.
    - The script does not use that constructor.
 
-**Also observed:** `zero_g = True` in the v2 config. The posterior encoder and the decoder receive a zero speaker vector, so the target embedding acts **only through the flow**.
-- This is OBSERVED from config and code. Its effect on privacy is unknown until measured.
+**Also observed: `zero_g = True` in the v2 config.** Where the speaker vectors enter, from the code at P1:
+
+| Stage | Code | Speaker vector it receives |
+|---|---|---|
+| `ref_enc` (ReferenceEncoder) | `models.py:301`, `:452` | none. It *produces* `src_se` (from the input clip) and `tgt_se` (from the renders) |
+| `enc_q` (PosteriorEncoder) | `models.py:495` | **zeros** (`torch.zeros_like(g_src)`). Its WN conditioning layer still adds its constant bias. It samples `z` (stochastic, tau) |
+| `flow`, forward | `models.py:496` | **`g_src`**: removes source tone colour |
+| `flow`, reverse | `models.py:497` | **`g_tgt`**: adds the target. 4 residual coupling layers, `mean_only=True` (`models.py:387`), conditioned through WN `cond_layer` (`modules.py:156`) |
+| `dec` (HiFi-GAN Generator) | `models.py:498` | **zeros** (`torch.zeros_like(g_tgt)`). Its `cond` adds a constant |
+
+- So the target vector reaches **only the reverse flow**.
+- The latent sampled by `enc_q`, and therefore the timing, rhythm and pitch contour present in the source spectrogram, is never conditioned on the target.
+- This is OBSERVED from config and code. Whether it limits privacy is **unknown until measured**:
+  - it is neither assumed to anonymize;
+  - nor assumed to fail.
 
 ## 3. Licence audit of the run path (OBSERVED; not legal advice)
 
@@ -96,11 +118,25 @@ The gate script asserts P1, P3 and P3b. Any mismatch → **BLOCKED**.
 |---|---|
 | `src_se` | `ref_enc` of the input clip itself (per clip) |
 | `tau` | 0.3 |
-| Seed | `torch.manual_seed(5100 + i)` per clip (§2) |
-| Resampling | Input 16 kHz → 22 050 Hz by `librosa.load(sr=22050)`. Output 22 050 → 16 kHz by `librosa.resample` (default `soxr_hq`) |
-| Device | GPU if present (as gate #1) |
-| Reproducibility check | Re-convert clips 0–4 at the end of the run; must give max \|Δ\| = 0 within the run, otherwise the result is recorded and reported |
+| Seed | `torch.manual_seed(5100 + i)` immediately before `voice_conversion` of clip `i` (manifest order). `ref_enc` and the spectrogram use no RNG |
+| Independence | Each clip is converted alone (batch 1): fresh load, fresh spectrogram, `src_se` from that clip only. The model is in eval mode and has no state carried between clips |
+| Resampling | Input 16 kHz → 22 050 Hz by `librosa.load(sr=22050)`. Output 22 050 → 16 kHz by `librosa.resample(res_type="soxr_hq")` |
+| Post-processing | As gate #1: peak-limit to 0.89, then PCM-16 WAV round-trip in memory |
+| Device (v1.1) | CPU, `torch.set_num_threads(1)`, `torch.use_deterministic_algorithms(True)` during conversion; both reset before ASR/ASV. ASR/ASV run on GPU exactly as in gate #1 |
+| Reproducibility check (v1.1) | A **fresh** model instance re-converts clips 4, 3, 2, 1, 0 (reversed order). Max \|Δ\| must be exactly 0, otherwise **BLOCKED** |
+| Library pins | `pyworld==0.3.5`, `librosa==0.11.0`, `soxr==1.1.0`. torch, numpy and speechbrain come from the Kaggle image (unpinned, as in gate #1) and are recorded in the output. The existing check that the original-vs-original ASV scores match the committed v1 scores guards against evaluation drift |
 | Output storage | Memory or `/tmp` only, never `/kaggle/working` |
+
+**Local dry run (OBSERVED; not the gate):**
+- Setup:
+  - sections 1–2 of `openvoice_gate.py` run in this container;
+  - random weights;
+  - 225 + 60 **synthetic tones** written under the manifest's file names (no speech).
+- Result:
+  - all asserts passed;
+  - reversed-order reproducibility max \|Δ\| = 0.0 for all 5 clips;
+  - CPU 1-thread RTF 0.754.
+- Section 4b was checked separately on synthetic arrays.
 
 ## 6. Data and pipeline (unchanged)
 
@@ -128,7 +164,11 @@ A gate that passes on one ASV and fails on the other has **failed**.
 |---|---|
 | PASS | T1–T4 all pass |
 | FAIL | T1 fails, **or** T2's gain is ruled out, **or** T3 fails |
-| BLOCKED | The test cannot run, **or** T2 is undetermined with T1 and T3 passing, **or** any of: hash or commit mismatch; incomplete load; excluded module loaded; a missing clip |
+| BLOCKED | The test cannot run, **or** T2 is undetermined with T1 and T3 passing, **or** any of: hash or commit mismatch; incomplete load; excluded module loaded; a missing clip; reproducibility max \|Δ\| ≠ 0 |
+
+**Implementation:**
+- Every BLOCKED condition is an `assert` in `openvoice_gate.py`. The run then stops before printing a result, and "cannot run" applies.
+- The gate code (section 5) is byte-identical to gate #1's. So are sections 1 (data, pool, renders), 3 (ASR) and 4 (ASV, trials, bootstrap). This is enforced by `test_openvoice_gate.py`.
 
 ## 8. Secondary analysis (reported; never changes a gate or the aggregates)
 
