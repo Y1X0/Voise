@@ -135,7 +135,7 @@ def consent_record(cid, pseudonym, commercial=True, withdrawn=False, evaluation=
             "consent_timestamp": "2026-10-01T10:00:00Z", "adult_confirmed": True, "language": ["ar"], "dialect_primary": "Jordanian",
             "scopes": {"ml_training": True, "voice_anonymization_rnd": True, "commercial_product_development": commercial,
                        "model_evaluation": evaluation, "derivative_model_training": commercial, "audio_redistribution": False},
-            "withdrawal": {"status": "withdrawn" if withdrawn else "active", "withdrawn_at": None}, "retention_until": "2031-10-01",
+            "withdrawal": {"status": "withdrawn" if withdrawn else "active", "withdrawn_at": None}, "retention_until": "2028-10-01",
             "withdrawal_token_sha256": "a" * 64, "collector": "campaign-2026-amman-1"}
 
 

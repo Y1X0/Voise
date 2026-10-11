@@ -4,10 +4,13 @@
     compared across corpora that share a speaker space, e.g. LibriTTS-R == LibriSpeech);
   * no excluded speaker (evaluation corpus, known VC targets) in train or valid;
   * no row of a reserved subset (attacker pool, evaluator-ASV training data, test sets)
-    in train or valid.
+    in train or valid. A reserved entry may name a shell-style subset pattern ("*",
+    "trial-*") and its own "forbidden_splits" (default train + valid), e.g. the frozen SVQ
+    evaluation corpus is also kept out of attacker_train.
 
   python3 training/datasets/leakage.py data/manifests/*.jsonl
 """
+import fnmatch
 import json
 import os
 import sys
@@ -29,22 +32,38 @@ def canonical(speaker: str, space: dict) -> str:
     return f"{space.get(corpus, corpus)}:{sid}"
 
 
+DEFAULT_FORBIDDEN_SPLITS = ("train", "valid")
+
+
+def canonical_corpus(corpus: str, space: dict) -> str:
+    return space.get(corpus, corpus)
+
+
+def reserved_splits(corpus, subset, excl):
+    """Splits a row of (corpus, subset) must never enter; empty set = not reserved.
+    Corpus names are made canonical (speaker spaces) and subsets match shell-style patterns."""
+    space = excl["same_speaker_space"]
+    corp = canonical_corpus(corpus, space)
+    out = set()
+    for r in excl["reserved_subsets"]:
+        if canonical_corpus(r["corpus"], space) == corp and fnmatch.fnmatchcase(str(subset or ""), r["subset"]):
+            out.update(r.get("forbidden_splits", DEFAULT_FORBIDDEN_SPLITS))
+    return out
+
+
 def check(rows, excl=None):
     excl = excl or load_exclusions()
     space = excl["same_speaker_space"]
     banned = {canonical(s, space) for group in excl["speakers"].values() for s in group}
-    reserved = {(canonical(r["corpus"] + ":x", space).split(":")[0], r["subset"]) for r in excl["reserved_subsets"]}
     errors = []
     by_split = defaultdict(set)
     for i, r in enumerate(rows):
         spk = canonical(r["speaker"], space)
         by_split[r["split"]].add(spk)
-        if r["split"] in ("train", "valid"):
-            if spk in banned:
-                errors.append(f"row {i}: excluded speaker {r['speaker']} in split {r['split']}")
-            corpus = canonical(r["corpus"] + ":x", space).split(":")[0]
-            if (corpus, r.get("subset", "")) in reserved or (corpus, "*") in reserved:
-                errors.append(f"row {i}: reserved subset {r['corpus']}/{r.get('subset')} in split {r['split']}")
+        if r["split"] in ("train", "valid") and spk in banned:
+            errors.append(f"row {i}: excluded speaker {r['speaker']} in split {r['split']}")
+        if r["split"] in reserved_splits(r["corpus"], r.get("subset", ""), excl):
+            errors.append(f"row {i}: reserved subset {r['corpus']}/{r.get('subset')} in split {r['split']}")
     splits = sorted(by_split)
     for a in range(len(splits)):
         for b in range(a + 1, len(splits)):

@@ -43,7 +43,7 @@ from collections import defaultdict
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
-from datasets.leakage import canonical, check as leakage_check, load_exclusions  # noqa: E402
+from datasets.leakage import canonical, check as leakage_check, load_exclusions, reserved_splits  # noqa: E402
 from datasets.manifest import validate  # noqa: E402
 
 AUDIO = (".wav", ".flac", ".mp3", ".ogg")
@@ -163,7 +163,6 @@ def assign_splits(rows, seed, fractions=(0.90, 0.05, 0.05), attacker_subsets=(("
     excl = excl or load_exclusions()
     space = excl["same_speaker_space"]
     banned = {canonical(s, space) for g in excl["speakers"].values() for s in g}
-    reserved = {(canonical(r["corpus"] + ":x", space).split(":")[0], r["subset"]) for r in excl["reserved_subsets"]}
     attack = {(canonical(c + ":x", space).split(":")[0], s) for c, s in attacker_subsets}
     out, dropped = [], defaultdict(int)
     by_spk = defaultdict(list)
@@ -173,10 +172,11 @@ def assign_splits(rows, seed, fractions=(0.90, 0.05, 0.05), attacker_subsets=(("
         if canonical(r["speaker"], space) in banned:
             dropped["excluded_speaker"] += 1
             continue
-        if key in attack:
+        forbidden = reserved_splits(r["corpus"], r.get("subset", ""), excl)
+        if key in attack and "attacker_train" not in forbidden:
             out.append(dict(r, split="attacker_train"))
             continue
-        if key in reserved or (corp, "*") in reserved:
+        if forbidden:                       # reserved rows never get a training-side split here
             dropped["reserved_subset"] += 1
             continue
         by_spk[canonical(r["speaker"], space)].append(r)
@@ -259,6 +259,7 @@ def stats(rows):
 
 
 def write(rows, out_dir, seed, inputs, dropped):
+    assert_no_leakage(rows)                 # every writer is gated, not only the callers that remember to check
     os.makedirs(out_dir, exist_ok=True)
     index = {"seed": seed, "inputs": inputs, "dropped": dropped, "manifests": {}}
     for split in ("train", "valid", "test", "attacker_train"):

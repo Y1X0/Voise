@@ -378,7 +378,7 @@ def consent(cid, pseud, commercial=True, withdrawn=False):
             "scopes": {"ml_training": True, "voice_anonymization_rnd": True, "commercial_product_development": commercial,
                        "model_evaluation": True, "derivative_model_training": True, "audio_redistribution": False},
             "withdrawal": {"status": "withdrawn" if withdrawn else "active", "withdrawn_at": None},
-            "retention_until": "2031-01-01", "withdrawal_token_sha256": "a" * 64, "collector": "campaign-1"}
+            "retention_until": "2028-01-01", "withdrawal_token_sha256": "a" * 64, "collector": "campaign-1"}
 
 
 def session(spk, cid, sid, sr=48000):

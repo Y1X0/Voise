@@ -34,6 +34,8 @@ jobs:
         run: |
           python3 -m pip install --quiet numpy soundfile
           python3 scripts/tests/test_eval_helpers.py
+      - name: "Voice-collection security regressions + synthetic consent journey (no real audio)"
+        run: python3 training/tests/test_voice_collection_security.py
       - uses: actions/upload-artifact@v4
         with:
           name: dsp-reports

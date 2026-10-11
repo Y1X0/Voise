@@ -8,7 +8,9 @@
   "mls_en": "librispeech",
   "librilight": "librispeech",
   "libriheavy": "librispeech",
-  "dns_read_speech": "librispeech"
+  "dns_read_speech": "librispeech",
+  "google_svq": "svq",
+  "simple_voice_questions": "svq"
  },
  "speakers": {
   "phase1_3_evaluation_corpus": [
@@ -68,6 +70,26 @@
    "corpus": "own_recordings",
    "subset": "test",
    "reason": "test set"
+  },
+  {
+   "corpus": "svq",
+   "subset": "*",
+   "forbidden_splits": [
+    "train",
+    "valid",
+    "attacker_train"
+   ],
+   "reason": "frozen Arabic evaluation corpus (experiments/llvc_vs_dsp_48spk manifest sha256 9cca9b92..., 45 test + 12 pool speakers): never used for training, selection or attacker training (docs/VOICE_DATA_COLLECTION_SECURITY_REVIEW.md R8)"
+  },
+  {
+   "corpus": "own_recordings",
+   "subset": "trial-*",
+   "forbidden_splits": [
+    "train",
+    "valid",
+    "attacker_train"
+   ],
+   "reason": "limited-trial campaigns (dataset_version 'trial-*'): journey/QC validation only, not training or evaluation data (docs/VOICE_DATA_COLLECTION_DESIGN.md 9.1)"
   }
  ],
  "contaminated_evaluators": {

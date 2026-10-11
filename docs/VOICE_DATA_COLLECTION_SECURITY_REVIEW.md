@@ -44,7 +44,7 @@
 | E7 | Existing Voise consent and pipeline tests | `python3 training/tests/test_data_pipeline.py` | **20 tests, OK** |
 | E8 | Consent validator probes (synthetic records; script in scratchpad) | `consent.validate_record` / `check_rows` | **`retention_until: "never"` accepted, and it never expires** in `check_rows` (string comparison). `consent_timestamp: "yesterday"` accepted (format not enforced). A Telegram handle in `notes` (`@someuser`) **not detected**. An Arabic-Indic phone number in `notes` detected. Minors rejected. Withdrawn records rejected. A string `"true"` as a scope is rejected |
 | E9 | Session schema probes | `consent.validate_session` | unknown fields (`codec`, `file_id`) rejected, which is good for PII. The proposed `codec` field needs a schema change |
-| E10 | Speaker leakage probes | `datasets.leakage.check` on synthetic rows | same pseudonym in train and test → **flagged**. Two pseudonyms of one person → **not detectable** (as expected). **An `svq` row in train is not flagged:** SVQ, the frozen evaluation corpus, is absent from `excluded_speakers.json` |
+| E10 | Speaker leakage probes | `datasets.leakage.check` on synthetic rows | same pseudonym in train and test → **flagged**. Two pseudonyms of one person → **not detectable** (as expected). **An `svq` row in train is not flagged by `leakage.check`:** SVQ, the frozen evaluation corpus, is absent from `excluded_speakers.json`. *Correction (remediation phase, §8): the full gate `build_manifests.assert_no_leakage` already rejected such a row **indirectly**, because `manifest.validate` refuses corpora without a licence entry. There was no explicit reservation, so the protection would disappear as soon as `svq` got a licence entry, e.g. for evaluation manifests.* |
 
 Everything else in this report is **design analysis**. Nothing here was run against a collector, because no collector exists.
 
@@ -145,3 +145,84 @@ Severity scale: **Critical** blocks the design; **High** must be fixed before sy
 - whether duplicate detection works with acceptable error rates on real voices (cannot be measured with synthetic signals).
 
 No check in this report is marked passing unless it was run and its output recorded above.
+
+## 8. Remediation phase (2026-10-11) — what was actually changed and tested
+
+**Scope:** `Y1X0/Voise` only, branch `claude/voice-anonymizer-android-az4mcs`.
+- Starting point: `7a5a880`, clean tree, in sync with origin.
+- **Not touched:** `Y1X0/BOT`; no bot was created; no Telegram API, real audio, training, GPU or downloads.
+- Frozen evaluation set, hashes and T1–T4 unchanged:
+  - `data/acceptance_criteria.json` sha256 `58a893c2…`;
+  - `experiments/llvc_vs_dsp_48spk/manifest.json` `9cca9b92…`;
+  - both re-checked by a new test.
+
+### 8.1 Fixes
+
+| Finding | Fix | File(s) |
+|---|---|---|
+| R7: `retention_until` accepted any string (`"never"` never expired); `consent_timestamp` format unchecked | Strict `YYYY-MM-DD` real calendar dates. Retention must be after the consent date and at most `MAX_RETENTION_MONTHS` = 24 later: the design §4 default, **pending owner/legal confirmation**. Shorter is always allowed. RFC 3339 **UTC-only** timestamps (`Z` / `+00:00`), real dates, not in the future (5-min skew). `withdrawal.withdrawn_at` checked when present (UTC, not before consent, not in the future). Session `recorded_at` strict date. `check_rows` now re-validates every referenced record (in-memory stores bypassed `load_store`) and treats an unparsable retention as expired | `training/datasets/consent.py` |
+| Telegram handle and identifiers not detected in free text | All free-text fields (`notes`, `collector`, `form_version`, each `dialect_secondary` item) are scanned **after normalisation**: NFKC (fullwidth `＠`, `１２３`), removal of invisible characters (zero-width, bidi marks, soft hyphen, word joiner, BOM), digits of any script mapped to ASCII (Arabic-Indic, Persian), lower case. Patterns: e-mail; phone-like (≥ 8 digits with separators); `@handle`; `t.me` / `telegram.me` / `telegram.dog` links (spacing tolerated); `tg://`; `id` / `user id` / `chat_id` followed by ≥ 5 digits. `notes` additionally rejects any ≥ 5-digit run | `consent.py` |
+| R8: SVQ and trial campaigns not reserved | Explicit `reserved_subsets` for `svq` (all subsets; forbidden in train, valid **and attacker_train**), with aliases `google_svq` and `simple_voice_questions` → `svq`. `own_recordings` subsets `trial-*` are forbidden in train, valid and attacker_train. Reservation logic centralised in `leakage.reserved_splits` (shell-style subset patterns, per-entry `forbidden_splits`) and used by both `leakage.check` and `build_manifests.assign_splits`. **`build_manifests.write` itself now calls `assert_no_leakage`**, so every writer is gated: `build_manifests` CLI, `mls.make_manifests`, `mix.mix`, `arabic_import.run`, plus `verify` and trainer preflight via `verify` and `smoke` | `training/datasets/leakage.py`, `build_manifests.py`, `excluded_speakers.json` |
+| C1, C2, C10 (testable part) | **Reference gate** `collection_core.py`, transport-agnostic, **not a bot**, with no network, logging or crypto. Nothing is fetched or stored without an active, validated consent **and** an open prompt. Only private-chat voice notes are accepted; audio, video note, document, forwarded, edited and group/channel messages are rejected without fetching. Withdrawal is re-checked after the fetch and before storing. The withdrawal token is kept only as sha256. Withdrawal deletes everything registered in a lineage index and **returns a fixed list of what it cannot delete**: trained weights, Telegram's copies, backups until rotation | `training/datasets/collection_core.py` (new) |
+
+**Existing-test changes (data, not criteria):**
+- Two fixtures encoded 5-year retention, which the new 24-month policy rejects.
+- They were changed to 24 months: `test_data_pipeline.py` `2031-10-01` → `2028-10-01`; `test_training_ready.py` `2031-01-01` → `2028-01-01`.
+- No assertion was removed or relaxed.
+
+### 8.2 New tests: `training/tests/test_voice_collection_security.py` (23 tests; synthetic data only; added to CI)
+
+| Group | Tests | What they prove |
+|---|---|---|
+| RetentionAndTime | 7 | `never`, empty, wrong separators, impossible dates (Feb 30, month 13), datetimes, Arabic-Indic digits, numbers, `None` → rejected. Exactly 24 months accepted, +1 day rejected. Non-UTC, naive, future, impossible timestamps rejected. `withdrawn_at` rules. Session `recorded_at`. `check_rows` on in-memory `never` and on expiry. Malformed `today` raises |
+| ContactAndTelegramIds | 3 | 27 bypass variants rejected (fullwidth `@`, zero-width and word-joiner inside handles, spaced `@`, upper-case `T.ME`, `t . me /`, `tg://`, `chat_id=`, Arabic-Indic / Persian / fullwidth digits, soft hyphen in e-mail, phone formats), and 5 benign notes accepted. Collector, form version and dialect items scanned |
+| SvqAndTrialReservation | 5 | `svq` and aliases blocked in train, valid and attacker_train, allowed in test. `trial-*` blocked; other campaigns not. `assign_splits` drops reserved rows and keeps the attacker pool. `assert_no_leakage` **and `write`** refuse an SVQ train row (no file written). Frozen hashes unchanged |
+| SyntheticCollectionJourney | 8 | **No fetch and no file** before consent: never started, info screen, mid-flow, unanswered scopes. Age gate. Valid consent record, token not stored in plain. Every rejected kind and context is never fetched. No prompt → no fetch. Store → withdraw deletes raw audio + a derived artefact and reports what cannot be deleted. Withdrawal during the fetch → discarded, nothing stored. Unknown token and scope rejected |
+
+**Synthetic audio:** in-memory OGG/Vorbis harmonic tones (no speech).
+
+**Mutation check:** the 15 regression tests were run against the **pre-fix** modules (new module stubbed). Result: **62 sub-checks fail on the old code; 0 fail with the fixes.**
+
+### 8.3 Full test results (this environment, after the fixes)
+
+| Suite | Result |
+|---|---|
+| test_voice_collection_security (new) | 23 OK |
+| test_data_pipeline | 20 OK |
+| test_readiness | 29 OK |
+| test_registry | 11 OK |
+| test_training_ready | 21 OK |
+| test_consistency | 18 OK |
+| test_architecture | 26 OK |
+| test_compute_readiness | 9 OK |
+| test_efficiency | 11 OK |
+| test_kaggle | 15 OK, 3 skipped (need a CUDA GPU) |
+| test_validation | 17 OK |
+| test_runtime_privacy | 10 OK, 1 skipped (`executorch` not installed) |
+| experiments/arabic_eval_v2/test_openvoice_gate | 11 OK |
+| scripts/tests/test_eval_helpers | 11 OK |
+| tools/listening-test self-test | passed |
+| DSP host tests | 29/29 |
+| Termux CLI tests | all checks passed |
+
+**Total:** 232 Python unit tests run (228 passed, 4 skipped, 0 failed), plus the DSP, Termux and listening self-tests. The `test_data_pipeline`, `test_training_ready` and new suites were re-run after a final regex tightening (`chat_id=` in non-notes fields), all OK.
+
+**Not run here:** the Android APK / JVM / emulator jobs (no Android SDK or emulator in this environment; unaffected by the diff); GPU-only skips as listed. CI on the pushed commit is the authority for those.
+
+### 8.4 Still open (unchanged by this phase) — real collection stays **NO-GO**
+
+| Item | Detail |
+|---|---|
+| C5 / C6 | Key custody, escrow, rotation, recovery; signed and write-authenticated store. **Architecture decisions, not implemented** |
+| C9 | Pepper in a KMS; coarsened dates in exported manifests |
+| C11 | Withdrawal without the token |
+| C12 | Role matrix |
+| C13 | Duplicate-person scan |
+| C14 | Secret separation |
+| C3 | The group bot (`MESSAGE_LOG_ENABLED`, Sentry `chatId`) is an owner decision. **No BOT change was made** |
+| §5 | All legal and operational items: lawyer, controller, data-processing agreements (Telegram, store, compute — Kaggle unsuitable for real recordings until verified), retention confirmation, incident response |
+| ST-6…ST-10, ST-14, ST-15 | Need the real collector or infrastructure (logging, Sentry transport, network allow-list, encryption and signatures, duplicate scan, permissions) |
+
+**Further limits:**
+- Deletion from trained models and from backups is **not** possible or not proven; the code reports it instead of claiming it.
+- Pseudonymisation is not anonymisation, and voice remains biometric personal data.
