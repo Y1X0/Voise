@@ -1,0 +1,333 @@
+{
+ "hf": {
+  "repo": "myshell-ai/OpenVoiceV2",
+  "revision": "f36e7edfe1684461a8343844af60babc2efbb727",
+  "lastModified": "2024-12-24T19:19:30.000Z",
+  "cardData_license": "mit"
+ },
+ "pre_download": {
+  "size": 131320490,
+  "lfs_sha256": "9652c27e92b6b2a91632590ac9962ef7ae2b712e5c5b7f4c34ec55ee2b37ab9e",
+  "last_commit": "fd981100305a0e4291f93a9ad169c6d9f7bed54a",
+  "url": "https://huggingface.co/myshell-ai/OpenVoiceV2/resolve/f36e7edfe1684461a8343844af60babc2efbb727/converter/checkpoint.pth"
+ },
+ "downloaded": {
+  "converter/checkpoint.pth": {
+   "bytes": 131320490,
+   "sha256": "9652c27e92b6b2a91632590ac9962ef7ae2b712e5c5b7f4c34ec55ee2b37ab9e"
+  },
+  "converter/config.json": {
+   "bytes": 838,
+   "sha256": "9dfff60350b8c63f2c664efd92a61b2516efb22671466960f0e5dfebd881fa47"
+  }
+ },
+ "hash_match_lfs": true,
+ "code_head": "74a1d147b17a8c3092dd5430504bd83ef6c7eb23",
+ "ckpt": {
+  "top_keys": [
+   "model"
+  ],
+  "n_tensors": 486,
+  "missing": [],
+  "unexpected": [],
+  "n_params": 32792226
+ },
+ "determinism_same_seed_maxabs": 0.0,
+ "different_seed_maxabs": 0.33464163541793823,
+ "zero_g": true,
+ "run_path_distributions": {
+  "Cython": {
+   "version": "3.0.12",
+   "license": "Apache-2.0",
+   "classifiers": [
+    "Apache Software License"
+   ]
+  },
+  "PyGObject": {
+   "version": "3.48.2",
+   "license": "GNU Lesser General Public License v2.1 (LGPLv2.1)",
+   "classifiers": [
+    "GNU Lesser General Public License v2 or later (LGPLv2+)"
+   ]
+  },
+  "PyYAML": {
+   "version": "6.0.3",
+   "license": "MIT",
+   "classifiers": [
+    "MIT License"
+   ]
+  },
+  "audioop-lts": {
+   "version": "0.2.2",
+   "license": "PSF-2.0",
+   "classifiers": []
+  },
+  "audioread": {
+   "version": "3.1.0",
+   "license": "MIT",
+   "classifiers": [
+    "MIT License"
+   ]
+  },
+  "cffi": {
+   "version": "2.1.1",
+   "license": "MIT-0",
+   "classifiers": []
+  },
+  "charset-normalizer": {
+   "version": "3.4.9",
+   "license": "MIT",
+   "classifiers": []
+  },
+  "cloudpickle": {
+   "version": "3.1.2",
+   "license": "BSD-3-Clause",
+   "classifiers": [
+    "BSD License"
+   ]
+  },
+  "colorama": {
+   "version": "0.4.6",
+   "license": "",
+   "classifiers": [
+    "BSD License"
+   ]
+  },
+  "coverage": {
+   "version": "7.16.2",
+   "license": "Apache-2.0",
+   "classifiers": []
+  },
+  "decorator": {
+   "version": "5.3.1",
+   "license": "BSD-2-Clause",
+   "classifiers": []
+  },
+  "dill": {
+   "version": "0.4.1",
+   "license": "BSD-3-Clause",
+   "classifiers": [
+    "BSD License"
+   ]
+  },
+  "jaraco.classes": {
+   "version": "3.4.0",
+   "license": "",
+   "classifiers": [
+    "MIT License"
+   ]
+  },
+  "jaraco.context": {
+   "version": "6.1.2",
+   "license": "MIT",
+   "classifiers": []
+  },
+  "jaraco.functools": {
+   "version": "4.6.0",
+   "license": "MIT",
+   "classifiers": []
+  },
+  "jaraco.text": {
+   "version": "4.0.0",
+   "license": "",
+   "classifiers": [
+    "MIT License"
+   ]
+  },
+  "joblib": {
+   "version": "1.6.0",
+   "license": "BSD-3-Clause",
+   "classifiers": []
+  },
+  "lazy-loader": {
+   "version": "0.5",
+   "license": "BSD-3-Clause",
+   "classifiers": []
+  },
+  "librosa": {
+   "version": "0.11.0",
+   "license": "ISC",
+   "classifiers": [
+    "ISC License (ISCL)"
+   ]
+  },
+  "llvmlite": {
+   "version": "0.44.0",
+   "license": "BSD",
+   "classifiers": []
+  },
+  "more-itertools": {
+   "version": "10.8.0",
+   "license": "MIT",
+   "classifiers": []
+  },
+  "msgpack": {
+   "version": "1.2.2",
+   "license": "Apache-2.0",
+   "classifiers": []
+  },
+  "numba": {
+   "version": "0.61.2",
+   "license": "BSD",
+   "classifiers": [
+    "BSD License"
+   ]
+  },
+  "numpy": {
+   "version": "2.1.3",
+   "license": "Copyright (c) 2005-2024, NumPy Developers.\n All rights reserved.\n\n Redistributio",
+   "classifiers": [
+    "BSD License"
+   ]
+  },
+  "opt_einsum": {
+   "version": "3.4.0",
+   "license": "MIT",
+   "classifiers": [
+    "MIT License"
+   ]
+  },
+  "packaging": {
+   "version": "26.3",
+   "license": "Apache-2.0 OR BSD-2-Clause",
+   "classifiers": []
+  },
+  "platformdirs": {
+   "version": "4.11.7",
+   "license": "MIT",
+   "classifiers": [
+    "MIT License"
+   ]
+  },
+  "pooch": {
+   "version": "1.9.0",
+   "license": "BSD-3-Clause",
+   "classifiers": []
+  },
+  "psutil": {
+   "version": "5.9.5",
+   "license": "BSD-3-Clause",
+   "classifiers": [
+    "BSD License"
+   ]
+  },
+  "pycairo": {
+   "version": "1.29.1",
+   "license": "LGPL-2.1-only OR MPL-1.1",
+   "classifiers": []
+  },
+  "pycparser": {
+   "version": "3.0",
+   "license": "BSD-3-Clause",
+   "classifiers": []
+  },
+  "pydot": {
+   "version": "4.0.1",
+   "license": "MIT",
+   "classifiers": []
+  },
+  "pyworld": {
+   "version": "0.3.5",
+   "license": "",
+   "classifiers": []
+  },
+  "scipy": {
+   "version": "1.16.3",
+   "license": "Copyright (c) 2001-2002 Enthought, Inc. 2003, SciPy Developers.\n All rights rese",
+   "classifiers": [
+    "BSD License"
+   ]
+  },
+  "setuptools": {
+   "version": "81.0.0",
+   "license": "MIT",
+   "classifiers": []
+  },
+  "soundfile": {
+   "version": "0.14.0",
+   "license": "BSD 3-Clause License",
+   "classifiers": [
+    "BSD License"
+   ]
+  },
+  "soxr": {
+   "version": "1.1.0",
+   "license": "LGPL-2.1-or-later",
+   "classifiers": []
+  },
+  "standard-aifc": {
+   "version": "3.13.0",
+   "license": "PSF-2.0",
+   "classifiers": [
+    "Python Software Foundation License"
+   ]
+  },
+  "standard-chunk": {
+   "version": "3.13.0",
+   "license": "PSF-2.0",
+   "classifiers": [
+    "Python Software Foundation License"
+   ]
+  },
+  "standard-sunau": {
+   "version": "3.13.0",
+   "license": "PSF-2.0",
+   "classifiers": [
+    "Python Software Foundation License"
+   ]
+  },
+  "torch": {
+   "version": "2.11.0+cpu",
+   "license": "BSD-3-Clause",
+   "classifiers": []
+  },
+  "tqdm": {
+   "version": "4.67.3",
+   "license": "MPL-2.0 AND MIT",
+   "classifiers": []
+  },
+  "typing_extensions": {
+   "version": "4.16.0",
+   "license": "PSF-2.0",
+   "classifiers": []
+  },
+  "xxhash": {
+   "version": "4.0.1",
+   "license": "BSD-2-Clause",
+   "classifiers": []
+  }
+ },
+ "forbidden_loaded": [],
+ "openvoice_modules_loaded": [
+  "openvoice",
+  "openvoice.attentions",
+  "openvoice.commons",
+  "openvoice.mel_processing",
+  "openvoice.models",
+  "openvoice.modules",
+  "openvoice.transforms",
+  "openvoice.utils"
+ ],
+ "official_equivalence": {
+  "enable_watermark_false_ctor": "TypeError: OpenVoiceBaseClass.__init__() got an unexpected keyword argument 'enable_watermark'",
+  "tgt_maxabs": 0.0,
+  "src_se_maxabs_0": 0.0,
+  "out_len_0": [
+   44032,
+   44032
+  ],
+  "out_maxabs_0": 0.0,
+  "src_se_maxabs_3": 0.0,
+  "out_len_3": [
+   44032,
+   44032
+  ],
+  "out_maxabs_3": 0.0
+ },
+ "env": {
+  "python": "3.13.15",
+  "torch": "2.11.0+cpu",
+  "librosa": "0.11.0",
+  "numpy": "2.1.3"
+ }
+}
