@@ -262,3 +262,23 @@ No check in this report is marked passing unless it was run and its output recor
 - **date coarsening in exported manifests (R10): still open.**
 
 **Real collection remains NO-GO.**
+
+## 11. C11 phase (2026-10-11)
+
+**Design:** `docs/WITHDRAWAL_DESIGN.md`.
+- Requester verification is kept separate from proof of data ownership; identifiers alone never select a record.
+- L1 token; L2 linked account with a same-sender, single-use, 10-minute challenge; L3 reversible quarantine plus two-person controller decision.
+- Voice-match verification rejected.
+- No existence oracle; rate limits; an audit without identifiers.
+
+**Code and tests:**
+- reference code: `training/datasets/withdrawal.py`;
+- hooks in `collection_core.withdraw` and `consent.check_rows(quarantined=…)`;
+- 15 adversarial synthetic tests in `training/tests/test_withdrawal.py`, added to CI;
+- 5 unsafe mutations all caught.
+
+**Status of C11:**
+- **design and reference logic: done**;
+- **open:** the L3 out-of-band evidence and process, deadlines and appeal (owner/legal), and durable storage of cases (C12).
+
+**Real collection remains NO-GO.**

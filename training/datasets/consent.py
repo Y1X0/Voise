@@ -214,11 +214,16 @@ def load_store(path):
     return recs
 
 
-def check_rows(rows, store, path="commercial", today=None):
+def check_rows(rows, store, path="commercial", today=None, quarantined=frozenset()):
+    """`quarantined`: consent ids under an open, unverified withdrawal request
+    (datasets/withdrawal.py); their rows are refused until the case is decided."""
     today = parse_date(today) if today else datetime.date.today()
     errs = set()
     for r in rows:
         if r.get("corpus") != "own_recordings":
+            continue
+        if r.get("consent_id") in quarantined:
+            errs.add(f"{r['speaker']}: consent under an open withdrawal request (quarantined)")
             continue
         rec = store.get(r.get("consent_id"))
         if rec is None:

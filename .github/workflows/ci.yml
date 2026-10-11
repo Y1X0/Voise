@@ -44,6 +44,8 @@ jobs:
           python3 training/tests/test_secure_store.py
       - name: "Link-table pepper separation (C9; synthetic, throw-away peppers)"
         run: python3 training/tests/test_pepper.py
+      - name: "Withdrawal without token (C11; synthetic, adversarial)"
+        run: python3 training/tests/test_withdrawal.py
       - uses: actions/upload-artifact@v4
         with:
           name: dsp-reports

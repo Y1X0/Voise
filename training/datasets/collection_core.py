@@ -160,12 +160,16 @@ class CollectionCore:
         return "STORED", path
 
     # --- withdrawal -------------------------------------------------------------------------
-    def withdraw(self, key=None, token=None):
+    def withdraw(self, key=None, token=None, verified_consent_id=None):
+        """Withdraw and delete. `verified_consent_id` is for callers that have already verified
+        the requester (datasets/withdrawal.py); it must never come from user-supplied text."""
         cid = None
         if token is not None:
             cid = self.by_token.get(hashlib.sha256(token.encode()).hexdigest())
         elif key is not None and key in self.state:
             cid = self.state[key]["consent_id"]
+        elif verified_consent_id is not None:
+            cid = verified_consent_id
         if cid is None or cid not in self.records:
             raise GateError("unknown participant or token")
         rec = self.records[cid]
