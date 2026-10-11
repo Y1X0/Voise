@@ -244,3 +244,21 @@ No check in this report is marked passing unless it was run and its output recor
 - **operational part: still open** — HSM/KMS custody, 2-of-3 escrow tooling and custodians, store and data-processing agreement, anchor location, rotation periods.
 
 **Real collection remains NO-GO.**
+
+## 10. C9 phase (2026-10-11)
+
+**Design:** `docs/PEPPER_DESIGN.md`.
+- The pepper is only the HMAC key of the link table, not an encryption key, and not the source of pseudonyms.
+- Storage options compared: KMS-HMAC recommended; secret manager as fallback; local file for development only.
+- Separation from the DB, rotation (migration on contact) and loss.
+
+**Code and tests:**
+- reference code: `training/datasets/pepper.py`;
+- 16 adversarial synthetic tests in `training/tests/test_pepper.py`, added to CI;
+- 4 mutations all caught.
+
+**Status of C9:**
+- **pepper part: design and reference logic done**; KMS choice, IAM separation and backups are operational and open;
+- **date coarsening in exported manifests (R10): still open.**
+
+**Real collection remains NO-GO.**

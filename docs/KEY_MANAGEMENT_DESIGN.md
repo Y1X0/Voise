@@ -31,6 +31,7 @@
 | **Escrow key** (E) | age X25519 identity | **offline, air-gapped** | **split 2-of-3** among named custodians (§5). The full key exists only during a recovery or a drill | recovery only | any online host |
 | **Collector signing key** (Sc) | Ed25519 | on the collector host, in its secret store or KMS | collector secret store | collector: sign `store` log entries | git, processing host |
 | **Processing signing key** (Sp) | Ed25519 | processing host | processing secret store | processing host: sign `rewrap` and `delete` entries | collector |
+| **Link-table pepper** (C9) | HMAC-SHA256 key (not an encryption key) | in a KMS/HSM with an HMAC operation (preferred) | KMS/HSM, separate identity from the DB; see `docs/PEPPER_DESIGN.md` | collector: HMAC of the Telegram id for the link table | the database, its backups, git, logs |
 | **Public material** | O.pub, E.pub (age recipients); Sc.pub, Sp.pub | exported from the above | **pinned** in configuration with `key_id = sha256(public)[:16]` | collector (O.pub, E.pub); processing host (Sc.pub, Sp.pub) | — |
 
 **Rules enforced by the reference code and tests:**
