@@ -1,4 +1,4 @@
-"""Tripwire tests for teacher gate #2 (TEACHER_GATE_OPENVOICE.md v1.1). Stdlib only; runs nothing.
+"""Tripwire tests for teacher gate #2 (TEACHER_GATE_OPENVOICE.md v1.2). Stdlib only; runs nothing.
 
 They fail if the frozen protocol, the gate script, gate #1's script, the acceptance criteria or the
 frozen manifest change, if the OpenVoice gate stops sharing gate #1's evaluation and gate code byte-for-byte,
@@ -12,8 +12,8 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 GATE, GATE1 = os.path.join(HERE, "openvoice_gate.py"), os.path.join(HERE, "teacher_test.py")
 
 FROZEN_SHA256 = {
-    "experiments/arabic_eval_v2/TEACHER_GATE_OPENVOICE.md": "0c277c7351f4d688488a747fd60f56e7c2b20315d8d4a90bce7196770012e5cb",
-    "experiments/arabic_eval_v2/openvoice_gate.py": "92a5c42a6717b3c9ab7a2e38d821ed973cfe448504165ce661eee4613ccfb127",
+    "experiments/arabic_eval_v2/TEACHER_GATE_OPENVOICE.md": "5d2193a174b015d9513ecd39a4e9df1a86968a222724d6da3b2506d170a23888",
+    "experiments/arabic_eval_v2/openvoice_gate.py": "7e8c22d7ff73a79387ec1d366df4ef88d6f7f7ac8371938f6a8920fbfd350919",
     "experiments/arabic_eval_v2/teacher_test.py": "f1d256c624a14328a39a075855f74cf4ee6ae617bfbf81e2e997d07c3885977f",
     "experiments/arabic_eval_v2/TEACHER_GATE.md": "e8ce66410450869f45e981da44b9e4c95e1a2e79016383983a7618c6d5947c18",
     "experiments/arabic_eval_v2/openvoice_pin_results.json": "ec06fd80fa9dfa5d2d34ec649c52bccb92f2298dfeaffe5b417880bb709e77bd",
@@ -135,6 +135,31 @@ class OpenVoicePins(unittest.TestCase):
                   "assert not loaded_forbidden", 'res_type="soxr_hq"'):
             with self.subTest(s):
                 self.assertIn(s, g)
+
+
+class OutputsAndStops(unittest.TestCase):
+    def setUp(self):
+        self.g = read(GATE)
+
+    def test_required_outputs_emitted(self):
+        for s in ('R["intelligibility"] = intel', 'rel_increase_ci95=', 'teacher_minus_dsp_strong_rel', '"truth"',
+                  'R["privacy"] = priv', 'eer_ci95=', 'two_level_ci95=', 'same_utterance_cos_orig_teacher_mean',
+                  'top1=dict(ignorant=', 'pool_attribution=dict(', 'orig_rerun_vs_committed_max_abs',
+                  'R["speed_cpu_1thread"]', 'R["weights_sha256"]', 'R["openvoice"]["repro_max_abs"]',
+                  'R["per_speaker_secondary"] = per', 'R["gates"] = dict(', 'print(json.dumps(R, ensure_ascii=True))'):
+            with self.subTest(s):
+                self.assertIn(s, self.g)
+
+    def test_blocked_conditions_halt_before_any_result(self):
+        first_result = self.g.index("# ---------- 3. intelligibility")
+        for s in ("assert hashlib.sha256(raw).hexdigest() == MANIFEST_SHA256", 'assert not (test_spk & pool_spk)',
+                  'assert os.path.exists(f"{EV}/', 'assert os.path.exists(f"{AU}/', "assert head == OV_COMMIT",
+                  "assert len(blob) == size and got == sha", "assert not missing and not unexpected",
+                  "assert max(rep.values()) == 0.0", "assert not loaded_forbidden"):
+            with self.subTest(s):
+                self.assertLess(self.g.index(s), first_result)
+        self.assertEqual(self.g.count("RESULT_JSON_BEGIN"), 1)
+        self.assertGreater(self.g.index("RESULT_JSON_BEGIN"), self.g.index('R["gates"] = dict('))
 
 
 if __name__ == "__main__":

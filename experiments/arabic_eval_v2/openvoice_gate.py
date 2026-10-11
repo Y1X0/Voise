@@ -1,4 +1,4 @@
-# Teacher gate #2 (TEACHER_GATE_OPENVOICE.md, protocol v1.1): OpenVoice V2 tone-colour converter -> one synthetic
+# Teacher gate #2 (TEACHER_GATE_OPENVOICE.md, protocol v1.2): OpenVoice V2 tone-colour converter -> one synthetic
 # WORLD pseudo-speaker, on the 225 frozen Arabic clips. Evaluation only; no training. Kaggle GPU kernel with two
 # read-only kernel sources:
 #   y1x00r/llvc-dsp-48spk-eval  (eval/wav/<utt>.wav: the 225 frozen originals)
@@ -25,7 +25,7 @@ OV_FILES = {"converter/checkpoint.pth": (131320490, "9652c27e92b6b2a91632590ac99
 TAU, OV_SEED0, REPRO_IDX = 0.3, 5100, (4, 3, 2, 1, 0)
 FORBIDDEN = ("openvoice.api", "openvoice.text", "openvoice.se_extractor", "unidecode", "whisper_timestamped",
              "wavmark", "faster_whisper", "jieba", "pypinyin")
-R = dict(status="Teacher gate #2: OpenVoice V2 (evaluation only; TEACHER_GATE_OPENVOICE.md v1.1)", errors={})
+R = dict(status="Teacher gate #2: OpenVoice V2 (evaluation only; TEACHER_GATE_OPENVOICE.md v1.2)", errors={})
 
 
 def sh(cmd):
@@ -76,7 +76,7 @@ for c in pool:
     psn.run(f"{AU}/{c['utt_id']}.wav", o, TARGET_SEED, 0)
     renders.append(o)
 
-# ---------- 2. OpenVoice V2 teacher (TEACHER_GATE_OPENVOICE.md v1.1) ----------
+# ---------- 2. OpenVoice V2 teacher (TEACHER_GATE_OPENVOICE.md v1.2) ----------
 head = subprocess.run("cd /tmp/OpenVoice && git rev-parse HEAD", shell=True, capture_output=True, text=True).stdout.strip()
 assert head == OV_COMMIT, f"OpenVoice HEAD {head} != pinned {OV_COMMIT}"
 os.makedirs("/tmp/ov", exist_ok=True)

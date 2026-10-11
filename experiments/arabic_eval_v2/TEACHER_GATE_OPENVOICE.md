@@ -1,9 +1,13 @@
-# Teacher gate #2: OpenVoice V2 — pre-registration **FROZEN (protocol v1.1, 2026-10-11)**
+# Teacher gate #2: OpenVoice V2 — pre-registration **FROZEN (protocol v1.2, 2026-10-11)**
 
 **Status:**
 - Protocol frozen. **Running it is NOT approved.** Freezing is not permission to run.
 - The gate script is `openvoice_gate.py`, committed with this version and **not run**.
 - The owner's explicit approval is required before submission.
+
+**v1.2 clarification** (text only; made before any teacher output exists; no code path, gate, threshold, data or ASR/ASV changed):
+- §8: states which per-speaker comparisons against DSP-strong are possible with the committed data.
+- §9: adds an explicit interpretation rule tied to the actual `zero_g` data path.
 
 **v1.1 amendment** (made before any teacher output exists; no gate, threshold, data or ASR/ASV changed):
 - Conversion device: v1.0 said "GPU if present". v1.1 uses CPU, 1 thread, with `torch.use_deterministic_algorithms(True)`, so the output does not depend on GPU kernel nondeterminism or thread scheduling.
@@ -178,7 +182,8 @@ A gate that passes on one ASV and fails on the other has **failed**.
 - top-1 lazy-informed hit rate.
 
 **Also reported:**
-- counts of speakers better or worse than DSP-strong, with sign-test p-values for information only;
+- counts of speakers better or worse than DSP-strong, with sign-test p-values for information only. This is done for the WER measures and the ignorant same-speaker score.
+  - The per-speaker top-1 hit rate is reported for the teacher **only**, because gate #1 committed DSP-strong *scores*, not embeddings, so a matching DSP-strong top-1 cannot be computed;
 - pool attribution as in gate #1.
 
 ## 9. Hypotheses (before data; NOT results)
@@ -186,6 +191,15 @@ A gate that passes on one ASV and fails on the other has **failed**.
 - **H1:** smaller WER loss than kNN-VC, because rhythm and intonation are kept.
 - **H2:** tone colour alone may not remove identity. Prosody and timing carry speaker information, and with `zero_g` the target acts only through the flow. T2/T3 may fail, especially on WavLM-SV.
 - Better intelligibility is **not** evidence of anonymization.
+
+**Interpretation rule (binding for the result report):**
+- Speaker privacy is judged **only** by T2 and T3, i.e. EERs from the two ASVs under the pre-registered trials.
+- None of the following is evidence that identity was removed:
+  - an audible change of tone colour;
+  - a changed embedding from OpenVoice's own `ref_enc`;
+  - the descriptive `src_se_to_tgt_se_cos_mean`.
+- With `zero_g = True` the target vector acts only in the reverse flow (§2). The report may say which code path produced the outputs; that is a fact.
+- An explanation of *why* T2/T3 came out as they did (e.g. "timing and prosody survive the flow") is labelled INTERPRETATION unless a pre-registered measurement shows it. No such measurement exists in this protocol.
 
 ## 10. Outside this gate
 
