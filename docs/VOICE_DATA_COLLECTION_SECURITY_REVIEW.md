@@ -282,3 +282,25 @@ No check in this report is marked passing unless it was run and its output recor
 - **open:** the L3 out-of-band evidence and process, deadlines and appeal (owner/legal), and durable storage of cases (C12).
 
 **Real collection remains NO-GO.**
+
+## 12. C12 phase (2026-10-11)
+
+**Design:** `docs/AUTHORIZATION_DESIGN.md`.
+- An authorization matrix for 7 roles: deny by default, roles resolved server-side, no role can export keys.
+- L3 approvals from two different persons.
+- Durable SQLite state with atomic challenge consumption.
+- Restart-safe quarantine and rate limits.
+- An append-only audit without identifiers.
+- A crash-safe, reconciling deletion executor that never reports a false success.
+
+**Code and tests:**
+- reference code: `training/datasets/authz.py`, `training/datasets/secure_state.py`;
+- 32 adversarial synthetic tests in `training/tests/test_c12_authorization.py`, added to CI;
+- 6 weakening mutations all caught.
+
+**Status of C12:**
+- **reference design and logic: done**;
+- **open:** production IAM, storage, backup and recovery validation, staff identity and MFA, and the legal retention decisions.
+- The limits are listed in §6 of that document.
+
+**Real collection remains NO-GO.**

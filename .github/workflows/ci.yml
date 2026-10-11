@@ -46,6 +46,8 @@ jobs:
         run: python3 training/tests/test_pepper.py
       - name: "Withdrawal without token (C11; synthetic, adversarial)"
         run: python3 training/tests/test_withdrawal.py
+      - name: "Authorization matrix + durable withdrawal state (C12; synthetic, adversarial)"
+        run: python3 training/tests/test_c12_authorization.py
       - uses: actions/upload-artifact@v4
         with:
           name: dsp-reports
