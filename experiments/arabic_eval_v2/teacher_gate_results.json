@@ -1,0 +1,327 @@
+{
+ "status": "Teacher Feasibility Gate (evaluation only; TEACHER_GATE.md)",
+ "errors": {},
+ "pool": {
+  "clips": 60,
+  "speakers": 12,
+  "overlap_with_test_speakers": 0,
+  "licence": "SVQ CC BY 4.0"
+ },
+ "env": {
+  "torch": "2.11.0+cu128",
+  "gpu": "Tesla T4",
+  "cpu": "Model name:                              Intel(R) Xeon(R) CPU @ 2.00GHz"
+ },
+ "weights_sha256": {
+  "WavLM-Large.pt": "6fb4b3c3e6aa567f0a997b30855859cb81528ee8078802af439f7b2da0bf100f",
+  "prematch_g_02500000.pt": "f924c7632c6eaf99004386d62293e124419e33582573552a6ae976eb88ed2dd5"
+ },
+ "matching_set": {
+  "frames": 8376,
+  "seconds": 167.5,
+  "vad_untrimmed": 0
+ },
+ "speed_gpu": {
+  "device": "cuda",
+  "rtf": 0.0212,
+  "ms_per_clip_median": 79.6
+ },
+ "speed_cpu_1thread": {
+  "clips": 25,
+  "rtf": 0.6411,
+  "streaming": "no (WavLM attends over the whole utterance)"
+ },
+ "intelligibility": {
+  "whisper/prompt": {
+   "llvc": {
+    "corpus_wer": 1.7369,
+    "rel_increase": 1.6807,
+    "rel_increase_ci95": [
+     0.851,
+     2.9418
+    ]
+   },
+   "dsp_strong": {
+    "corpus_wer": 1.0593,
+    "rel_increase": 0.6349,
+    "rel_increase_ci95": [
+     0.1552,
+     1.5023
+    ]
+   },
+   "teacher": {
+    "corpus_wer": 0.8041,
+    "rel_increase": 0.241,
+    "rel_increase_ci95": [
+     -0.1863,
+     0.8731
+    ]
+   },
+   "orig_corpus_wer": 0.6479,
+   "teacher_minus_dsp_strong_rel": {
+    "point": -0.394,
+    "ci95": [
+     -1.0239,
+     0.0857
+    ]
+   }
+  },
+  "whisper/truth": {
+   "llvc": {
+    "corpus_wer": 1.6662,
+    "rel_increase": 1.7618,
+    "rel_increase_ci95": [
+     0.9054,
+     3.068
+    ]
+   },
+   "dsp_strong": {
+    "corpus_wer": 1.0015,
+    "rel_increase": 0.66,
+    "rel_increase_ci95": [
+     0.164,
+     1.5666
+    ]
+   },
+   "teacher": {
+    "corpus_wer": 0.7582,
+    "rel_increase": 0.2568,
+    "rel_increase_ci95": [
+     -0.1838,
+     0.916
+    ]
+   },
+   "orig_corpus_wer": 0.6033,
+   "teacher_minus_dsp_strong_rel": {
+    "point": -0.4032,
+    "ci95": [
+     -1.0582,
+     0.0923
+    ]
+   }
+  },
+  "whisper/cer_median_teacher": 0.2703,
+  "mms/prompt": {
+   "llvc": {
+    "corpus_wer": 0.8087,
+    "rel_increase": 0.6471,
+    "rel_increase_ci95": [
+     0.4533,
+     0.8741
+    ]
+   },
+   "dsp_strong": {
+    "corpus_wer": 0.6058,
+    "rel_increase": 0.2337,
+    "rel_increase_ci95": [
+     0.1539,
+     0.3377
+    ]
+   },
+   "teacher": {
+    "corpus_wer": 0.6823,
+    "rel_increase": 0.3895,
+    "rel_increase_ci95": [
+     0.2773,
+     0.5257
+    ]
+   },
+   "orig_corpus_wer": 0.491,
+   "teacher_minus_dsp_strong_rel": {
+    "point": 0.1558,
+    "ci95": [
+     0.0862,
+     0.2386
+    ]
+   }
+  },
+  "mms/truth": {
+   "llvc": {
+    "corpus_wer": 0.7777,
+    "rel_increase": 0.7033,
+    "rel_increase_ci95": [
+     0.5427,
+     0.9063
+    ]
+   },
+   "dsp_strong": {
+    "corpus_wer": 0.5614,
+    "rel_increase": 0.2295,
+    "rel_increase_ci95": [
+     0.1399,
+     0.3419
+    ]
+   },
+   "teacher": {
+    "corpus_wer": 0.646,
+    "rel_increase": 0.4148,
+    "rel_increase_ci95": [
+     0.308,
+     0.5486
+    ]
+   },
+   "orig_corpus_wer": 0.4566,
+   "teacher_minus_dsp_strong_rel": {
+    "point": 0.1852,
+    "ci95": [
+     0.118,
+     0.2636
+    ]
+   }
+  },
+  "mms/cer_median_teacher": 0.2407
+ },
+ "privacy": {
+  "ecapa": {
+   "orig_rerun_vs_committed_max_abs": 5e-05,
+   "same_utterance_cos_orig_teacher_mean": 0.3077,
+   "pool_attribution": {
+    "teacher_to_pool_orig_cos_mean": 0.1644,
+    "teacher_to_test_orig_other_speaker_cos_mean": 0.1249,
+    "pool_orig_to_test_orig_cos_mean": 0.1215
+   },
+   "top1": {
+    "ignorant": 0.2133,
+    "lazy_informed": 0.36,
+    "chance": 0.0222
+   },
+   "ignorant": {
+    "eer": 0.3244,
+    "eer_ci95": [
+     0.2749,
+     0.3731
+    ],
+    "dsp_strong_eer": 0.2336,
+    "llvc_eer": 0.408,
+    "teacher_minus_dsp_strong": {
+     "point": 0.0909,
+     "ci95": [
+      0.0304,
+      0.1528
+     ],
+     "two_level_ci95": [
+      0.0168,
+      0.1691
+     ]
+    },
+    "teacher_minus_llvc": {
+     "point": -0.0836,
+     "ci95": [
+      -0.1557,
+      -0.0107
+     ]
+    }
+   },
+   "lazy_informed": {
+    "eer": 0.2711,
+    "eer_ci95": [
+     0.2242,
+     0.3291
+    ],
+    "dsp_strong_eer": 0.1667,
+    "llvc_eer": 0.2534,
+    "teacher_minus_dsp_strong": {
+     "point": 0.1044,
+     "ci95": [
+      0.0431,
+      0.1671
+     ],
+     "two_level_ci95": [
+      0.0186,
+      0.201
+     ]
+    },
+    "teacher_minus_llvc": {
+     "point": 0.0177,
+     "ci95": [
+      -0.0353,
+      0.0747
+     ]
+    }
+   }
+  },
+  "wavlm": {
+   "orig_rerun_vs_committed_max_abs": 5e-05,
+   "same_utterance_cos_orig_teacher_mean": 0.8171,
+   "pool_attribution": {
+    "teacher_to_pool_orig_cos_mean": 0.7494,
+    "teacher_to_test_orig_other_speaker_cos_mean": 0.7139,
+    "pool_orig_to_test_orig_cos_mean": 0.6827
+   },
+   "top1": {
+    "ignorant": 0.0356,
+    "lazy_informed": 0.1911,
+    "chance": 0.0222
+   },
+   "ignorant": {
+    "eer": 0.3579,
+    "eer_ci95": [
+     0.3253,
+     0.4004
+    ],
+    "dsp_strong_eer": 0.4201,
+    "llvc_eer": 0.4846,
+    "teacher_minus_dsp_strong": {
+     "point": -0.0622,
+     "ci95": [
+      -0.119,
+      0.0017
+     ],
+     "two_level_ci95": [
+      -0.1333,
+      0.0178
+     ]
+    },
+    "teacher_minus_llvc": {
+     "point": -0.1267,
+     "ci95": [
+      -0.2029,
+      -0.0458
+     ]
+    }
+   },
+   "lazy_informed": {
+    "eer": 0.3247,
+    "eer_ci95": [
+     0.2746,
+     0.3797
+    ],
+    "dsp_strong_eer": 0.3,
+    "llvc_eer": 0.3911,
+    "teacher_minus_dsp_strong": {
+     "point": 0.0247,
+     "ci95": [
+      -0.0593,
+      0.1009
+     ],
+     "two_level_ci95": [
+      -0.0952,
+      0.1375
+     ]
+    },
+    "teacher_minus_llvc": {
+     "point": -0.0664,
+     "ci95": [
+      -0.1241,
+      -0.0031
+     ]
+    }
+   }
+  }
+ },
+ "gates": {
+  "T1_intelligibility": false,
+  "T2_privacy_gain": false,
+  "T2_gain_ruled_out": false,
+  "T3_ignorant": false,
+  "T4_licence": true,
+  "verdict": "TEACHER FAIL"
+ },
+ "kaggle_run": {
+  "kernel": "y1x00r/arabic-teacher-gate",
+  "version": 1,
+  "status": "COMPLETE",
+  "log_span_s": 875,
+  "script_commit": "cc112fd"
+ }
+}
