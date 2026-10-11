@@ -36,6 +36,12 @@ jobs:
           python3 scripts/tests/test_eval_helpers.py
       - name: "Voice-collection security regressions + synthetic consent journey (no real audio)"
         run: python3 training/tests/test_voice_collection_security.py
+      - name: "Key management / signed object log (C5/C6; synthetic, throw-away keys)"
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends age
+          python3 -m pip install --quiet cryptography
+          age --version
+          python3 training/tests/test_secure_store.py
       - uses: actions/upload-artifact@v4
         with:
           name: dsp-reports

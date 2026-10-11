@@ -226,3 +226,21 @@ No check in this report is marked passing unless it was run and its output recor
 **Further limits:**
 - Deletion from trained models and from backups is **not** possible or not proven; the code reports it instead of claiming it.
 - Pseudonymisation is not anonymisation, and voice remains biometric personal data.
+
+## 9. C5 / C6 design phase (2026-10-11)
+
+**Design:** `docs/KEY_MANAGEMENT_DESIGN.md`.
+- Encryption: age, to operational + escrow keys.
+- Pinned public keys; no private keys on the collector.
+- Signing: Ed25519-signed, hash-chained object log with collector / processing roles.
+- A rotation re-wrap procedure, and an anchored head against truncation.
+
+**Code and tests:**
+- reference code: `training/datasets/secure_store.py`;
+- 16 synthetic tests in `training/tests/test_secure_store.py`, added to CI.
+
+**Status of C5 / C6:**
+- **design and reference logic: done**;
+- **operational part: still open** — HSM/KMS custody, 2-of-3 escrow tooling and custodians, store and data-processing agreement, anchor location, rotation periods.
+
+**Real collection remains NO-GO.**
