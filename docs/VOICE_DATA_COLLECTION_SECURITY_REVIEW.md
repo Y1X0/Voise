@@ -304,3 +304,29 @@ No check in this report is marked passing unless it was run and its output recor
 - The limits are listed in §6 of that document.
 
 **Real collection remains NO-GO.**
+
+## 13. C12.1 phase (2026-10-11)
+
+**What it covers:** the independent review of C12 (probes P1–P6). Each finding was reproduced with synthetic regression tests on `d0f47f0` before any code changed. Then:
+
+| Area | Change |
+|---|---|
+| Writes after withdrawal | No raw or derived write is possible after withdrawal, during quarantine, or under a deletion job. The check is serialized with the withdrawal transaction |
+| Completion | `DONE` is recomputed on every run and every status read. A missing registered object gives **UNVERIFIED** |
+| Paths | Strict, descriptor-relative path identity without following symlinks |
+| Writes | Crash-safe writes: temp file, `fsync`, link, `fsync(dir)`, with explicit recovery |
+| Audit | Hash-chained audit and account audit |
+| Accounts | Authorized, audited account lifecycle after `seal()` |
+
+**Code and tests:**
+- design: `docs/AUTHORIZATION_DESIGN.md` §8;
+- tests: 32 in `training/tests/test_c12_1_deletion_integrity.py`, added to CI;
+- 12 weakening mutations all caught.
+
+**Still open, and production blockers:**
+- authoritative staff identity (IdP), since P1 cannot be fixed locally;
+- an external anchor and signing key for audit heads;
+- production KMS, object storage, backups and their deletion;
+- validation of `fsync` semantics on the real storage.
+
+**Real collection remains NO-GO.**

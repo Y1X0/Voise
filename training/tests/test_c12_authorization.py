@@ -78,7 +78,8 @@ class Base(unittest.TestCase):
                   "bob": reg.provision("staff-bob", AZ.APPROVER, "person-bob"),
                   "alice2": reg.provision("staff-alice-2", AZ.APPROVER, "person-alice"),   # same human, 2nd account
                   "audit": reg.provision("staff-audit", AZ.AUDITOR, "person-carol"),
-                  "kms": reg.provision("svc-kms", AZ.KMS, "svc-kms")}
+                  "kms": reg.provision("svc-kms", AZ.KMS, "svc-kms"),
+                  "admin": reg.provision("staff-admin", AZ.ACCOUNT_ADMIN, "person-dana")}   # C12.1 account lifecycle
         self.w.bind(self.P)
         self.secrets_seen = []
         self.v = self.enrol(VICTIM, "a")
@@ -116,7 +117,7 @@ class Base(unittest.TestCase):
 class Matrix(Base):
     def test_every_role_operation_pair(self):
         role_of = {AZ.COLLECTION: "col", AZ.PROCESSING: "proc", AZ.WITHDRAWAL: "wd", AZ.REVIEWER: "alice",
-                   AZ.APPROVER: "bob", AZ.AUDITOR: "audit", AZ.KMS: "kms"}
+                   AZ.APPROVER: "bob", AZ.AUDITOR: "audit", AZ.KMS: "kms", AZ.ACCOUNT_ADMIN: "admin"}
         checked = 0
         for role, op in itertools.product(AZ.ROLES, AZ.OPERATIONS):
             with self.subTest(role=role, op=op):
@@ -132,6 +133,7 @@ class Matrix(Base):
 
     def test_service_boundaries_enforce_the_matrix(self):
         v = self.v
+        v_derived = [x for x in self.objects(v["pseud"]) if x.endswith("derived-features.npy")][0]
         calls = [  # (callable(principal), allowed principals)
             (lambda p: self.w.store.get(p, v["pseud"], "p1.ogg"), {"proc"}),
             (lambda p: self.w.store.list(p, v["pseud"]), {"proc"}),
@@ -144,7 +146,8 @@ class Matrix(Base):
             (lambda p: SS.read_audit(self.w.reg, self.w.state, p), {"audit"}),
             (lambda p: SS.deletion_status(self.w.reg, self.w.state, p, v["cid"]), {"proc", "wd", "audit"}),
             (lambda p: self.w.state.quarantined_ids(self.w.reg, p), {"proc"}),
-            (lambda p: SS.register_derived(self.w.reg, self.w.state, p, v["pseud"], "f", f"/x/{p.principal_id}"), {"col", "proc"}),
+            # C12.1: registration accepts only an existing object inside the participant's store
+            (lambda p: SS.register_derived(self.w.reg, self.w.state, p, v["pseud"], "f", v_derived), {"col", "proc"}),
             (lambda p: self.w.review.read(p, "CASE-none"), {"alice", "bob", "alice2", "audit"}),
         ]
         for fn, allowed in calls:

@@ -128,3 +128,163 @@ The unmodified code passes 32/32.
 3. Who the reviewers and approvers are, and their training. The L3 evidence standard and deadlines (from C11).
 4. Retention of audit records and of withdrawn consent records (a legal decision).
 5. The audit read scope for the auditor (a redaction policy beyond the hashing done here).
+
+## 8. C12.1 — verifiable deletion, write lifecycle, path identity, crash safety, audit chain, account lifecycle
+
+**Scope:** C12.1 only, on top of `d0f47f0`. Real collection stays **NO-GO**; C13 is not started.
+
+**Tests:** `training/tests/test_c12_1_deletion_integrity.py`, 32 tests, synthetic only. They were written first and reproduced the findings on the unchanged code. They then passed after the fix; a mutation check is in §8.8.
+
+**Changes to existing tests (additive only, no assertion relaxed):**
+- `test_c12_authorization.py` provisions one extra `account_admin` principal and adds it to the role map of the full matrix test, which now checks 8 roles × 30 operations.
+- The service-boundary test registers an existing object of the participant instead of the dummy path `/x/<id>`. That dummy is exactly what C12.1 must now refuse (P4a). The test still checks which roles may register.
+
+### 8.1 Findings reproduced, and root cause
+
+| # | Reproduced on `d0f47f0` | Root cause |
+|---|---|---|
+| **P3** | After withdrawal **and** after `DONE`, `store_audio`, `put` and `put_derived` all wrote new objects. `run` and `deletion_status` kept saying `done` | Writes never consulted the participant's state. The executor returned early on a stored `done`. The status API returned the stored value |
+| **P4b** | A registered object moved out of the store ⇒ `DONE` | The executor recorded an absent file as `missing` and counted `missing` as gone |
+| **P4a** | `register_derived` accepted `/etc/passwd`, relative and outside paths. A later run then raised and the job stayed `in_progress` | Registration did not validate the path. The delete-time check raised instead of classifying the row |
+| paths | A participant directory replaced by a symlink to another participant's directory was listed, read and deleted through | `realpath` + `commonpath` only checked containment in the root, not identity of the participant directory |
+| **P5** / crash | An object linked but not indexed is detected (`INCOMPLETE`). But writes were not atomic: a crash mid-write left a partial file under the final name, and write-once then blocked the retry. There was no `fsync` of data or directories | Direct `open(final, "wb")` |
+| **P2** | Dropping the trigger, deleting a row and recreating the trigger went unnoticed | The triggers are not integrity protection |
+| **P6** | Anyone able to call `Registry.provision` could create any account, with no record | No caller identity and no audit for account changes |
+| **P1** | One human with two `person_ref` labels satisfied both L3 approvals | `person_ref` is a free local label. **Not fixable in code without an IdP** |
+
+### 8.2 Write lifecycle (P3)
+
+**Rule:** no raw or derived object is written for a participant who:
+- has no active consent;
+- is quarantined (a conservative choice: quarantine is reversible, so new writes simply wait);
+- or has a deletion job (`LifecycleClosed`, a `Forbidden`).
+
+**Write protocol (`ObjectStore._write`, used by `put`, `put_derived` and `store_audio`):**
+1. Authorize, validate the reference, and run an early lifecycle check.
+2. Write `.tmp-<random>` inside the participant directory (`O_EXCL|O_NOFOLLOW`) and `fsync` it.
+3. In **one `BEGIN IMMEDIATE` transaction**:
+   - the **authoritative** lifecycle check;
+   - the index row (when `kind` is given);
+   - the `object_written` audit row;
+   - `link(tmp, name)`, which fails if the name exists (write-once);
+   - `fsync(dir)`;
+   - commit.
+4. Unlink the temp file and `fsync(dir)`.
+
+**Why this is safe under concurrency and restart:** step 3 is serialized with the withdrawal transaction. Either:
+- the object exists before the deletion job does, so the executor sees it;
+- or the writer sees the job and never links.
+
+The concurrency test (8 writer threads, each with its own instances and connections, plus withdrawal and deletion) checks two things:
+- every writer is refused;
+- the hash-chained audit order shows **no `object_written` after `withdrawn`**.
+
+`register_derived` only indexes an existing regular object of that participant. It creates no data and only widens the deletion scope, so it stays allowed after withdrawal.
+
+### 8.3 Completion invariant (no stored `DONE` is trusted)
+
+`_verify` recomputes the result from the index and the store on **every** executor run and every `deletion_status` read:
+
+| Result | Condition |
+|---|---|
+| **DONE** | consent withdrawn; every index row of the pseudonym is `deleted` (removed by the executor, with the intent recorded first); the participant directory in the **bound** store holds no entry at all (no object, partial write or planted file) |
+| **INCOMPLETE** | anything is still present or still indexed as present, or the directory cannot be inspected safely |
+| **UNVERIFIED** | nothing is left in scope, but a registered object vanished without a recorded deletion (`missing`) or its reference lies outside the store (`out_of_scope`). We cannot show it was destroyed; retries never upgrade it. Resolving it is a human or operational step, and is not decided here |
+
+**Other rules:**
+- A failed re-verification of a stored `done` is persisted as the new state and audited (`deletion_reverification_failed`).
+- `delete` records `deleting` before the unlink and `deleted` after it. A crash between the two is resumed as our own deletion, not mistaken for `missing`. This was tested with a forked process killed right after `unlink`.
+- **Every result carries:**
+  - `verified_scope`: this participant's directory in the bound store, plus the state index;
+  - `not_deletable`: model weights, Telegram copies, backups, and derived copies outside the object store.
+
+  `DONE` never covers those.
+
+### 8.4 Path and object identity (P4a)
+
+- A state DB is bound to **one** object-store root (`meta.object_root`); a store with another root is refused.
+- Every reference must be exactly `<root>/<participant dir>/<plain name>`. Directories are opened relative to descriptors with `O_DIRECTORY|O_NOFOLLOW`, and files with `O_NOFOLLOW`. This refuses `..`, other participants' directories, absolute or relative outside paths, symlinked participant directories (aliasing), and symlinked objects.
+- A state DB created by C12, which has no `meta` table or schema version, is refused (`StoreUnavailable`, migration required). No automatic migration is provided, because no real deployment exists.
+- Registration requires an existing regular file. An index row edited directly in the DB to point outside the store becomes `out_of_scope` ⇒ `UNVERIFIED`; the executor neither follows it nor gets stuck.
+
+### 8.5 Crash-safe writes and recovery
+
+| Crash point (forked child killed by `os._exit`, no cleanup runs) | Effect | Recovery |
+|---|---|---|
+| mid-write | only a `.tmp-*` file; no object under the final name; the same name can be written again | `ObjectStore.recover` (processing role, audited) or the deletion executor removes partial writes |
+| after link, before commit | an object without an index row | deletion reports `INCOMPLETE` (`unindexed_objects=1`), never `DONE`; an operator resolves the lineage gap |
+| after unlink, before recording | row stays `deleting` | the retry records `deleted` ⇒ `DONE` |
+
+If the transaction fails *without* a crash, the link is undone.
+
+**Assumptions:**
+- POSIX `dir_fd`, `O_NOFOLLOW`, `O_DIRECTORY` and hard links, checked at start-up; otherwise the store refuses to start.
+- Local file-system `fsync` semantics.
+- Object storage (S3-like) or network file systems need their own design and validation; nothing here is evidence for them.
+- `recover` must run when no writer for that participant is active, for example at start-up.
+
+### 8.6 Audit chain and account lifecycle (P2, P6, P1)
+
+**Audit chain (`audit_chain.py`).** Each `audit` and `account_audit` row stores `prev_hash` and `row_hash = sha256(json([prev, seq, fields…]))`, with contiguous sequence numbers. `verify_audit` and `verify_account_audit` (auditor only, operation `audit.verify`) detect:
+- deletion of any non-newest row;
+- mutation of any field;
+- reordering.
+
+**What it does not detect on its own (tested and stated):**
+- truncation of the newest rows;
+- a consistent rewrite by anyone who can write the DB file. There is no secret, so they can recompute every hash.
+
+Both are detected **only** against a head exported earlier to independent storage (`anchor=`). **No external signing key or immutable anchor store is implemented.** Without them there is **no protection against a database-file administrator**.
+
+**Accounts:**
+- `provision` and `deactivate` are bootstrap tools only.
+- After `seal()` (done by an `account_admin`), changes need `admin_provision` / `admin_deactivate`, authorized server-side.
+- An administrator cannot mint administrators, give an account to their own `person_ref`, deactivate themself, or reuse a principal id.
+- Every change, bootstrap included, is in the chained `account_audit`. Staff persons appear there only as hashes, and credentials never.
+- `person_ref` must be a canonical lower-case label, so trivial variants are refused.
+
+**P1 (production blocker):**
+- **Nothing local proves that two `person_ref` values are two humans.** Every approval reports `identity_assurance: "local-unverified"`.
+- Real separation of duties needs an authoritative IdP: immutable HR-backed subject ids, MFA, joiner/leaver and access reviews.
+- Whoever can write the registry file bypasses all of this.
+
+### 8.7 Not implemented on purpose (no placeholders)
+
+- production KMS/HSM;
+- IdP;
+- object storage;
+- an external immutable audit anchor and a signing key for heads;
+- backup deletion or expiry proof.
+
+These are decisions and prerequisites for the owner. KMS selection criteria:
+- HSM-backed, non-exportable keys;
+- one key and policy per purpose (pepper MAC, operational decrypt, escrow, collector and processing signing, audit-head signing);
+- key administration separated from key use;
+- KMS logs in a separate account;
+- documented rotation and a tested escrow recovery before production.
+
+### 8.8 Mutation check
+
+12 deliberate weakenings were each applied to the fixed code and both C12 suites run. **Every one is caught by the C12.1 suite:**
+1. no lifecycle re-check inside the transaction: caught by the concurrency test, 5 of 5 runs;
+2. no lifecycle check at all;
+3. the status call trusts a stored `done`;
+4. `missing` counted as `deleted`;
+5. any path accepted for registration;
+6. directories followed (no `O_NOFOLLOW`);
+7. chain hash not checked;
+8. seal ignored;
+9. `DONE` without checking the store;
+10. admin may mint admins;
+11. deletion intent not recorded;
+12. partial writes never removed.
+
+### 8.9 Decisions
+
+| Item | Decision |
+|---|---|
+| Deletion guarantee **inside the verified scope** (bound store and index, reference adapter) | logic and tests: done; **not** a production guarantee until storage, backups and recovery are validated in the real environment |
+| Deletion from backups, Telegram, trained models, or copies outside the store | **not provable by this code — never claimed** |
+| Audit integrity against a DB-file administrator | **NO** until an external anchor and signing key exist |
+| Two-person L3 independence | **NO-GO** for production until an authoritative IdP exists |
+| Real collection / training on real recordings | **NO-GO** |

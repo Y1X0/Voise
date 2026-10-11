@@ -48,6 +48,8 @@ jobs:
         run: python3 training/tests/test_withdrawal.py
       - name: "Authorization matrix + durable withdrawal state (C12; synthetic, adversarial)"
         run: python3 training/tests/test_c12_authorization.py
+      - name: "Verifiable deletion, write lifecycle, paths, crash safety, audit chain (C12.1; synthetic, adversarial)"
+        run: python3 training/tests/test_c12_1_deletion_integrity.py
       - uses: actions/upload-artifact@v4
         with:
           name: dsp-reports
