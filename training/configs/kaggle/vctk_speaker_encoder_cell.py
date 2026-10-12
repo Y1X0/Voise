@@ -13,6 +13,45 @@ ZIP = "/tmp/VCTK-Corpus-0.92.zip"
 STEPS = 30000
 
 
+UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+
+
+def official_urls():
+    """Edinburgh DataShare only (handle 10283/3443): the old bitstream links, then the DSpace REST API."""
+    import json
+    import urllib.request
+    yield URL
+    yield URL.replace("datashare.ed.ac.uk", "datashare.is.ed.ac.uk")
+    for api in ("https://datashare.ed.ac.uk/server/api", "https://datashare.ed.ac.uk/rest"):
+        try:
+            def get(u):
+                req = urllib.request.Request(u, headers={"User-Agent": UA, "Accept": "application/json"})
+                return json.load(urllib.request.urlopen(req, timeout=60))
+            item = get(f"{api}/pid/find?id=hdl:10283/3443")
+            bundles = get(item["_links"]["bundles"]["href"])["_embedded"]["bundles"]
+            for b in bundles:
+                if b.get("name") != "ORIGINAL":
+                    continue
+                for bs in get(b["_links"]["bitstreams"]["href"])["_embedded"]["bitstreams"]:
+                    print("DataShare file:", bs.get("name"), bs.get("sizeBytes"), flush=True)
+                    if bs.get("name") == "VCTK-Corpus-0.92.zip":
+                        yield bs["_links"]["content"]["href"]
+        except Exception as e:                                    # noqa: BLE001 - diagnostics only
+            print(f"REST lookup via {api} failed: {type(e).__name__}: {e}", flush=True)
+
+
+def download_official(dest):
+    for u in official_urls():
+        print("trying", u, flush=True)
+        r = subprocess.run(f"wget -c --progress=dot:giga --user-agent='{UA}' -O {dest} '{u}'", shell=True)
+        if r.returncode == 0 and os.path.getsize(dest) > 10_000_000_000:
+            return
+        print(f"  failed (exit {r.returncode})", flush=True)
+        if os.path.exists(dest) and os.path.getsize(dest) < 1_000_000:
+            os.remove(dest)                                       # an HTML error page, not a partial zip
+    raise SystemExit("VCTK: no official download link worked; send this output")
+
+
 def sh(c):
     print("+", c, flush=True)
     r = subprocess.run(c, shell=True)
@@ -25,7 +64,7 @@ sh("rm -rf Voise && git clone --depth 1 -b claude/voice-anonymizer-android-az4mc
 sh("pip install -q soundfile pyyaml speechbrain==1.1.1")
 sh("nvidia-smi --query-gpu=name,memory.total --format=csv; df -h /kaggle/working /tmp")
 if not os.path.exists(f"{W}/vctk/.done"):
-    sh(f"wget -c --progress=dot:giga -O {ZIP} {URL}")                       # about 11 GB, official source
+    download_official(ZIP)                                                    # about 11 GB, official source only
     sh(f"sha256sum {ZIP} | tee {W}/vctk_archive.sha256")
     sh(f"mkdir -p {W}/vctk && unzip -q -o {ZIP} '*_mic1.flac' '*txt/*' '*license*' '*README*' '*speaker-info*' -d {W}/vctk")
     sh(f"rm -f {ZIP}")
