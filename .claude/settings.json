@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(kaggle kernels push:*)",
+      "Bash(kaggle kernels status:*)",
+      "Bash(kaggle kernels output:*)"
+    ]
+  }
+}
