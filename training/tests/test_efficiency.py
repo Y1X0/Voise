@@ -191,6 +191,33 @@ class FeatureCacheNoCopy(unittest.TestCase):
             FC.build(rows, os.path.join(self.d, "x"), audio_mode="mmap")
 
 
+class ShortUtteranceBatch(unittest.TestCase):
+    """Utterances between 2 and ~3 segments long (e.g. VCTK) used to crash batch(): no reference
+    candidate on the half-segment grid was a full segment away from the drawn start."""
+
+    def test_every_step_draws_disjoint_segments(self):
+        from datasets import feature_cache as FC
+        from datasets.stream_sampler import StreamingSegmentSampler
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d)
+        rows = []
+        for s in range(2):
+            p = os.path.join(d, "src", f"s{s}.flac")
+            os.makedirs(os.path.dirname(p), exist_ok=True)
+            sf.write(p, voiced(2.6, 110 + 30 * s, s), SR)      # seg 1.0 s -> 260 frames, just over 2 segments
+            rows.append({"path": p, "speaker": f"librosa_example:{s}", "session": "0", "corpus": "librosa_example",
+                         "language": "en", "duration": 2.6, "sr": SR, "split": "train"})
+        idx, _ = FC.build(iter(rows), os.path.join(d, "cache"))
+        s = StreamingSegmentSampler(idx, "train", 1.0, seed=1, licence_path="smoke")
+        self.assertEqual(len(s.entries), 2)
+        for step in range(200):
+            b = s.batch(step, 4)
+            self.assertEqual(tuple(b["wav"].shape), (4, s.seg))
+            self.assertEqual(tuple(b["ref"].shape), (4, s.seg))
+        b1, b2 = s.batch(7, 4), s.batch(7, 4)
+        self.assertTrue(all(np.array_equal(b1[k].numpy(), b2[k].numpy()) for k in b1))
+
+
 class CompactIndex(unittest.TestCase):
     def test_entry_table_round_trip_and_size(self):
         from datasets.stream_sampler import EntryTable

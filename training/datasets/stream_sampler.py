@@ -183,6 +183,10 @@ class StreamingSegmentSampler:
             seg_f = self.seg // self.hop
             start = int(rng.integers(0, n_frames - seg_f))
             cands = [s for s in range(0, n_frames - seg_f, seg_f // 2) if abs(s - start) >= seg_f]
+            if not cands:   # short utterance (< ~3 segments): redraw start where a disjoint ref exists
+                valid = [s for s in range(0, n_frames - seg_f) if s >= seg_f or s + 2 * seg_f <= n_frames]
+                start = int(valid[int(rng.integers(len(valid)))])
+                cands = [s for s in range(0, n_frames - seg_f + 1) if abs(s - start) >= seg_f]
             rstart = int(cands[int(rng.integers(len(cands)))])
             w, rf = self._read_many(e, [start * self.hop, rstart * self.hop], self.seg)
             wav.append(w)
