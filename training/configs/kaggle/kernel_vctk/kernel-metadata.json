@@ -1,0 +1,13 @@
+{
+  "id": "y1x00r/voise-vctk-speaker-encoder",
+  "title": "voise-vctk-speaker-encoder",
+  "code_file": "run.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "dataset_sources": ["mfekadu/english-multispeaker-corpus-for-voice-cloning"],
+  "competition_sources": [],
+  "kernel_sources": []
+}
