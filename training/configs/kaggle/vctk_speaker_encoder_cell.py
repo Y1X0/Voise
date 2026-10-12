@@ -63,14 +63,41 @@ os.chdir(W)
 sh("rm -rf Voise && git clone --depth 1 -b claude/voice-anonymizer-android-az4mcs https://github.com/Y1X0/Voise.git")
 sh("pip install -q soundfile pyyaml speechbrain==1.1.1")
 sh("nvidia-smi --query-gpu=name,memory.total --format=csv; df -h /kaggle/working /tmp")
-if not os.path.exists(f"{W}/vctk/.done"):
-    download_official(ZIP)                                                    # about 11 GB, official source only
+def attached():
+    """A VCTK 0.92 copy attached with Add Input (Kaggle mirror): extracted tree or the original zip."""
+    for dp, dn, fs in os.walk("/kaggle/input", followlinks=True):
+        if "wav48_silence_trimmed" in dn:
+            return "dir", dp
+        for f in fs:
+            if f == "VCTK-Corpus-0.92.zip":
+                return "zip", os.path.join(dp, f)
+    return None, None
+
+
+kind, src = attached()
+print("attached VCTK:", kind, src, flush=True)
+if kind == "dir":
+    print("SOURCE: Kaggle input (mirror, NOT the official archive) -> research path only", flush=True)
+    os.makedirs(f"{W}/vctk", exist_ok=True)
+    open(f"{W}/vctk_archive.sha256", "w").write(f"(no archive: extracted mirror at {src})\n")
+elif kind == "zip" and not os.path.exists(f"{W}/vctk/.done"):
+    print("SOURCE: attached zip (mirror) -> research path only; sha256 below can be compared with the official archive", flush=True)
+    ZIP = src
+if kind == "dir":
+    pass
+elif not os.path.exists(f"{W}/vctk/.done"):
+    if kind != "zip":
+        download_official(ZIP)                                                    # about 11 GB, official source only
     sh(f"sha256sum {ZIP} | tee {W}/vctk_archive.sha256")
     sh(f"mkdir -p {W}/vctk && unzip -q -o {ZIP} '*_mic1.flac' '*txt/*' '*license*' '*README*' '*speaker-info*' -d {W}/vctk")
-    sh(f"rm -f {ZIP}")
+    if kind != "zip":
+        sh(f"rm -f {ZIP}")
     open(f"{W}/vctk/.done", "w").close()
-found = subprocess.check_output(f"find {W}/vctk -maxdepth 3 -type d -name wav48_silence_trimmed", shell=True, text=True).split()
-ROOT = os.path.dirname(found[0])
+if kind == "dir":
+    ROOT = src
+else:
+    found = subprocess.check_output(f"find {W}/vctk -maxdepth 3 -type d -name wav48_silence_trimmed", shell=True, text=True).split()
+    ROOT = os.path.dirname(found[0])
 sh(f"find {ROOT} -maxdepth 1 -iname '*licen*' -type f -exec sha256sum {{}} \\; | tee {W}/vctk_licence.sha256")
 sh(f"find {ROOT} -maxdepth 1 -iname '*licen*' -type f -exec head -c 600 {{}} \\;")
 
