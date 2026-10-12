@@ -26,3 +26,5 @@ eval-b3/
 eval-neural-p3-b3/
 training/native/build/
 /runs/
+# C9: restricted provenance of imported recordings (source-file hashes) - never commit or bundle
+*.provenance/

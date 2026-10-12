@@ -330,3 +330,129 @@ No check in this report is marked passing unless it was run and its output recor
 - validation of `fsync` semantics on the real storage.
 
 **Real collection remains NO-GO.**
+
+## 14. C9 — date coarsening in exported manifests (R10), implementation pending owner review
+
+**Policy applied (from R10; not a new decision):** exported manifests carry no participant date or time finer than a month, and no consent times. The consent store and session records keep their exact values. No `recorded_month` (or other date) field is added: no consumer needs one.
+
+**What the code did before (verified by actual runs on synthetic data):**
+- **Manifests:** no code path wrote a date field into a manifest row. The open channels were identifiers taken from the participant's directory tree (`session`, `path`, `subset`) and any extra field.
+- **`import_report.json`** (written next to the manifests) contained:
+  - source file names (for example `voice_2026-10-02_14-03-22.wav`);
+  - unvalidated directory names;
+  - validation messages quoting values (for example a full `recorded_at` timestamp).
+- **`recordings.jsonl`** contained `source_sha256`, the hash of the file *as received*. Anyone who holds the delivered file (for example a Telegram voice note) can use it to link that file to its training record without decoding any audio. No code reads it: not lineage, deletion, withdrawal or training.
+- **Participant transcripts** were not screened for personal data.
+
+**Changes:**
+
+1. **`build_manifests.py`: participant timing check.** Participant rows are `own_recordings` rows, or any row carrying a `consent_id`. The check runs in `assert_no_leakage`, so the build, `write()`, `verify()` and the importer all apply it. Rows are **refused, never rewritten**:
+   - **ids must have their random schema form:** speaker `own_recordings:spk-<10 hex>`, session `ses-<8 hex>`, consent `CNS-<12 hex>`;
+   - **no field outside the manifest format;**
+   - **no date, time or epoch finer than a month in any other metadata value.** The scan runs after Arabic-Indic and other Unicode digits are mapped to ASCII. It covers ISO, compact, day-first and two-digit-year dates, ordinal and ISO-week dates, English, Arabic and Hijri month names next to a day, times, and epoch values;
+   - **month precision is allowed;**
+   - **exact schema-form ids are masked before the scan;**
+   - **with participant rows present, `write()` also checks the index inputs;**
+   - **messages never echo values.**
+
+   The fixtures that used `day1` and `day2` now use schema ids; there is no exception for tests.
+2. **`build_manifests.py`: separate personal-data indicator check on participant `text`** (`text_privacy_indicators`, also run by `assert_no_leakage`):
+   - **indicators:**
+     - contact data, reusing `consent.CONTACT_PATTERNS` (e-mail, phone or id-like numbers, @handles, t.me / tg:// links, "id: 123...");
+     - URLs;
+     - dates and times finer than a month;
+     - self-introductions ("اسمي ...", "my name is ...");
+     - titles before a name ("الأستاذ ...", "Dr ...");
+     - kunyas ("أبو ...");
+     - address words next to a number;
+   - the text is normalized first (NFKC, invisible characters removed, any-script digits mapped to ASCII);
+   - a hit refuses the row **for human review**. The text is never modified, and only the indicator kinds are reported, never the text.
+3. **`arabic_import.py`:**
+   - **report references:** in `import_report.json`, source files are referenced by their position in the sorted session listing (`file#N`), and unvalidated directories by position (`dir#N`). Hashing would not hide dated names, which can be brute-forced. Quoted values in messages become `'<value>'`;
+   - **transcript review:** a transcript with indicators is **held back before anything is written**. The report lists it under `transcript needs human review`, with its reference and kinds only;
+   - **`source_sha256` moved out of `recordings.jsonl`** into a restricted `provenance.jsonl` (`data/recording_provenance_schema.json`):
+     - it sits outside the dataset directory, by default in the sibling `<out>.provenance`, settable with `--provenance-dir`;
+     - a location inside the dataset directory is refused;
+     - permissions are 0700 for the directory and 0600 for the file;
+     - each row is keyed by `recording_id` and `consent_id`, so it can be found and deleted per participant;
+   - **`data/recording_schema.json`** no longer lists `source_sha256`.
+
+**Effect on lineage, deletion and withdrawal:**
+- No id or path is rewritten. Manifest paths, `recording_id`, `sha256` and audio file names are unchanged, and `verify()` passes. Withdrawal is still refused by the consent check.
+- `provenance.jsonl` is a **new location of participant-linked data**. It is listed in the deletion inventory (production-readiness G3.5, known locations), together with the other import outputs.
+
+**Not covered (stated limits):**
+- **Timing scan:** pattern-based. It does not catch spelled-out numbers, free wording, relative dates, calendars or month names other than those listed, a bare day-of-year without a year, or a time written as four digits without a separator. Ambiguous values (`14-03-22`) are refused either way.
+- **Text check:** a pattern screen, **not anonymization**. It does not catch names without an introduction or title, places, spelled-out numbers, or indirect identification. A transcript with no hit can still hold personal data, and human review of transcripts stays necessary. An 8-digit date in text may also be reported as a number.
+- **Positional references:** they reveal the relative order of files within a session. With dated source names, that order is chronological. They also reveal how many entries a directory holds. Nothing in the dataset outputs maps a reference to a recording id, an audio hash or a manifest row (tested). Anyone with access to the incoming store can resolve them, by design.
+- **Content hashes:** `recording_id` and `sha256` (hashes of the normalized audio) remain. Anyone holding the audio can recompute them and confirm that a recording is in the dataset.
+
+**Final audit (round 4): defects found by probes and fixed.** These were probes on synthetic data against the round-3 code:
+
+| Probe | Round 3 | Now |
+|---|---|---|
+| `--provenance-dir` is a symbolic link into the dataset directory | the containment check used `abspath`, so the hashes were **written inside the dataset directory** | links are refused; containment is compared on real paths, both ways (neither directory inside the other) |
+| `provenance.jsonl` already exists with mode 0644 | stayed **0644** (the mode in `O_CREAT` applies only to new files) | 0600: a new file always replaces it |
+| `provenance.jsonl` is a symbolic link to a file in the dataset directory | the hashes were **written through the link** into the dataset | the directory is opened with `O_NOFOLLOW`; a temp file is created with `O_EXCL\|O_NOFOLLOW` 0600, fsynced, then atomically replaces the directory entry (the link itself is replaced, its target untouched) |
+| The provenance write fails | `recordings.jsonl` was already written | provenance is written **first**; on failure no `recordings.jsonl`, manifests or report are written, and no temp file remains |
+| Fresh directory under a permissive umask | created 0755, then chmod 0700 | created 0700 directly (`mkdir` mode), and 0700 is enforced again |
+
+- **Packaging:** the training bundle (`scripts/orchestrate_training.py`) contains only git-tracked files. `*.provenance/` is now git-ignored (tested), so a provenance directory placed inside the repository cannot be committed or bundled by accident. A default sibling directory (`<out>.provenance`) can still be copied by anyone who copies the **parent** folder by hand; operators must not do that, and this cannot be enforced in code.
+- **Unix file modes only:** 0700 and 0600 do not protect against root, backups made with other permissions, or other platforms. Access control on the real storage is a production item (G2.3, G2.7).
+
+**Lifecycle and withdrawal:**
+- **`purge_participant(out_dir, consent_id, provenance_dir)`** removes one participant from an imported dataset: their audio directory, `recordings.jsonl` rows, manifest rows (rewritten through `build_manifests.write`, so the hashes and the leakage gate are recomputed), the `import_report.json` entries naming them, and their rows in `provenance.jsonl`.
+- **Every file is replaced atomically, and `recordings.jsonl` is rewritten last.** A rerun after a crash at any step completes the purge, and a second run changes nothing (tested).
+- **Closing review (round 5), hard crashes:** the purge runs in a forked process killed with `os._exit` (no `finally`, no cleanup) just before **each** of its 10 atomic replaces, and inside the audio deletion. A plain rerun then always leaves nothing linkable, `verify()` passes, and no other participant's row is lost (tested).
+- **Two defects this exposed, both fixed:**
+  - the manifests were rewritten in place (torn files possible). They are now built in a temp directory and replaced file by file, with the index last. A `.purge-in-progress` marker lets a rerun finish a set whose hashes disagree;
+  - the report's `accepted` count was decremented on each run, so a rerun counted twice. It is now derived from the remaining recordings, and the purge counter was removed (an idempotent one would need the consent id, which would be a link).
+- **Temp files from a hard-crashed import or purge** (a provenance temp holds every source hash) are removed at the start of a purge (tested).
+- **No blessing of edits:** a manifest set whose hashes disagree **without** the marker was edited by someone else. The purge refuses it **before deleting anything** and leaves the edit visible to `verify()` (tested).
+- **After a purge,** neither directory contains the consent id, the pseudonym, the participant's recording ids, audio hashes or source hashes (tested).
+- **Not covered and not claimed:**
+  - backups;
+  - the incoming store;
+  - copies of the dataset elsewhere (training hosts, Kaggle);
+  - trained models;
+  - concurrent imports;
+  - wiring `purge_participant` into the deletion process (`secure_state.DeletionExecutor` handles the object store, not built datasets): **not implemented**.
+
+**Held-back transcripts (policy and status):**
+- **What the code does:**
+  - a transcript with indicators is held back before anything is written;
+  - it never reaches audio, `recordings.jsonl`, manifests or the report text;
+  - only its reference and the indicator kinds are reported, and the CLI prints counts only (tested);
+  - the text is never modified.
+- **Policy (recommended; operational, not enforced by code):**
+  - an **authorized** reviewer examines the transcript in the restricted incoming store, under restricted access;
+  - the decision (include, correct or exclude), the reviewer and the date are recorded **without** copying the text into any log;
+  - any correction is made explicitly in the incoming store and is auditable;
+  - the recording is then re-imported, or stays excluded. Nothing enters training without that explicit decision.
+- **A review and re-admission tool does not exist** in this repository. Today the only path back is to correct the source transcript and re-run the import.
+- **Paths to training (closing review, tested):** training reads only manifests, and only after `build_manifests.verify()` (`trainers/requirements.py`, `datasets/mix.py`, the orchestrator preflight).
+  - a held recording's audio hash and recording id appear in no output file or path;
+  - the generic builder cannot take the incoming store: the corrupt file stops it, and without that file it is refused because the speaker ids are not pseudonyms;
+  - the import's audio directory does not contain the held recording;
+  - a re-import with the transcript deleted rejects it again.
+- **Stated limit, pinned by a test:** the screen reads transcripts, **not audio**. Replacing the transcript with a clean one readmits a recording whose audio may still contain the spoken personal data. A correction is acceptable only after a human has reviewed the **audio** as well.
+- **Not covered:** a hand-edited manifest that adds a row without text bypasses the text screen. That is a deliberate bypass of the pipeline, not an existing path.
+
+**Linkability of positional references (tested and stated):**
+- **What is tested:** nothing in `recordings.jsonl` or the manifests contains a `file#` or `dir#` reference, and the report contains no recording id, audio hash or source hash.
+- **What the report still reveals:**
+  - consent and session ids, which are schema ids and also appear in `recordings.jsonl`;
+  - for each session, the count and sorted order of its source files. With dated names, that order is chronological;
+  - for unknown directories, their sorted position among the incoming entries.
+- **Where linking is possible:** `provenance.jsonl` links recording id, consent id and source hash. That is its purpose, which is why it is restricted.
+- **Conclusion:** `file#N` and `dir#N` are **not** anonymization. They avoid copying names into the dataset directory.
+
+**Tests** (synthetic, both added to CI):
+- `training/tests/test_c9_date_coarsening.py`: 28 tests;
+- `training/tests/test_c9_import_report.py`: 28 tests (importer, provenance, hardening, purge, hard-crash purge, transcript review and paths to training, references, CLI output).
+
+**Mutations:** 48 weakening mutations across five rounds.
+- **47 still apply to the current code, and all are caught.** One round-4 mutation survived at first and is now covered by an added test.
+- **1 round-3 mutation no longer applies,** because the round-4 hardening replaced the code it targeted. The round-4 mutations of the new code are caught.
+
+**Status:** implemented and tested. Closing C9 needs owner review.

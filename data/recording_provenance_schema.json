@@ -1,0 +1,31 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "voise/recording_provenance/v1",
+ "title": "RESTRICTED provenance of one imported recording (datasets/arabic_import.py -> <out>.provenance/provenance.jsonl). Kept outside the dataset directory and never shipped to training hosts: source_sha256 links the record to the file as delivered (e.g. a Telegram voice note). Keyed by consent_id so it is found and deleted with the participant's data (arabic_import.purge_participant; C9).",
+ "type": "object",
+ "additionalProperties": false,
+ "required": [
+  "recording_id",
+  "consent_id",
+  "dataset_version",
+  "source_sha256"
+ ],
+ "properties": {
+  "recording_id": {
+   "type": "string",
+   "pattern": "^rec-[0-9a-f]{16}$"
+  },
+  "consent_id": {
+   "type": "string",
+   "pattern": "^CNS-[0-9a-f]{12}$"
+  },
+  "dataset_version": {
+   "type": "string"
+  },
+  "source_sha256": {
+   "type": "string",
+   "pattern": "^[0-9a-f]{64}$",
+   "description": "file as received"
+  }
+ }
+}

@@ -1,12 +1,12 @@
 {
  "$schema": "https://json-schema.org/draft/2020-12/schema",
  "$id": "voise/recording/v1",
- "title": "One imported recording of the consented corpus (written by datasets/arabic_import.py). Only what is needed; no personal data.",
+ "title": "One imported recording of the consented corpus (written by datasets/arabic_import.py). Only what is needed; no personal data. The hash of the file as received is NOT here: it is kept in the restricted provenance record (recording_provenance_schema.json), outside the dataset directory (C9).",
  "type": "object",
  "additionalProperties": false,
  "required": ["recording_id", "speaker_id", "session_id", "consent_id", "language", "dialect", "transcript",
               "transcript_normalized", "consent_scope", "commercial_eligibility", "recording", "dataset_version",
-              "sha256", "source_sha256"],
+              "sha256"],
  "properties": {
   "recording_id": {"type": "string", "pattern": "^rec-[0-9a-f]{16}$", "description": "sha256(normalised PCM)[:16]"},
   "speaker_id": {"type": "string", "pattern": "^own_recordings:spk-[0-9a-f]{10}$"},
@@ -20,7 +20,6 @@
   "commercial_eligibility": {"enum": ["COMMERCIAL_TRAINING_ELIGIBLE", "NOT_COMMERCIAL_TRAINING_ELIGIBLE"]},
   "recording": {"type": "object", "description": "{sampling_rate_source_hz, channels_source, duration_s, recording_device, environment, peak_dbfs, clipping_ratio}"},
   "dataset_version": {"type": "string"},
-  "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$", "description": "normalised 16 kHz PCM16 FLAC audio"},
-  "source_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$", "description": "file as received"}
+  "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$", "description": "normalised 16 kHz PCM16 FLAC audio"}
  }
 }

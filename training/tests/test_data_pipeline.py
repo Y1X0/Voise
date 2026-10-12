@@ -198,7 +198,7 @@ class ManifestBuilder(unittest.TestCase):
         cls.consents = {}
         for s in range(4):
             spk = f"spk-{s:010x}"
-            for sess in ("day1", "day2"):
+            for sess in (f"ses-{s:04x}0001", f"ses-{s:04x}0002"):        # random schema form (C9)
                 write_wav(os.path.join(g, spk, sess, "a.wav"), 0.3, 900 + s)
             cid = f"CNS-{s:012x}"
             open(os.path.join(g, spk, "consent_id.txt"), "w").write(cid)

@@ -38,7 +38,9 @@ import hashlib
 import json
 import os
 import random
+import re
 import sys
+import unicodedata
 from collections import defaultdict
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -222,8 +224,162 @@ def session_checks(rows):
     return errors
 
 
+# ------------------------------------------------------------------ C9 / R10: participant timing
+# Policy (docs/VOICE_DATA_COLLECTION_SECURITY_REVIEW.md R10, C9): the consent store keeps exact
+# times; exported manifests carry dates at MONTH precision at most and no consent times. The
+# builder never writes a date field, so the remaining channels are identifiers taken from the
+# participant's directory tree (session, path, subset) and any extra field. Participant rows
+# (own_recordings, or any row carrying a consent_id) are REFUSED, never rewritten: rewriting a path
+# or session would break audio loading, the lineage index and deletion. Public corpora are not
+# participant data and are not checked (e.g. VoxPopuli session ids embed dates).
+#  * ids must have their random schema form: speaker own_recordings:spk-<10 hex>
+#    (data/consent_schema.json), session ses-<8 hex> (data/recording_session_schema.json),
+#    consent_id CNS-<12 hex>. Ids in these forms are random by schema and are masked before the
+#    date scan, so an all-digit hex id is never mistaken for a date;
+#  * every other metadata value is scanned for dates/times finer than a month after mapping all
+#    Unicode decimal digits (Arabic-Indic, Eastern Arabic-Indic, ...) to ASCII;
+#  * `text` is speech content (prompts/transcripts), not metadata, and is NOT scanned.
+# The scan is pattern-based: forms it does not list (spelled-out numbers, free wording, relative
+# dates, calendars other than Gregorian/Hijri month names) are NOT detected.
+PARTICIPANT_FIELDS = {"path", "speaker", "session", "corpus", "language", "duration", "sr", "split", "subset",
+                      "text", "phones", "gender", "style", "noise", "device", "dialect", "offset", "consent_id",
+                      "role", "sha256"}          # sha256: content hash written by datasets/arabic_import.py
+PARTICIPANT_SPEAKER = re.compile(r"^own_recordings:spk-[0-9a-f]{10}$")
+PARTICIPANT_SESSION = re.compile(r"^ses-[0-9a-f]{8}$")
+PARTICIPANT_CONSENT = re.compile(r"^CNS-[0-9a-f]{12}$")
+_RANDOM_ID = re.compile(r"(?<![0-9A-Za-z])(?:spk-[0-9a-f]{10}|ses-[0-9a-f]{8}|rec-[0-9a-f]{16}|CNS-[0-9a-f]{12})"
+                        r"(?![0-9A-Za-z])")
+_SHA256 = re.compile(r"^[0-9a-f]{64}$")
+_Y = r"(?:19|20|14)\d{2}"                     # Gregorian 19xx/20xx, Hijri 14xx
+_M = r"(?:0?[1-9]|1[0-2])"
+_D = r"(?:0?[1-9]|[12]\d|3[01])"
+_MONTHS = (r"(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?"
+           r"|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)")
+_AR_MONTHS = ("(?:يناير|فبراير|مارس|أبريل|ابريل|إبريل|مايو|يونيو|يونيه|يوليو|يوليه|أغسطس|اغسطس|سبتمبر|أكتوبر|اكتوبر"
+              "|نوفمبر|ديسمبر|كانون الثاني|كانون الأول|كانون الاول|شباط|آذار|اذار|نيسان|أيار|ايار|حزيران|تموز|آب"
+              "|أيلول|ايلول|تشرين الأول|تشرين الاول|تشرين الثاني|محرم|صفر|ربيع الأول|ربيع الاول|ربيع الآخر"
+              "|ربيع الثاني|جمادى الأولى|جمادى الاولى|جمادى الآخرة|جمادى الاخرة|رجب|شعبان|رمضان|شوال|ذو القعدة"
+              "|ذو الحجة)")
+_AR = "؀-ۿ"
+FINER_THAN_MONTH = [
+    ("date", re.compile(rf"(?<!\d){_Y}[-/._ ]{_M}[-/._ ]{_D}(?!\d)")),                   # 2026-10-11, 2026_10_1
+    ("date", re.compile(r"(?<!\d)(?:19|20|14)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])(?!\d)")),  # 20261011
+    ("date", re.compile(rf"(?<!\d){_D}[-/._ ]{_M}[-/._ ]{_Y}(?!\d)")),                   # 11-10-2026
+    ("date", re.compile(r"(?<!\d)(?:0[1-9]|[12]\d|3[01])(?:0[1-9]|1[0-2])(?:19|20)\d{2}(?!\d)")),     # 11102026
+    ("date", re.compile(rf"(?<!\d){_D}[-/]{_M}[-/]\d{{2}}(?!\d)")),                      # 11-10-26, 10/11/26
+    ("date", re.compile(r"(?<!\d)(?:19|20)\d{2}-?(?:00[1-9]|0[1-9]\d|[12]\d{2}|3[0-5]\d|36[0-6])(?!\d)")),  # ordinal 2026-284
+    ("date", re.compile(r"(?i)(?<!\d)(?:19|20)\d{2}-?w(?:0[1-9]|[1-4]\d|5[0-3])(?![0-9])")),        # ISO week 2026-W41
+    ("date", re.compile(r"(?i)(?<![a-z])" + _MONTHS + r"[-_. ]?" + _D + r"(?!\d)")),     # Oct11, october 11
+    ("date", re.compile(r"(?i)(?<!\d)" + _D + r"[-_. ]?" + _MONTHS + r"(?![a-z])")),     # 11oct2026
+    ("date", re.compile(rf"(?<![{_AR}])" + _AR_MONTHS + rf"\s*[-_/]?\s*{_D}(?!\d)")),    # أكتوبر 11
+    ("date", re.compile(rf"(?<!\d){_D}\s*[-_/]?\s*" + _AR_MONTHS + rf"(?![{_AR}])")),    # 11 تشرين الأول
+    ("time", re.compile(r"(?<!\d)(?:[01]?\d|2[0-3]):[0-5]\d(?!\d)")),                    # 14:03
+    ("time", re.compile(r"(?<![0-9A-Za-z])(?:[01]\d|2[0-3])h[0-5]\d(?![0-9A-Za-z])")),    # 14h03 (not inside ids)
+    ("time", re.compile(r"(?<!\d)(?:[01]\d|2[0-3])[-_.][0-5]\d[-_.][0-5]\d(?!\d)")),     # 14-03-22
+    ("epoch", re.compile(r"(?<![0-9A-Za-z])1\d{9}(?:\d{3})?(?![0-9A-Za-z])")),           # 1760191402(000)
+]
+
+
+def _ascii_digits(value):
+    """Map every Unicode decimal digit (Arabic-Indic ٠-٩, Eastern Arabic-Indic ۰-۹, ...) to ASCII."""
+    return "".join(str(unicodedata.decimal(ch)) if not ch.isascii() and unicodedata.decimal(ch, None) is not None
+                   else ch for ch in str(value))
+
+
+def finer_than_month(value):
+    """-> the kind of the first date/time finer than a month found in `value` ("date", "time",
+    "epoch"), or None. Month precision ("2026-10", "أكتوبر 2026") is allowed by the policy."""
+    v = _ascii_digits(value)
+    for kind, rx in FINER_THAN_MONTH:
+        if rx.search(v):
+            return kind
+    return None
+
+
+# ------------------------------------------------------------------ C9: personal-data indicators in text
+# Separate from the timing check. Transcripts are speech content, so `text` is not rewritten and
+# not covered by the timing rule; it is screened for INDICATORS of personal data: contact data
+# (datasets/consent.CONTACT_PATTERNS: e-mail, phone/id-like numbers, @handles, t.me / tg://
+# links, "id: 123..."), URLs, dates/times finer than a month, self-introductions ("اسمي ...",
+# "my name is ..."), titles before a name ("الأستاذ ...", "Dr ..."), kunyas ("أبو ..."), and
+# address words next to a number ("شارع ... 12", "building 4"). Only the KINDS are reported,
+# never the text. A hit means "needs human review"; no hit does NOT mean the text is free of
+# personal data (names alone, places, spelled-out numbers and free wording are not detected).
+_TEXT_EXTRA = [
+    ("url", re.compile(r"https?://|(?<![\w@])www\.|(?<![\w@])[a-z0-9-]+\.(?:com|net|org|io|jo|sa|ae|eg|me|ly)\b")),
+    ("self_introduction", re.compile(r"(?:اسمي|إسمي|أدعى|ادعى|my name is|my name's|i am called|call me)\s+\S+")),
+    ("title_with_name", re.compile(r"(?<!\S)(?:السيد|السيدة|الآنسة|الانسة|الأستاذ|الاستاذ|الأستاذة|الاستاذة|الدكتور"
+                                   r"|الدكتورة|المهندس|المهندسة|الحاج|الحاجة|mr|mrs|ms|miss|dr)\.?\s+\S+")),
+    ("kunya", re.compile(r"(?<!\S)(?:أبو|ابو|أبي|ابي)\s+\S+")),
+    ("address", re.compile(r"(?<!\S)(?:شارع|حارة|حي|عمارة|بناية|مبنى|شقة|طابق|دوار|street|st\.|road|rd\.|avenue|ave\."
+                           r"|building|apt|apartment|floor|p\.?\s?o\.?\s?box|ص\.?\s?ب)\s*\S{0,20}\s*\d+")),
+]
+_CONTACT_KINDS = ("email", "phone_or_id_number", "handle", "telegram_link", "telegram_link", "id_number")
+
+
+def text_privacy_indicators(text):
+    """-> sorted list of personal-data indicator KINDS found in `text` (empty = none found, which
+    is not a guarantee). Never returns the matched text."""
+    from datasets.consent import CONTACT_PATTERNS, normalise_text
+    t = normalise_text(text)                      # NFKC, invisible chars removed, digits -> ASCII, lower case
+    kinds = {k for k, rx in zip(_CONTACT_KINDS, CONTACT_PATTERNS) if rx.search(t)}
+    kinds |= {k for k, rx in _TEXT_EXTRA if rx.search(t)}
+    if finer_than_month(t):
+        kinds.add("date_or_time")
+    return sorted(kinds)
+
+
+def participant_text_checks(rows):
+    """Participant rows whose text shows personal-data indicators are refused (human review);
+    messages carry the row and the kinds only."""
+    errors = []
+    for i, r in enumerate(rows):
+        if _is_participant(r) and r.get("text"):
+            kinds = text_privacy_indicators(r["text"])
+            if kinds:
+                errors.append(f"row {i}: participant text has personal-data indicators {kinds} (needs human review)")
+    return errors
+
+
+def _is_participant(r):
+    return r.get("corpus") == "own_recordings" or "consent_id" in r
+
+
+def participant_timing_checks(rows, inputs=None):
+    """C9: refuse participant rows that could carry timing finer than a month. Error messages
+    name the row, field and kind only, never the offending value."""
+    errors = []
+    participant = False
+    for i, r in enumerate(rows):
+        if not _is_participant(r):
+            continue
+        participant = True
+        extra = sorted(set(r) - PARTICIPANT_FIELDS)
+        if extra:
+            errors.append(f"row {i}: participant row has field(s) {extra} outside the manifest format "
+                          "(dates/times must not enter manifests)")
+        for k, rx, form in (("speaker", PARTICIPANT_SPEAKER, "own_recordings:spk-<10 hex>"),
+                            ("session", PARTICIPANT_SESSION, "ses-<8 hex>"),
+                            ("consent_id", PARTICIPANT_CONSENT, "CNS-<12 hex>")):
+            if not rx.match(str(r.get(k, ""))):
+                errors.append(f"row {i}: participant {k} is not a random schema id ({form})")
+        if "sha256" in r and not _SHA256.match(str(r["sha256"])):
+            errors.append(f"row {i}: participant field 'sha256' is not a sha256 hex digest")
+        for k in sorted(set(r) & PARTICIPANT_FIELDS - {"text", "speaker", "session", "consent_id", "duration", "sr",
+                                                        "offset", "sha256"}):
+            kind = finer_than_month(_RANDOM_ID.sub("<id>", str(r[k])))
+            if kind:
+                errors.append(f"row {i}: participant field {k!r} contains a {kind} finer than a month")
+    if participant and inputs is not None:
+        kind = finer_than_month(json.dumps(inputs, sort_keys=True, default=str, ensure_ascii=False))
+        if kind:
+            errors.append(f"manifest_index inputs contain a {kind} finer than a month (participant data present)")
+    return errors
+
+
 def assert_no_leakage(rows):
-    errs = validate(rows) + leakage_check(rows) + session_checks(rows)
+    errs = (validate(rows) + leakage_check(rows) + session_checks(rows) + participant_timing_checks(rows)
+            + participant_text_checks(rows))
     if errs:
         raise LeakageError("; ".join(errs[:20]))
 
@@ -260,6 +416,9 @@ def stats(rows):
 
 def write(rows, out_dir, seed, inputs, dropped):
     assert_no_leakage(rows)                 # every writer is gated, not only the callers that remember to check
+    errs = participant_timing_checks(rows, inputs)
+    if errs:
+        raise LeakageError("; ".join(errs[:20]))
     os.makedirs(out_dir, exist_ok=True)
     index = {"seed": seed, "inputs": inputs, "dropped": dropped, "manifests": {}}
     for split in ("train", "valid", "test", "attacker_train"):

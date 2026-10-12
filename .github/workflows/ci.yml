@@ -50,6 +50,8 @@ jobs:
         run: python3 training/tests/test_c12_authorization.py
       - name: "Verifiable deletion, write lifecycle, paths, crash safety, audit chain (C12.1; synthetic, adversarial)"
         run: python3 training/tests/test_c12_1_deletion_integrity.py
+      - name: "Participant timing in manifests (C9 date coarsening / R10; synthetic, adversarial)"
+        run: python3 training/tests/test_c9_date_coarsening.py
       - uses: actions/upload-artifact@v4
         with:
           name: dsp-reports
@@ -87,6 +89,8 @@ jobs:
         run: python training/tests/test_readiness.py
       - name: Data pipeline tests (augmentation, CTC targets, manifests, leakage fail-fast)
         run: python training/tests/test_data_pipeline.py
+      - name: "Importer outputs carry no source names or participant timing (C9 / R10; synthetic)"
+        run: python training/tests/test_c9_import_report.py
       - name: Dataset registry, GPU profiles, resumable checkpoints
         run: |
           python scripts/dataset_registry_summary.py > /dev/null
