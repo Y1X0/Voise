@@ -64,9 +64,9 @@ sh("rm -rf Voise && git clone --depth 1 -b claude/voice-anonymizer-android-az4mc
 sh("pip install -q soundfile pyyaml speechbrain==1.1.1")
 sh("nvidia-smi --query-gpu=name,memory.total --format=csv; df -h /kaggle/working /tmp")
 def attached():
-    """A VCTK 0.92 copy attached with Add Input (Kaggle mirror): extracted tree or the original zip."""
+    """A VCTK copy (0.92 or 0.80) attached with Add Input (Kaggle mirror): extracted tree or the original zip."""
     for dp, dn, fs in os.walk("/kaggle/input", followlinks=True):
-        if "wav48_silence_trimmed" in dn:
+        if "wav48_silence_trimmed" in dn or "wav48" in dn:          # 0.92, or the 0.80 release on most mirrors
             return "dir", dp
         for f in fs:
             if f == "VCTK-Corpus-0.92.zip":

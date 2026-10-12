@@ -349,5 +349,30 @@ class ManifestBuilder(unittest.TestCase):
         self.assertIn("LEAKAGE", r.stderr)
 
 
+class VctkLayouts(unittest.TestCase):
+    """build_vctk reads the 0.92 tree and, when it is absent, the 0.80 release (Kaggle mirrors)."""
+
+    def _corpus(self, d, v092):
+        for spk in ("p225", "p226"):
+            sub = os.path.join(d, "wav48_silence_trimmed" if v092 else "wav48", spk)
+            os.makedirs(sub)
+            os.makedirs(os.path.join(d, "txt", spk), exist_ok=True)
+            name = f"{spk}_001" + ("_mic1.flac" if v092 else ".wav")
+            sf.write(os.path.join(sub, name), np.zeros(4800, np.float32), 48000)
+            if v092:      # mic2 must never be picked up
+                sf.write(os.path.join(sub, f"{spk}_001_mic2.flac"), np.zeros(4800, np.float32), 48000)
+            with open(os.path.join(d, "txt", spk, f"{spk}_001.txt"), "w") as f:
+                f.write("hello")
+
+    def test_both_releases(self):
+        for v092 in (True, False):
+            d = tempfile.mkdtemp()
+            self.addCleanup(shutil.rmtree, d)
+            self._corpus(d, v092)
+            rows = BM.build_vctk(d)
+            self.assertEqual([r["speaker"] for r in rows], ["vctk:p225", "vctk:p226"])
+            self.assertTrue(all(r["text"] == "hello" and r["sr"] == 48000 and r["corpus"] == "vctk" for r in rows))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

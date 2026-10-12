@@ -97,10 +97,16 @@ def build_librispeech(root, corpus, subsets, language="en"):
 
 
 def build_vctk(root):
+    """VCTK 0.92 (wav48_silence_trimmed/<spk>/<utt>_mic1.flac) or, if that tree is absent,
+    the older 0.80 release (wav48/<spk>/<utt>.wav, not silence-trimmed)."""
     rows = []
-    for a in sorted(glob.glob(os.path.join(root, "wav48_silence_trimmed", "*", "*_mic1.flac"))):
+    audio = sorted(glob.glob(os.path.join(root, "wav48_silence_trimmed", "*", "*_mic1.flac")))
+    suffix = "_mic1.flac"
+    if not audio:
+        audio, suffix = sorted(glob.glob(os.path.join(root, "wav48", "*", "*.wav"))), ".wav"
+    for a in audio:
         spk = os.path.basename(os.path.dirname(a))
-        utt = os.path.basename(a).replace("_mic1.flac", "")
+        utt = os.path.basename(a).replace(suffix, "")
         tp = os.path.join(root, "txt", spk, utt + ".txt")
         d, sr = _dur(a)
         rows.append({"path": a, "speaker": f"vctk:{spk}", "session": "single", "corpus": "vctk", "subset": "all",
