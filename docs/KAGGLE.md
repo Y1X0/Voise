@@ -33,6 +33,7 @@ says NO-GO.
 ## Session 1: smoke (no training)
 
 ```bash
+pip install -q soundfile pyyaml speechbrain==1.1.1   # not in the Kaggle image (2026-10-12)
 python3 training/trainers/kaggle.py check --path-map /kaggle/working/path_map.json
 python3 training/trainers/kaggle.py smoke --config training/configs/stream_anon_s.yaml --gpu-profile t4_16gb --out /kaggle/working/session_smoke --path-map /kaggle/working/path_map.json
 ```

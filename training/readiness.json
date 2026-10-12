@@ -1,9 +1,9 @@
 {
  "_doc": "Machine-readable training readiness (docs/FINAL_COMPUTE_READINESS.md, docs/TRAINING_START_CHECKLIST.md). The orchestrator (scripts/orchestrate_training.py preflight, .github/workflows/train-orchestrator.yml) and trainers/train.py refuse to bundle or launch anything unless verdict == GO and every condition in scope is true. `conditions` lists ONLY blockers outside the code (category GPU / DATA / EXTERNAL_POLICY); internal CODE consistency is not a condition here: preflight recomputes it on every call (trainers/requirements.internal_consistency + datasets/mix.check_config over the real configs) and reports any finding as 'CODE: ...'. Only the owner changes this file, in a reviewed commit, after every condition is true with evidence.",
  "verdict": "NO-GO",
- "updated": "2026-10-06",
+ "updated": "2026-10-12",
  "conditions": {
-  "mixed_precision_verified_on_real_gpu": false,
+  "mixed_precision_verified_on_real_gpu": true,
   "gpu_access_verified_for_commercial_training": false,
   "gpu_budget_approved_by_owner": false,
   "licence_blockers_resolved": false,
@@ -21,7 +21,8 @@
    "scopes": [
     "en_only",
     "en_ar"
-   ]
+   ],
+   "evidence": "runs/kaggle_t4_smoke_2026-10-12/session_smoke_report.json: kaggle.py smoke on a Kaggle Tesla T4 (15.64 GB), fp16 batch 16, all 4 stages FITS (peak reserved 7.89 GB), finite losses, checkpoint/restart/resume bit-exact; synthetic data and placeholder encoders (memory/precision evidence only, not a training result)"
   },
   "gpu_access_verified_for_commercial_training": {
    "category": "EXTERNAL_POLICY",
