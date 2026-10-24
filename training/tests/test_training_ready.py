@@ -265,7 +265,7 @@ class RealRunOnCpu(unittest.TestCase):
             os.makedirs(md)
             enc = TSE.Encoder("ecapa", channels=16, dim=64).eval()     # untrained real ECAPA graph (plumbing only)
             torch.jit.trace(enc, torch.randn(1, 50, 80)).save(os.path.join(md, "ecapa_a.pt"))
-            meta = {"name": "ecapa_a", "arch": "ecapa", "role": "TRAIN"}
+            meta = {"name": "ecapa_a", "arch": "ecapa", "role": "TRAIN", "licence_path": "smoke"}   # run path below
             json.dump(meta, open(os.path.join(md, "ecapa_a.json"), "w"))
             ready = json.load(open(os.path.join(TRAINING, "readiness.json")))
             ready = dict(ready, verdict="GO", conditions={k: True for k in ready["conditions"]})

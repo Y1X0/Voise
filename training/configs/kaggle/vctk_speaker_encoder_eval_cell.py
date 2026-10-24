@@ -47,5 +47,7 @@ for split, want in TRAIN_MANIFEST_SHA.items():
     got = hashlib.sha256(open(f"{W}/manifests/vctk/{split}.jsonl", "rb").read()).hexdigest()
     print(f"manifest {split}: {got} {'== training run' if got == want else '!= training run ' + want}", flush=True)
 sh(f"python3 training/scripts/eval_speaker_encoder.py --model {model} --manifests {W}/manifests/vctk "
-   f"--per-speaker 20 --out {W}/eval/ecapa_train_inhouse_eval.json")
+   f"--per-speaker 20 --out {W}/eval --data-source 'Kaggle dataset mfekadu/english-multispeaker-corpus-for-voice-"
+   f"cloning (VCTK 0.80 layout; mirror, provenance not verified: research path only)'")
+sh(f"sha256sum {W}/eval/*")
 print("EXPECTED MODEL SHA256:", MODEL_SHA, flush=True)

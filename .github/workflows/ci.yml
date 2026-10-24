@@ -115,6 +115,14 @@ jobs:
         env:
           ORT_DISABLE_TELEMETRY: "1"
         run: python training/tests/test_kaggle.py
+      - name: Tie-aware EER/AUC (also in protocol + validator), speaker bootstrap, speaker-encoder eval, encoder licence gate
+        env:
+          ORT_DISABLE_TELEMETRY: "1"
+        run: |
+          python training/tests/test_privacy_metrics_ties.py
+          python training/tests/test_speaker_encoder_eval.py
+          python training/tests/test_encoder_licence_gate.py
+          python training/tests/test_eer_method_paths.py
       - name: Validation / evaluator-role / protocol (A6) tests
         env:
           ORT_DISABLE_TELEMETRY: "1"

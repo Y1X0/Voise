@@ -1,10 +1,13 @@
 """scripts/eval_speaker_encoder.py on synthetic data (CPU, no download).
 
   * a model whose sha256 differs from its .json is refused;
-  * groups follow the encoder's half: seen = own half of train, unseen = other half + valid,
-    never sharing a speaker;
-  * a separating toy encoder gets EER ~ 0 on every group; a random one gets EER ~ 0.5;
-  * a model traced at 200 frames is checked for variable-length inputs.
+  * groups follow the encoder's half and the training-length cut-off: seen_train_utts are the own
+    half's >= 4.015 s utterances, seen_heldout_utts its < 4.005 s ones, unseen groups never share a
+    speaker with the seen ones, the [4.005, 4.015) band is left out;
+  * every trial score is saved; report.json is recomputed identically from the saved files, and it
+    records the hashes of those files, the model and the manifests;
+  * a separating toy encoder gets EER ~ 0 with a CI; a random one gets EER ~ 0.5;
+  * the 100 / 200 / 300-frame conditions are scored on the same utterances.
 """
 import json
 import os
@@ -49,22 +52,26 @@ def write_model(d, name, random=False, subset="a"):
     return path
 
 
-def make_corpus(d, n_train=8, n_valid=3, per=4):
+DURS = (2.0, 2.6, 3.4, 4.010, 4.6, 5.2)          # short, short, short, excluded band, long, long
+
+
+def make_corpus(d, n_train=8, n_valid=3):
     rng = np.random.default_rng(0)
     rows = {"train": [], "valid": []}
     k = 0
     for split, n in (("train", n_train), ("valid", n_valid)):
-        for s in range(n):
+        for _ in range(n):
             spk = f"vctk:p{300 + k}"
             f0 = 120.0 + 45.0 * k
             k += 1
-            for u in range(per):
-                t = np.arange(int(16000 * (1.5 + 0.7 * u))) / 16000
+            for u, dur in enumerate(DURS):
+                t = np.arange(int(16000 * dur)) / 16000
                 x = sum(np.sin(2 * np.pi * f0 * h * t) / h for h in range(1, 6)) * 0.1
                 x = (x + 0.003 * rng.standard_normal(len(t))).astype(np.float32)
-                p = os.path.join(d, f"{spk.replace(':', '_')}_{u}.wav")
+                p = os.path.join(d, "wav", spk.replace(":", "_"), f"{u}.wav")
+                os.makedirs(os.path.dirname(p), exist_ok=True)
                 sf.write(p, x, 16000)
-                rows[split].append({"path": p, "speaker": spk, "split": split})
+                rows[split].append({"path": p, "speaker": spk, "split": split, "duration": dur})
     m = os.path.join(d, "manifests")
     os.makedirs(m)
     for split, rs in rows.items():
@@ -79,6 +86,8 @@ class EvalSpeakerEncoder(unittest.TestCase):
         cls.tmp = tempfile.TemporaryDirectory()
         cls.d = cls.tmp.name
         cls.manifests, cls.rows = make_corpus(cls.d)
+        cls.out = os.path.join(cls.d, "good_eval")
+        cls.rep = E.evaluate(write_model(cls.d, "good"), cls.manifests, cls.out, per_speaker=6)
 
     @classmethod
     def tearDownClass(cls):
@@ -89,34 +98,58 @@ class EvalSpeakerEncoder(unittest.TestCase):
         with open(p, "ab") as f:
             f.write(b"x")
         with self.assertRaises(SystemExit):
-            E.evaluate(p, self.manifests)
+            E.evaluate(p, self.manifests, os.path.join(self.d, "t"))
 
-    def test_groups_disjoint_and_follow_half(self):
-        g = E.groups(self.rows["train"], self.rows["valid"], "a", per_speaker=2)
-        self.assertTrue(all(half_of(s) == "a" for s in g["seen"]))
+    def test_groups_follow_half_and_length_cutoff(self):
+        g = E.groups(self.rows["train"], self.rows["valid"], "a", per_speaker=10)
+        for name in ("seen_train_utts", "seen_heldout_utts"):
+            self.assertTrue(g[name] and all(half_of(s) == "a" for s in g[name]))
         self.assertTrue(all(half_of(s) == "b" for s in g["unseen_half"]))
-        spk = [set(v) for v in g.values()]
-        for i in range(3):
-            for j in range(i + 1, 3):
-                self.assertFalse(spk[i] & spk[j])
-        self.assertTrue(all(len(v) <= 2 for grp in g.values() for v in grp.values()))
-        self.assertEqual(g, E.groups(self.rows["train"], self.rows["valid"], "a", per_speaker=2))
+        durs = lambda name: [r["duration"] for v in g[name].values() for r in v]
+        self.assertTrue(all(x >= E.CUT_HI for x in durs("seen_train_utts")))
+        for name in ("seen_heldout_utts", "unseen_short"):
+            self.assertTrue(all(x < E.CUT_LO for x in durs(name)))
+        self.assertNotIn(4.010, durs("seen_train_utts") + durs("seen_heldout_utts"))
+        seen = set(g["seen_train_utts"]) | set(g["seen_heldout_utts"])
+        for name in ("unseen_half", "unseen_valid", "unseen_short"):
+            self.assertFalse(seen & set(g[name]), name)
+        self.assertEqual(g, E.groups(self.rows["train"], self.rows["valid"], "a", per_speaker=10))
 
-    def test_separating_encoder_low_eer(self):
-        r = E.evaluate(write_model(self.d, "good"), self.manifests, per_speaker=4)
-        self.assertTrue(r["sha256_verified"])
-        for name in ("seen", "unseen_half", "unseen_valid", "unseen_all"):
-            g = r["groups"][name]
-            if g["n_speakers"] >= 2:
-                self.assertLess(g["eer"], 0.05, name)
-        self.assertEqual(r["groups"]["unseen_all"]["n_speakers"],
-                         r["groups"]["unseen_half"]["n_speakers"] + r["groups"]["unseen_valid"]["n_speakers"])
-        self.assertIsNotNone(r["variable_length"]["accepted"])
+    def test_scores_saved_and_report_reproducible(self):
+        for f in ("scores.npz", "utterances.jsonl", "run.json", "report.json"):
+            self.assertTrue(os.path.exists(os.path.join(self.out, f)), f)
+        run = self.rep["run"]
+        self.assertTrue(run["model"]["sha256_verified"])
+        self.assertEqual(set(run["manifests"]), {"train", "valid"})
+        self.assertEqual(run["manifests"]["train"]["sha256"], E.sha256_file(os.path.join(self.manifests, "train.jsonl")))
+        self.assertEqual(self.rep["files"]["scores.npz"], E.sha256_file(os.path.join(self.out, "scores.npz")))
+        again = E.report_from_scores(self.out)
+        self.assertEqual(json.loads(json.dumps(again, sort_keys=True)), json.loads(json.dumps(self.rep, sort_keys=True)))
+        z = np.load(os.path.join(self.out, "scores.npz"))
+        c = self.rep["conditions"]["unseen_all"]
+        self.assertEqual(len(z["unseen_all__score"]), c["n_target"] + c["n_nontarget"])
+
+    def test_separating_encoder_low_eer_with_ci(self):
+        for name in ("seen_train_utts", "seen_heldout_utts", "unseen_all", "unseen_short"):
+            c = self.rep["conditions"][name]
+            self.assertLess(c["eer"], 0.05, name)
+            lo, hi = c["eer_ci95"]
+            self.assertLessEqual(lo, c["eer"] + 1e-12)
+            self.assertGreaterEqual(hi, c["eer"] - 1e-12)
+        self.assertIsNotNone(self.rep["gaps"]["unseen_all_minus_seen_train_utts"]["ci95"])
+        self.assertIsNone(self.rep["gaps"]["seen_heldout_utts_minus_seen_train_utts"]["ci95"])  # same speakers
+
+    def test_length_conditions_share_utterances(self):
+        z = np.load(os.path.join(self.out, "scores.npz"))
+        for n in E.LENGTHS:
+            np.testing.assert_array_equal(z[f"len{n}__a"], z["len_windowed__a"])
+            self.assertIn(f"len{n}", self.rep["conditions"])
+        self.assertGreater(self.rep["run"]["length_check_utterances"], 1)
 
     def test_random_encoder_chance_eer(self):
         torch.manual_seed(0)
-        r = E.evaluate(write_model(self.d, "random", random=True), self.manifests, per_speaker=4)
-        self.assertAlmostEqual(r["groups"]["unseen_all"]["eer"], 0.5, delta=0.15)
+        r = E.evaluate(write_model(self.d, "random", random=True), self.manifests, os.path.join(self.d, "rnd"), 6)
+        self.assertAlmostEqual(r["conditions"]["unseen_all"]["eer"], 0.5, delta=0.15)
 
 
 if __name__ == "__main__":

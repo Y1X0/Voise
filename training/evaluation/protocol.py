@@ -48,6 +48,10 @@ from evaluation import privacy_metrics as PM
 SCENARIOS = ("S1_same_pseudo_all_sessions", "S2_new_pseudo_per_session", "S3_pseudo_known_to_attacker",
              "S4_attacker_knows_full_pool", "S5_enrollment_same_pipeline")
 NEEDS_VOICE_CONTROL = {"S1_same_pseudo_all_sessions", "S3_pseudo_known_to_attacker", "S4_attacker_knows_full_pool"}
+# EER/AUC: privacy_metrics.roc_auc_eer_ties (tied scores = one ROC point); CI: SpeakerBootstrap with the
+# same speaker draws as the former speaker_bootstrap. Reports made before this change used the
+# target-first roc_auc_eer; that function stays in privacy_metrics only to reproduce them.
+EER_METHOD = "tie_aware_roc_v1"
 
 
 @dataclass
@@ -141,7 +145,7 @@ class ScenarioRunner:
                 orig = [(spk[i], spk[j], float(E_in[i] @ E_out[j])) for i in en for j in tr]
                 t = [s for a, b, s in orig if a == b]
                 n = [s for a, b, s in orig if a != b]
-                extra["real_speaker_vs_original_enrollment_eer"] = PM.roc_auc_eer(t, n)[1]
+                extra["real_speaker_vs_original_enrollment_eer"] = PM.roc_auc_eer_ties(t, n)[1]
         elif scenario == "S5_enrollment_same_pipeline":
             own = [int(rng.integers(system.n_voices)) if system.voice_control else None for _ in en]
             enroll_emb = {i: _unit(self.embed(system.render(wavs[i], v))) for i, v in zip(en, own)}
@@ -182,11 +186,12 @@ class ScenarioRunner:
         sc, extra = self._trials(sel.test, system, scenario, rng)
         t = [s for a, b, s in sc if a == b]
         n = [s for a, b, s in sc if a != b]
-        auc, eer = PM.roc_auc_eer(t, n)
-        rep.update({"status": "MEASURED", "eer": eer, "auc": auc, "attacker_dev_threshold": thr,
+        auc, eer = PM.roc_auc_eer_ties(t, n)
+        sb = PM.SpeakerBootstrap([x[0] for x in sc], [x[1] for x in sc], [x[2] for x in sc])
+        rep.update({"status": "MEASURED", "eer": eer, "auc": auc, "eer_method": EER_METHOD, "attacker_dev_threshold": thr,
                     **PM.attack_at_threshold(t, n, thr), **PM.score_distributions(t, n), **extra,
                     "top1_per_trial_speaker": self._top1(sc), "n_target": len(t), "n_nontarget": len(n),
-                    "ci95_eer_speaker_bootstrap": PM.speaker_bootstrap(sc, lambda a, b: PM.roc_auc_eer(a, b)[1], n_boot=200)})
+                    "ci95_eer_speaker_bootstrap": PM.percentile_ci(sb.draws(200)[:, 1])})
         return rep
 
     @staticmethod
