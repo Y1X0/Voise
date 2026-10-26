@@ -65,5 +65,14 @@ class TestOutputs(unittest.TestCase):
             V.output_paths(out, "Test Person (as written)", 0, "20261025T000000Z")
 
 
+class TestTiming(unittest.TestCase):
+    def test_short_sentence_gets_time(self):
+        self.assertEqual(V.target_duration("أنا بحبك يا لول! إمتى أجي أشوفك، ونطلع؟"), 5.8)
+
+    def test_long_sentence_or_explicit_speed_left_to_model(self):
+        self.assertIsNone(V.target_duration(" ".join(["كلمة"] * 11)))
+        self.assertIsNone(V.target_duration("جملة قصيرة", speed=0.9))
+
+
 if __name__ == "__main__":
     unittest.main()

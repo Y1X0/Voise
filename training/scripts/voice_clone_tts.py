@@ -76,8 +76,9 @@ def output_paths(out, owner, n, stamp):
     return base + ".wav", base + ".json"
 
 
-def pick_reference(ref_dir, min_s=8.0, max_s=15.0):
-    """Clearest single clip after VAD compaction, 8-15 s (falls back to the first 12 s of the longest clip)."""
+def pick_reference(ref_dir, min_s=8.0, max_s=12.0):
+    """Clearest single clip after VAD compaction, 8-12 s (falls back to the first 12 s of the longest clip).
+    A ~10 s reference beat a 15 s one on speaker similarity (0.967 vs 0.930)."""
     import soundfile as sf
     sys.path.insert(0, HERE)
     import audio_preprocess as A
@@ -103,11 +104,24 @@ def pick_reference(ref_dir, min_s=8.0, max_s=15.0):
 
 def transcribe(y, asr_dir):
     from transformers import WhisperForConditionalGeneration, WhisperProcessor
+    import torch
     pr = WhisperProcessor.from_pretrained(asr_dir)
-    asr = WhisperForConditionalGeneration.from_pretrained(asr_dir).eval()
+    # float32: some checkpoints (e.g. whisper-large-v3-turbo) are stored in fp16, which CPU convolutions reject
+    asr = WhisperForConditionalGeneration.from_pretrained(asr_dir, torch_dtype=torch.float32).eval()
     ids = asr.generate(pr(y, sampling_rate=SR, return_tensors="pt").input_features, language="ar",
                        task="transcribe", num_beams=5, max_new_tokens=200)
     return pr.batch_decode(ids, skip_special_tokens=True)[0].strip()
+
+
+def target_duration(text, speed=None):
+    """Seconds to force for a short sentence, else None (model's own estimate).
+
+    The model's estimate rushes short sentences (7 words came out in 2.9 s with words swallowed); about
+    0.6 s/word + 1 s keeps every word. An explicit --speed leaves timing to the model."""
+    n = len(text.split())
+    if speed is not None or n > 10:
+        return None
+    return round(0.6 * n + 1.0, 1)
 
 
 def main(argv=None):
@@ -120,6 +134,7 @@ def main(argv=None):
     ap.add_argument("--text", action="append", default=[], help="sentence to speak (repeatable)")
     ap.add_argument("--text-file", help="one sentence per line")
     ap.add_argument("--language", default="apc", help="OmniVoice language id (apc = Levantine Arabic)")
+    ap.add_argument("--speed", type=float, help="speaking speed (<1 slower); default: automatic")
     a = ap.parse_args(argv)
 
     consent, consent_sha = load_consent(a.consent)
@@ -142,7 +157,8 @@ def main(argv=None):
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     for n, text in enumerate(texts):
         wav_path, meta_path = output_paths(out, consent["voice_owner"], n, stamp)
-        y = model.generate(text=text, language=a.language, ref_audio=ref_wav, ref_text=ref_text)
+        y = model.generate(text=text, language=a.language, ref_audio=ref_wav, ref_text=ref_text,
+                           duration=target_duration(text, a.speed), speed=a.speed)
         y = np.asarray(y[0] if isinstance(y, list) else y, dtype=np.float32).squeeze()
         sf.write(wav_path, y / max(1e-6, np.abs(y).max()) * 0.9, sr, subtype="PCM_16")
         json.dump(dict(synthetic=True, text=text, voice_owner=consent["voice_owner"], consent_record=a.consent,
