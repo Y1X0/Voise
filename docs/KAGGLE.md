@@ -44,6 +44,15 @@ profile batch (peak memory; DOES_NOT_FIT stops it), checkpoint write, restart in
 or within the measured run-to-run noise of the GPU). The report is
 `/kaggle/working/session_smoke/session_smoke_report.json`; `kaggle_validated: true` only on a GPU.
 
+From any machine (no local GPU), the same smoke plus the GPU-only regression tests runs as a Kaggle
+batch kernel for one pushed commit; it exits 0 only when everything passed. Run it after every change
+to the trainer, the checkpoint or device handling, before a training session
+(`training/configs/kaggle/kernel_t4_smoke/README.md`):
+
+```bash
+python3 training/configs/kaggle/kernel_t4_smoke/smoke.py --ref <full-commit-sha>
+```
+
 ## Training sessions (after readiness GO)
 
 ```bash

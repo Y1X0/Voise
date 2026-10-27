@@ -1,0 +1,165 @@
+{
+ "what": "session smoke test (NOT training; synthetic data / placeholder encoders if not attached)",
+ "checks": {
+  "1_environment": "PASS",
+  "2_dataset_paths": "MISSING (8 items; synthetic data used)",
+  "3_gpu_vram": "PASS: GPU: using cuda:0 Tesla T4 (15.64 GB)",
+  "4_model_init": "PASS: batch 16, precision fp16, device cuda:0",
+  "5_forward": "PASS: every stage ran forward + backward at the profile batch",
+  "6_backward": "PASS: every stage ran forward + backward at the profile batch",
+  "7_checkpoint_write": "PASS: A/anonymization/step_2.pt valid (sha256 sidecar)",
+  "8_process_restart": "PASS: new process loaded step 2 (step_in_stage 2)",
+  "9_resume": "PASS: continued to step 4; first resumed batch identical to the uninterrupted run's",
+  "10_deterministic_continuation": "PASS: bit-exact"
+ },
+ "placeholders": [
+  "ecapa_train_inhouse: randomly initialised ecapa (smoke only)",
+  "resnet34_train_inhouse: randomly initialised resnet34 (smoke only)"
+ ],
+ "environment": {
+  "python": "3.13.15",
+  "packages": {
+   "torch": "2.11.0+cu128",
+   "torchaudio": "2.11.0+cu128",
+   "numpy": "2.1.3",
+   "scipy": "1.16.3",
+   "soundfile": "0.14.0",
+   "librosa": "0.11.0",
+   "yaml": "6.0.3",
+   "sklearn": "1.6.1",
+   "transformers": "5.16.1",
+   "speechbrain": "1.1.1"
+  },
+  "torch_cuda": "12.8",
+  "cpus": 4,
+  "ram_gb": 32.9,
+  "disk_free_gb_at_out": 20.9,
+  "kaggle": true
+ },
+ "dataset": {
+  "path_map": [
+   {
+    "logical": "/data/mls/mls_english",
+    "physical": "/kaggle/input/voise-mls-en-10pct/mls_english",
+    "exists": false
+   },
+   {
+    "logical": "data/teacher/units",
+    "physical": "/kaggle/input/voise-prep/teacher_units",
+    "exists": false
+   },
+   {
+    "logical": "data/manifests",
+    "physical": "/kaggle/input/voise-prep/manifests",
+    "exists": false
+   },
+   {
+    "logical": "data/features",
+    "physical": "/kaggle/input/voise-prep/features",
+    "exists": false
+   },
+   {
+    "logical": "models_train",
+    "physical": "/kaggle/input/voise-models/models_train",
+    "exists": false
+   }
+  ],
+  "train_index": "/kaggle/input/voise-prep/features/train/index.jsonl",
+  "status": "MISSING",
+  "missing": [
+   "data.train_manifest: data/manifests/mix_v1/train.jsonl (datasets/mix.py)",
+   "data.valid_manifest: data/manifests/mix_v1/valid.jsonl (datasets/mix.py)",
+   "data/manifests/mix_v1/manifest_index.json (datasets/mix.py)",
+   "data.train_index: data/features/train/index.jsonl (datasets/feature_cache.py)",
+   "data.valid_index: data/features/valid/index.jsonl (datasets/feature_cache.py)",
+   "teacher units: data/teacher/units/kmeans.npy (scripts/compute_teacher_units.py; data preparation needs the local teacher checkpoint models_train/whisper-small/)",
+   "role-TRAIN speaker encoder models_train/ecapa_train_inhouse.pt + .json (scripts/train_speaker_encoder.py --arch ecapa --role TRAIN)",
+   "role-TRAIN speaker encoder models_train/resnet34_train_inhouse.pt + .json (scripts/train_speaker_encoder.py --arch resnet34 --role TRAIN)"
+  ]
+ },
+ "gpus": [
+  {
+   "index": 0,
+   "name": "Tesla T4",
+   "total_bytes": 15636037632,
+   "total_gb": 15.64,
+   "capability": "sm_75",
+   "bf16": false
+  },
+  {
+   "index": 1,
+   "name": "Tesla T4",
+   "total_bytes": 15636037632,
+   "total_gb": 15.64,
+   "capability": "sm_75",
+   "bf16": false
+  }
+ ],
+ "determinism_settings": {
+  "device": "cuda:0",
+  "deterministic": true,
+  "cublas_workspace_config": ":4096:8"
+ },
+ "batch_size": 16,
+ "precision": "fp16",
+ "memory_by_stage": {
+  "content_distillation": {
+   "status": "FITS",
+   "seconds_per_step_incl_validation": 1.237,
+   "abort_events": [],
+   "finite_losses": true,
+   "peak_allocated_gb": 0.4,
+   "peak_reserved_gb": 0.44,
+   "total_gb": 15.64,
+   "headroom_gb": 15.2
+  },
+  "reconstruction": {
+   "status": "FITS",
+   "seconds_per_step_incl_validation": 2.421,
+   "abort_events": [],
+   "finite_losses": true,
+   "peak_allocated_gb": 4.6,
+   "peak_reserved_gb": 5.41,
+   "total_gb": 15.64,
+   "headroom_gb": 10.23
+  },
+  "anonymization": {
+   "status": "FITS",
+   "seconds_per_step_incl_validation": 3.133,
+   "abort_events": [],
+   "finite_losses": true,
+   "peak_allocated_gb": 7.31,
+   "peak_reserved_gb": 7.89,
+   "total_gb": 15.64,
+   "headroom_gb": 7.74
+  },
+  "qat_int8": {
+   "status": "FITS",
+   "seconds_per_step_incl_validation": 2.248,
+   "abort_events": [],
+   "finite_losses": true,
+   "peak_allocated_gb": 2.57,
+   "peak_reserved_gb": 7.89,
+   "total_gb": 15.64,
+   "headroom_gb": 7.74
+  }
+ },
+ "nondeterministic_ops_parent": [
+  "nll_loss2d_forward_out_cuda_template does not have a deterministic implementation, but you set 'torch",
+  "reflection_pad1d_backward_out_cuda does not have a deterministic implementation, but you set 'torch"
+ ],
+ "determinism": {
+  "max_abs_diff_resumed_vs_uninterrupted": 0.0,
+  "max_abs_diff_two_uninterrupted_runs": 0.0,
+  "counters_schedulers_scaler_rng_equal": true,
+  "nondeterministic_ops": [
+   "reflection_pad1d_backward_out_cuda does not have a deterministic implementation, but you set 'torch"
+  ]
+ },
+ "peak_rss_gb": {
+  "parent": 3.15,
+  "children": 2.91
+ },
+ "passed": true,
+ "kaggle_validated": true
+}
