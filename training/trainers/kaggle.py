@@ -362,7 +362,7 @@ def smoke(args):
         jb, sB = run_child(args, "resume", os.path.join(out, "B"), ck)
         jc, sC = run_child(args, "full", os.path.join(out, "C"))
     except RuntimeError as e:
-        C["8_process_restart"] = "FAIL: " + str(e)[:500]
+        C["8_process_restart"] = "FAIL: " + str(e)[-1500:]  # tail: the exception message is last
         return finish(rep, out)
     C["8_process_restart"] = ("PASS: new process loaded step %d (step_in_stage %d)" % (jb["loaded"]["step"], jb["loaded"]["step_in_stage"])
                               if jb["loaded"] == {"step": args.k, "step_in_stage": args.k} else f"FAIL: loaded {jb['loaded']}")
