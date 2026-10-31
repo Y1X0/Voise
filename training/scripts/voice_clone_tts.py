@@ -102,15 +102,72 @@ def pick_reference(ref_dir, min_s=8.0, max_s=12.0):
     return p, t / max(1e-6, np.abs(t).max()) * 0.9
 
 
+_ASR = {}
+
+
 def transcribe(y, asr_dir):
     from transformers import WhisperForConditionalGeneration, WhisperProcessor
     import torch
-    pr = WhisperProcessor.from_pretrained(asr_dir)
-    # float32: some checkpoints (e.g. whisper-large-v3-turbo) are stored in fp16, which CPU convolutions reject
-    asr = WhisperForConditionalGeneration.from_pretrained(asr_dir, torch_dtype=torch.float32).eval()
+    if asr_dir not in _ASR:
+        # float32: some checkpoints (e.g. whisper-large-v3-turbo) are stored in fp16, which CPU convolutions reject
+        _ASR[asr_dir] = (WhisperProcessor.from_pretrained(asr_dir),
+                         WhisperForConditionalGeneration.from_pretrained(asr_dir, torch_dtype=torch.float32).eval())
+    pr, asr = _ASR[asr_dir]
     ids = asr.generate(pr(y, sampling_rate=SR, return_tensors="pt").input_features, language="ar",
                        task="transcribe", num_beams=5, max_new_tokens=200)
     return pr.batch_decode(ids, skip_special_tokens=True)[0].strip()
+
+
+def normalize_ar(text):
+    """Letters only, for comparing what was asked with what Whisper heard: drops [tags], diacritics, punctuation
+    and spaces, and folds hamza/taa-marbuta/alef-maqsura variants that Whisper writes either way."""
+    text = re.sub(r"\[[^\]]*\]", "", text)
+    text = re.sub(r"[^\u0621-\u064A]", "", text)
+    for a, b in (("أ", "ا"), ("إ", "ا"), ("آ", "ا"), ("ة", "ه"), ("ى", "ي"), ("ؤ", "و"), ("ئ", "ي")):
+        text = text.replace(a, b)
+    return text
+
+
+def cer(ref, hyp):
+    """Character error rate of hyp against ref after normalize_ar."""
+    a, b = normalize_ar(ref), normalize_ar(hyp)
+    d = list(range(len(b) + 1))
+    for i in range(1, len(a) + 1):
+        prev, d[0] = d[0], i
+        for j in range(1, len(b) + 1):
+            prev, d[j] = d[j], min(d[j] + 1, d[j - 1] + 1, prev + (a[i - 1] != b[j - 1]))
+    return d[-1] / max(1, len(a))
+
+
+def choose_best(cands):
+    """cands: [{"cer", "sim" (or None), ...}]. Fewest wrong letters wins; within 2 points of CER, the candidate
+    closest to the reference voice wins (when speaker similarity was measured)."""
+    best_cer = min(c["cer"] for c in cands)
+    near = [c for c in cands if c["cer"] <= best_cer + 0.02]
+    return max(near, key=lambda c: (c["sim"] if c["sim"] is not None else 0.0, -c["cer"]))
+
+
+def load_speaker_encoder(sv_dir):
+    if not sv_dir:
+        return None
+    from speechbrain.inference.speaker import EncoderClassifier
+    return EncoderClassifier.from_hparams(source=sv_dir, savedir=sv_dir + "_sv", run_opts={"device": "cpu"})
+
+
+def speaker_embedding(enc, y16):
+    import torch
+    with torch.no_grad():
+        return torch.nn.functional.normalize(enc.encode_batch(torch.as_tensor(y16)[None]).squeeze(), dim=-1)
+
+
+def watermark(y, sr):
+    """Inaudible Perth watermark (resemble-perth, MIT) so the file can later be shown to be synthetic.
+    Returns (audio, name) or (audio, None) when the package is not installed."""
+    try:
+        import perth
+    except ImportError:
+        return y, None
+    return np.asarray(perth.PerthImplicitWatermarker().apply_watermark(y, sample_rate=sr), np.float32), "perth"
 
 
 def target_duration(text, speed=None):
@@ -135,6 +192,11 @@ def main(argv=None):
     ap.add_argument("--text-file", help="one sentence per line")
     ap.add_argument("--language", default="apc", help="OmniVoice language id (apc = Levantine Arabic)")
     ap.add_argument("--speed", type=float, help="speaking speed (<1 slower); default: automatic")
+    ap.add_argument("--ref-text", help="what the person says in the reference, if Whisper mishears it")
+    ap.add_argument("--candidates", type=int, default=3,
+                    help="takes per sentence; the one Whisper hears best (then closest to the voice) is kept")
+    ap.add_argument("--sv-dir", help="local speechbrain/spkrec-ecapa-voxceleb directory, to rank takes by voice")
+    ap.add_argument("--no-watermark", action="store_true", help="skip the inaudible Perth watermark")
     a = ap.parse_args(argv)
 
     consent, consent_sha = load_consent(a.consent)
@@ -149,7 +211,9 @@ def main(argv=None):
     ref_path, ref = pick_reference(a.ref_dir)
     ref_wav = os.path.join(out, "_reference.wav")
     sf.write(ref_wav, ref, SR, subtype="PCM_16")
-    ref_text = transcribe(ref, a.asr_dir)
+    ref_text = a.ref_text or transcribe(ref, a.asr_dir)
+    enc = load_speaker_encoder(a.sv_dir)
+    ref_emb = speaker_embedding(enc, ref) if enc else None
 
     from omnivoice.models.omnivoice import OmniVoice
     model = OmniVoice.from_pretrained(a.model_dir, device_map="cpu")
@@ -157,16 +221,32 @@ def main(argv=None):
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     for n, text in enumerate(texts):
         wav_path, meta_path = output_paths(out, consent["voice_owner"], n, stamp)
-        y = model.generate(text=text, language=a.language, ref_audio=ref_wav, ref_text=ref_text,
-                           duration=target_duration(text, a.speed), speed=a.speed)
-        y = np.asarray(y[0] if isinstance(y, list) else y, dtype=np.float32).squeeze()
-        sf.write(wav_path, y / max(1e-6, np.abs(y).max()) * 0.9, sr, subtype="PCM_16")
+        import librosa
+        import torch
+        cands = []
+        for seed in range(max(1, a.candidates)):
+            torch.manual_seed(seed)
+            y = model.generate(text=text, language=a.language, ref_audio=ref_wav, ref_text=ref_text,
+                               duration=target_duration(text, a.speed), speed=a.speed)
+            y = np.asarray(y[0] if isinstance(y, list) else y, dtype=np.float32).squeeze()
+            y16 = librosa.resample(y, orig_sr=sr, target_sr=SR)
+            heard = transcribe(y16, a.asr_dir)
+            sim = float(speaker_embedding(enc, y16) @ ref_emb) if enc else None
+            cands.append(dict(seed=seed, y=y, heard=heard, cer=round(cer(text, heard), 3),
+                              sim=None if sim is None else round(sim, 3)))
+        best = choose_best(cands)
+        y = best["y"] / max(1e-6, np.abs(best["y"]).max()) * 0.9
+        wm = None
+        if not a.no_watermark:
+            y, wm = watermark(y, sr)
+        sf.write(wav_path, y, sr, subtype="PCM_16")
         json.dump(dict(synthetic=True, text=text, voice_owner=consent["voice_owner"], consent_record=a.consent,
                        consent_sha256=consent_sha, consent_scope=consent["scope"], reference=os.path.basename(ref_path),
                        reference_transcript=ref_text, model="oddadmix/lahgtna-omnivoice-v2 (no licence stated)",
-                       language=a.language, created_utc=stamp),
+                       language=a.language, created_utc=stamp, watermark=wm, chosen_seed=best["seed"],
+                       candidates=[{k: c[k] for k in ("seed", "heard", "cer", "sim")} for c in cands]),
                   open(meta_path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
-        print(wav_path, flush=True)
+        print(wav_path, f"(take {best['seed'] + 1}/{len(cands)}, heard: {best['heard']})", flush=True)
 
 
 if __name__ == "__main__":

@@ -74,5 +74,19 @@ class TestTiming(unittest.TestCase):
         self.assertIsNone(V.target_duration("جملة قصيرة", speed=0.9))
 
 
+class TestTakes(unittest.TestCase):
+    def test_normalize_ignores_tags_marks_and_spelling_variants(self):
+        self.assertEqual(V.normalize_ar("[laughter] أهلين، كيفكِ؟"), V.normalize_ar("اهلين كيفك"))
+
+    def test_cer(self):
+        self.assertEqual(V.cer("إمتى صار هاد", "امتى صار هاد"), 0.0)
+        self.assertGreater(V.cer("إمتى صار هاد", "انتصار هاد"), 0.1)
+
+    def test_choose_best_prefers_words_then_voice(self):
+        cands = [dict(seed=0, cer=0.20, sim=0.9), dict(seed=1, cer=0.00, sim=0.4), dict(seed=2, cer=0.01, sim=0.6)]
+        self.assertEqual(V.choose_best(cands)["seed"], 2)
+        self.assertEqual(V.choose_best([dict(seed=0, cer=0.1, sim=None), dict(seed=1, cer=0.0, sim=None)])["seed"], 1)
+
+
 if __name__ == "__main__":
     unittest.main()
