@@ -22,7 +22,7 @@ def log(*a): print(f"[{time.time() - T0:7.0f}s]", *a, flush=True)
 def sh(cmd): log("$", cmd); subprocess.run(cmd, shell=True, check=True)
 
 CFG = dict(smoke=dict(syra_hours=0.3, datahive_rows=40, steps=30, train_seconds=600, accum=2, eval_items=8),
-           full=dict(syra_hours=30.0, datahive_rows=10**9, steps=100000, train_seconds=int(6.0 * 3600), accum=8,
+           full=dict(syra_hours=30.0, datahive_rows=10**9, steps=8000, train_seconds=int(6.0 * 3600), accum=8,
                      eval_items=60))[MODE]
 WORK, OUT = "/tmp/lv", "/kaggle/working"
 os.makedirs(WORK, exist_ok=True)
@@ -79,6 +79,7 @@ dh = []
 for f in dh_files:
     p = hf_hub_download("datahiveai/arabic-multidialect-emotional-speech-demo", f, repo_type="dataset", local_dir=f"{WORK}/dh")
     dh += pq.read_table(p, columns=["audio", "text", "dialect", "recording_style", "speaker_id", "qa_tier"]).to_pylist()
+random.Random(SEED).shuffle(dh)
 dh = dh[: CFG["datahive_rows"]]
 jo_speakers = sorted({r["speaker_id"] for r in dh if (r["dialect"] or "").lower().startswith("jordan")})
 HELD_DH = jo_speakers[0] if jo_speakers else None
@@ -88,6 +89,13 @@ for r in dh:
         items.append(("dh:" + r["speaker_id"], r["text"].strip(), r["audio"], w))
 groups = sorted({g for g, *_ in items if g.startswith("syra:")})
 HELD_SYRA = groups[-1] if len(groups) > 1 else None
+if HELD_SYRA is None:          # one SYRA source only: hold out a random 3% of its clips instead
+    idx = [i for i, it in enumerate(items) if it[0].startswith("syra:")]
+    for i in random.Random(SEED).sample(idx, max(1, len(idx) // 33)):
+        items[i] = ("syra-heldout",) + items[i][1:]
+    HELD_SYRA = "syra-heldout"
+if HELD_DH is None:            # no Jordanian speaker in this subset: hold out one DataHive speaker
+    HELD_DH = sorted({r["speaker_id"] for r in dh})[0] if dh else None
 held = {g for g in (f"dh:{HELD_DH}" if HELD_DH else None, HELD_SYRA) if g}
 log(f"{len(items)} items; groups {len(set(g for g, *_ in items))}; held out {held}")
 
@@ -148,7 +156,8 @@ for p in model.audio_tokenizer.parameters() if model.audio_tokenizer is not None
 params = [p for n, p in model.named_parameters() if p.requires_grad and not n.startswith("audio_tokenizer.")]
 opt = torch.optim.AdamW(params, lr=1e-5, weight_decay=0.01)
 scaler = torch.amp.GradScaler("cuda")
-warm, total = 300, CFG["steps"]
+total = CFG["steps"]
+warm = min(300, max(1, total // 10))
 lr_at = lambda k: 1e-5 * min(1.0, k / warm) * (0.5 * (1 + math.cos(math.pi * min(1.0, k / max(1, total)))) * 0.9 + 0.1)
 weights = np.array([s["w"] for s in train]); weights /= weights.sum()
 model.train()
