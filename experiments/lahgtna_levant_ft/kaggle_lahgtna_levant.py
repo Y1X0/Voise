@@ -63,7 +63,7 @@ for f in syra_files:
     os.remove(p)
     for r in t:
         d = float(r["duration"] or 0)
-        if not 2.0 <= d <= 20.0 or not (r["transcript_text"] or "").strip():
+        if not 2.0 <= d <= 14.0 or not (r["transcript_text"] or "").strip():
             continue
         items.append(("syra:" + (r["source"] or "?"), r["transcript_text"].strip(), r["audio"], 1.0))
         secs += d
@@ -111,6 +111,8 @@ for i, (g, text, audio, w) in enumerate(items):
         log("skip", g, e); continue
     with torch.inference_mode():
         codes = codec.encode(fe(raw_audio=y, sampling_rate=TSR, return_tensors="pt")["input_values"].to(dev)).audio_codes.squeeze(0).cpu()
+    if codes.shape[1] > 14 * 25 + 10:          # longer than ~14 s at 25 frames/s: skip (memory on a T4)
+        continue
     s = {"audio_tokens": codes, "label": {"text": text, "language_id": "apc"}, "w": w, "g": g}
     (evals if g in held else train).append(s)
     if i % 500 == 0:
@@ -149,6 +151,8 @@ def eval_loss():
 res = {"mode": MODE, "train_items": len(train), "eval_items": len(evals), "held_out": sorted(held)}
 res["eval_loss_before"] = eval_loss(); log("eval loss before", res["eval_loss_before"])
 
+model.llm.gradient_checkpointing_enable()
+model.llm.config.use_cache = False
 for p in model.parameters():
     p.requires_grad_(True)
 for p in model.audio_tokenizer.parameters() if model.audio_tokenizer is not None else []:
@@ -165,10 +169,19 @@ t_start, losses, k = time.time(), [], 0
 while k < total and time.time() - t_start < CFG["train_seconds"]:
     for g_ in opt.param_groups:
         g_["lr"] = lr_at(k)
+    oom = False
     for _ in range(CFG["accum"]):
-        loss = step_loss(train[int(np.random.choice(len(train), p=weights))]) / CFG["accum"]
-        scaler.scale(loss).backward()
-        losses.append(float(loss) * CFG["accum"])
+        try:
+            loss = step_loss(train[int(np.random.choice(len(train), p=weights))]) / CFG["accum"]
+            scaler.scale(loss).backward()
+            losses.append(float(loss) * CFG["accum"])
+        except torch.OutOfMemoryError:
+            oom = True
+            break
+    if oom:                                     # drop this update rather than crash the run
+        opt.zero_grad(set_to_none=True); torch.cuda.empty_cache()
+        res["oom_skips"] = res.get("oom_skips", 0) + 1
+        continue
     scaler.unscale_(opt)
     torch.nn.utils.clip_grad_norm_(params, 1.0)
     scaler.step(opt); scaler.update(); opt.zero_grad(set_to_none=True)
