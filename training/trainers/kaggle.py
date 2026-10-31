@@ -155,6 +155,11 @@ def build(config, profile, out, seed, device, data_mode, models_dir="models_trai
     kw = GP.apply(cfg, prof)
     seg = cfg.data.get("segment_seconds", 2.0)
     n_spk = min(16, cfg.model.n_speakers or 16)
+    enc_missing = [m for m in artifact_requirements(cfg, models_dir) if "speaker encoder" in m]
+    if data_mode == "real" and enc_missing:
+        # placeholders are for the synthetic smoke only; a real-data run must never hide a missing or
+        # licence-refused encoder behind random weights
+        raise ValueError("real data mode needs the configured speaker encoders: " + "; ".join(enc_missing))
     if data_mode == "real":
         lic = cfg.data.get("licence_path", "commercial")
         train = StreamingSegmentSampler(cfg.data["train_index"], "train", seg, seed=seed, licence_path=lic,
@@ -165,7 +170,6 @@ def build(config, profile, out, seed, device, data_mode, models_dir="models_trai
         valid = SyntheticSegments(seg, cfg.model.n_units, n_spk, seed=seed + 1)
     tr = Trainer(cfg, out, train, valid, None, seed=seed, device=device, batch_size=kw["batch_size"],
                  precision=kw["precision"], keep_checkpoints=keep)
-    enc_missing = [m for m in artifact_requirements(cfg, models_dir) if "speaker encoder" in m]
     tr.assets = GpuAssets(cfg, device=device, models_dir=models_dir) if not enc_missing else placeholder_assets(cfg, device)
     return tr, cfg, kw
 

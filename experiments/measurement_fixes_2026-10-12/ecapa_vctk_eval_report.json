@@ -1,0 +1,296 @@
+{
+ "conditions": {
+  "len100": {
+   "auc": 0.8983625834869122,
+   "auc_ci95": [
+    0.8610330708548118,
+    0.9320531887028984
+   ],
+   "eer": 0.1802596130296351,
+   "eer_ci95": [
+    0.1426773237899068,
+    0.21962403473616948
+   ],
+   "eer_legacy_target_first_ties": 0.1802601082577311,
+   "n_nontarget": 185953,
+   "n_speakers": 48,
+   "n_target": 4083,
+   "n_tied_scores": 0,
+   "n_utterances": 617,
+   "nontarget_mean": 0.05817961844236741,
+   "target_mean": 0.37457016987350955
+  },
+  "len200": {
+   "auc": 0.9594583969011607,
+   "auc_ci95": [
+    0.9342461157092578,
+    0.9802384738470472
+   ],
+   "eer": 0.10315509833129877,
+   "eer_ci95": [
+    0.06761981097984955,
+    0.1399597948206762
+   ],
+   "eer_legacy_target_first_ties": 0.10313277816393496,
+   "n_nontarget": 185953,
+   "n_speakers": 48,
+   "n_target": 4083,
+   "n_tied_scores": 0,
+   "n_utterances": 617,
+   "nontarget_mean": 0.027422667872731125,
+   "target_mean": 0.4767814210246852
+  },
+  "len300": {
+   "auc": 0.9752714211838182,
+   "auc_ci95": [
+    0.9566612712325172,
+    0.988825748399999
+   ],
+   "eer": 0.0766593191280921,
+   "eer_ci95": [
+    0.04852800018698612,
+    0.11100687993357666
+   ],
+   "eer_legacy_target_first_ties": 0.0766592374681401,
+   "n_nontarget": 185953,
+   "n_speakers": 48,
+   "n_target": 4083,
+   "n_tied_scores": 0,
+   "n_utterances": 617,
+   "nontarget_mean": 0.03917965069764413,
+   "target_mean": 0.5426331892869661
+  },
+  "len_windowed": {
+   "auc": 0.9800468503954736,
+   "auc_ci95": [
+    0.9648479216308051,
+    0.9908454258951637
+   ],
+   "eer": 0.0715160421258878,
+   "eer_ci95": [
+    0.04536002367301952,
+    0.09999825916971708
+   ],
+   "eer_legacy_target_first_ties": 0.0715170569483558,
+   "n_nontarget": 185953,
+   "n_speakers": 48,
+   "n_target": 4083,
+   "n_tied_scores": 0,
+   "n_utterances": 617,
+   "nontarget_mean": 0.03608537577722533,
+   "target_mean": 0.5618390026012534
+  },
+  "seen_heldout_utts": {
+   "auc": 0.9996313605331523,
+   "auc_ci95": [
+    0.9991058567088873,
+    0.9998752783137882
+   ],
+   "eer": 0.008628127696289956,
+   "eer_ci95": [
+    0.004957394294705853,
+    0.014132765009130223
+   ],
+   "eer_legacy_target_first_ties": 0.008628271498418202,
+   "n_nontarget": 732000,
+   "n_speakers": 61,
+   "n_target": 11590,
+   "n_tied_scores": 0,
+   "n_utterances": 1220,
+   "nontarget_mean": -0.007630873738643192,
+   "target_mean": 0.7166719762204641
+  },
+  "seen_train_utts": {
+   "auc": 0.9999999994049619,
+   "auc_ci95": [
+    0.9999999929920215,
+    1.0
+   ],
+   "eer": 5.491488193300385e-06,
+   "eer_ci95": [
+    0.0,
+    1.8178220603005692e-05
+   ],
+   "eer_legacy_target_first_ties": 2.7457440966501923e-06,
+   "n_nontarget": 728400,
+   "n_speakers": 61,
+   "n_target": 11536,
+   "n_tied_scores": 0,
+   "n_utterances": 1217,
+   "nontarget_mean": -0.009929482226899395,
+   "target_mean": 0.8409168373340028
+  },
+  "unseen_all": {
+   "auc": 0.9757800149892685,
+   "auc_ci95": [
+    0.9599203846966448,
+    0.9857538966221917
+   ],
+   "eer": 0.07861258865248227,
+   "eer_ci95": [
+    0.05978159694190623,
+    0.10439794564749749
+   ],
+   "eer_legacy_target_first_ties": 0.07861550485255694,
+   "n_nontarget": 451200,
+   "n_speakers": 48,
+   "n_target": 9120,
+   "n_tied_scores": 0,
+   "n_utterances": 960,
+   "nontarget_mean": 0.029146899187783796,
+   "target_mean": 0.533082056106969
+  },
+  "unseen_half": {
+   "auc": 0.9765981130489825,
+   "auc_ci95": [
+    0.9592559525214668,
+    0.9868292435309444
+   ],
+   "eer": 0.07845777233782125,
+   "eer_ci95": [
+    0.05795729450849979,
+    0.10812152912404442
+   ],
+   "eer_legacy_target_first_ties": 0.07845784519438129,
+   "n_nontarget": 361200,
+   "n_speakers": 43,
+   "n_target": 8170,
+   "n_tied_scores": 0,
+   "n_utterances": 860,
+   "nontarget_mean": 0.029596730060222867,
+   "target_mean": 0.5343163770356151
+  },
+  "unseen_short": {
+   "auc": 0.9771414641365714,
+   "auc_ci95": [
+    0.9654253568861164,
+    0.9847283019748783
+   ],
+   "eer": 0.07995567375886525,
+   "eer_ci95": [
+    0.06337303548673591,
+    0.10089517398527711
+   ],
+   "eer_legacy_target_first_ties": 0.07994494214259051,
+   "n_nontarget": 451200,
+   "n_speakers": 48,
+   "n_target": 9120,
+   "n_tied_scores": 0,
+   "n_utterances": 960,
+   "nontarget_mean": 0.02401426350253842,
+   "target_mean": 0.5182596054932469
+  },
+  "unseen_valid": {
+   "auc": 0.9716286842105264,
+   "auc_ci95": [
+    0.9244674887419083,
+    0.9993398838004102
+   ],
+   "eer": 0.069,
+   "eer_ci95": [
+    0.01,
+    0.1692857142857143
+   ],
+   "eer_legacy_target_first_ties": 0.06923684210526318,
+   "n_nontarget": 4000,
+   "n_speakers": 5,
+   "n_target": 950,
+   "n_tied_scores": 0,
+   "n_utterances": 100,
+   "nontarget_mean": -0.019039562642180905,
+   "target_mean": 0.522466896120614
+  }
+ },
+ "files": {
+  "scores.npz": "fc8863a930c83902850018e3d3aebb12b57584446d8bd7d72a447da85eb0853f",
+  "utterances.jsonl": "886f2677979d603c7f0050d663a56198b3b3e3d9b8b3a0f946f7061378d8994a"
+ },
+ "gaps": {
+  "seen_heldout_utts_minus_seen_train_utts": {
+   "ci95": null,
+   "ci_note": "same speakers in both groups: a paired utterance-level bootstrap is needed; no CI given",
+   "point": 0.008622636208096656
+  },
+  "unseen_all_minus_seen_train_utts": {
+   "ci95": [
+    0.059781251447157756,
+    0.10439223922836013
+   ],
+   "ci_note": "independent speaker bootstraps (disjoint speaker sets)",
+   "point": 0.07860709716428897
+  },
+  "unseen_short_minus_seen_heldout_utts": {
+   "ci95": [
+    0.05425906349052785,
+    0.09216040803867044
+   ],
+   "ci_note": "independent speaker bootstraps (disjoint speaker sets)",
+   "point": 0.0713275460625753
+  }
+ },
+ "metric": "tie-aware EER/AUC (privacy_metrics.roc_auc_eer_ties); 95 % CI = speaker bootstrap (privacy_metrics.SpeakerBootstrap, 1000 rounds, seed 7); oracle threshold",
+ "not_shown": "EER here measures this embedding only. It is not evidence of anonymisation.",
+ "run": {
+  "code_sha256": {
+   "eval_speaker_encoder.py": "49f747c4fc53729b24242675be3e9ffea58c1c22872e67bf58982b398829de08",
+   "privacy_metrics.py": "7aea738d193d44377654dcc38badd3c2e928e03291ab378008706abb6d937f1d"
+  },
+  "data_source": "Kaggle dataset mfekadu/english-multispeaker-corpus-for-voice-cloning (VCTK 0.80 layout, wav48; mirror, provenance not verified: research path only)",
+  "env": {
+   "numpy": "2.1.3",
+   "python": "3.13.15",
+   "torch": "2.11.0+cpu"
+  },
+  "git_commit": "43729bd08e3bbc372b79941838f1f0522b5f8bef+overlay",
+  "length_check_utterances": 617,
+  "manifests": {
+   "train": {
+    "file": "train.jsonl",
+    "sha256": "6efc9297b2be3c5d432bfb7002d4b5b4c6543a5b0f8c234990e4d4b7fd0bc0e0"
+   },
+   "valid": {
+    "file": "valid.jsonl",
+    "sha256": "a884a336ba94e43c5335bf1481df34a4040ce66306a2b0e8f9bd0f096581f41b"
+   }
+  },
+  "model": {
+   "file": "ecapa_train_inhouse.pt",
+   "meta": {
+    "arch": "ecapa",
+    "channels": 512,
+    "dim": 192,
+    "licence_path": "research",
+    "loss_first": 12.034671783447266,
+    "loss_last": 0.0002554465487264679,
+    "n_speakers": 61,
+    "name": "ecapa_train_inhouse",
+    "role": "TRAIN",
+    "speaker_subset": "a",
+    "speaker_subset_sha256": "8b6439380e95e57bab8134621b52356c255a1346fda617ea19c5c3e18f1febfe",
+    "steps": 30000,
+    "torchscript_sha256": "7d0922035bcde2e8c726860d132b919bf34c3a701af649ade098ed2c45397290"
+   },
+   "sha256_verified": true,
+   "torchscript_sha256": "7d0922035bcde2e8c726860d132b919bf34c3a701af649ade098ed2c45397290"
+  },
+  "settings": {
+   "boot_seed": 7,
+   "crop_lengths": [
+    100,
+    200,
+    300
+   ],
+   "excluded_duration_band_s": [
+    4.005,
+    4.015
+   ],
+   "n_boot": 1000,
+   "per_speaker": 20,
+   "score": "cosine of L2-normalised embeddings",
+   "seed": 0,
+   "train_min_seconds": 4.01,
+   "window_frames": 200
+  },
+  "utc": "2026-10-12T21:21:53+00:00"
+ }
+}

@@ -1,0 +1,381 @@
+{
+ "note": "HISTORICAL = results.json as published (unchanged); RECOMPUTED = tie-aware EER on the stored 4-decimal scores. Neither file of the experiment is modified.",
+ "per_condition": {
+  "ecapa": {
+   "llvc/ignorant": {
+    "historical": {
+     "eer": 0.408,
+     "eer_effective": 0.408,
+     "ci95": [
+      0.3691,
+      0.45
+     ]
+    },
+    "recomputed": {
+     "eer": 0.4082,
+     "eer_effective": 0.4082,
+     "ci95_exp_boot": [
+      0.369,
+      0.45
+     ],
+     "ci95_spk_boot": [
+      0.3667,
+      0.4506
+     ]
+    }
+   },
+   "llvc/lazy_informed": {
+    "historical": {
+     "eer": 0.2534,
+     "eer_effective": 0.2534,
+     "ci95": [
+      0.204,
+      0.3038
+     ]
+    },
+    "recomputed": {
+     "eer": 0.2536,
+     "eer_effective": 0.2536,
+     "ci95_exp_boot": [
+      0.2041,
+      0.3037
+     ],
+     "ci95_spk_boot": [
+      0.2078,
+      0.3065
+     ]
+    }
+   },
+   "dsp_strong/ignorant": {
+    "historical": {
+     "eer": 0.2335,
+     "eer_effective": 0.2335,
+     "ci95": [
+      0.185,
+      0.2871
+     ]
+    },
+    "recomputed": {
+     "eer": 0.2337,
+     "eer_effective": 0.2337,
+     "ci95_exp_boot": [
+      0.185,
+      0.2866
+     ],
+     "ci95_spk_boot": [
+      0.1865,
+      0.2799
+     ]
+    }
+   },
+   "dsp_strong/lazy_informed": {
+    "historical": {
+     "eer": 0.1667,
+     "eer_effective": 0.1667,
+     "ci95": [
+      0.1247,
+      0.2119
+     ]
+    },
+    "recomputed": {
+     "eer": 0.1667,
+     "eer_effective": 0.1667,
+     "ci95_exp_boot": [
+      0.1247,
+      0.212
+     ],
+     "ci95_spk_boot": [
+      0.1238,
+      0.2177
+     ]
+    }
+   },
+   "dsp_balanced/ignorant": {
+    "historical": {
+     "eer": 0.1478,
+     "eer_effective": 0.1478,
+     "ci95": [
+      0.1115,
+      0.1911
+     ]
+    },
+    "recomputed": {
+     "eer": 0.1478,
+     "eer_effective": 0.1478,
+     "ci95_exp_boot": [
+      0.1118,
+      0.1911
+     ],
+     "ci95_spk_boot": [
+      0.1121,
+      0.1937
+     ]
+    }
+   },
+   "dsp_balanced/lazy_informed": {
+    "historical": {
+     "eer": 0.1511,
+     "eer_effective": 0.1511,
+     "ci95": [
+      0.1023,
+      0.2088
+     ]
+    },
+    "recomputed": {
+     "eer": 0.1511,
+     "eer_effective": 0.1511,
+     "ci95_exp_boot": [
+      0.1022,
+      0.2089
+     ],
+     "ci95_spk_boot": [
+      0.1,
+      0.2129
+     ]
+    }
+   }
+  },
+  "wavlm": {
+   "llvc/ignorant": {
+    "historical": {
+     "eer": 0.4846,
+     "eer_effective": 0.4846,
+     "ci95": [
+      0.4284,
+      0.5552
+     ]
+    },
+    "recomputed": {
+     "eer": 0.4848,
+     "eer_effective": 0.4848,
+     "ci95_exp_boot": [
+      0.4281,
+      0.5547
+     ],
+     "ci95_spk_boot": [
+      0.4205,
+      0.5541
+     ]
+    }
+   },
+   "llvc/lazy_informed": {
+    "historical": {
+     "eer": 0.3911,
+     "eer_effective": 0.3911,
+     "ci95": [
+      0.3449,
+      0.4358
+     ]
+    },
+    "recomputed": {
+     "eer": 0.3911,
+     "eer_effective": 0.3911,
+     "ci95_exp_boot": [
+      0.3454,
+      0.4352
+     ],
+     "ci95_spk_boot": [
+      0.3466,
+      0.4339
+     ]
+    }
+   },
+   "dsp_strong/ignorant": {
+    "historical": {
+     "eer": 0.4202,
+     "eer_effective": 0.4202,
+     "ci95": [
+      0.3667,
+      0.4787
+     ]
+    },
+    "recomputed": {
+     "eer": 0.4204,
+     "eer_effective": 0.4204,
+     "ci95_exp_boot": [
+      0.3667,
+      0.4785
+     ],
+     "ci95_spk_boot": [
+      0.3645,
+      0.4762
+     ]
+    }
+   },
+   "dsp_strong/lazy_informed": {
+    "historical": {
+     "eer": 0.3,
+     "eer_effective": 0.3,
+     "ci95": [
+      0.2241,
+      0.3912
+     ]
+    },
+    "recomputed": {
+     "eer": 0.3,
+     "eer_effective": 0.3,
+     "ci95_exp_boot": [
+      0.2247,
+      0.3912
+     ],
+     "ci95_spk_boot": [
+      0.2189,
+      0.3899
+     ]
+    }
+   },
+   "dsp_balanced/ignorant": {
+    "historical": {
+     "eer": 0.2944,
+     "eer_effective": 0.2944,
+     "ci95": [
+      0.25,
+      0.3419
+     ]
+    },
+    "recomputed": {
+     "eer": 0.2944,
+     "eer_effective": 0.2944,
+     "ci95_exp_boot": [
+      0.25,
+      0.3425
+     ],
+     "ci95_spk_boot": [
+      0.2518,
+      0.342
+     ]
+    }
+   },
+   "dsp_balanced/lazy_informed": {
+    "historical": {
+     "eer": 0.2667,
+     "eer_effective": 0.2667,
+     "ci95": [
+      0.1999,
+      0.3355
+     ]
+    },
+    "recomputed": {
+     "eer": 0.2667,
+     "eer_effective": 0.2667,
+     "ci95_exp_boot": [
+      0.2006,
+      0.3353
+     ],
+     "ci95_spk_boot": [
+      0.202,
+      0.3349
+     ]
+    }
+   }
+  }
+ },
+ "paired_llvc_minus_dsp_strong": {
+  "ecapa/lazy_informed": {
+   "historical": {
+    "point": 0.0867,
+    "ci95": [
+     0.0274,
+     0.1403
+    ]
+   },
+   "recomputed": {
+    "point": 0.0869,
+    "ci95_exp_boot": [
+     0.0281,
+     0.1402
+    ],
+    "ci95_spk_boot": [
+     0.0233,
+     0.141
+    ]
+   }
+  },
+  "ecapa/ignorant": {
+   "historical": {
+    "point": 0.1745,
+    "ci95": [
+     0.1122,
+     0.2383
+    ]
+   },
+   "recomputed": {
+    "point": 0.1745,
+    "ci95_exp_boot": [
+     0.1125,
+     0.2369
+    ],
+    "ci95_spk_boot": [
+     0.1188,
+     0.2361
+    ]
+   }
+  },
+  "wavlm/lazy_informed": {
+   "historical": {
+    "point": 0.0911,
+    "ci95": [
+     -0.0038,
+     0.1736
+    ]
+   },
+   "recomputed": {
+    "point": 0.0911,
+    "ci95_exp_boot": [
+     -0.0049,
+     0.1738
+    ],
+    "ci95_spk_boot": [
+     0.0017,
+     0.1734
+    ]
+   }
+  },
+  "wavlm/ignorant": {
+   "historical": {
+    "point": 0.0644,
+    "ci95": [
+     0.0017,
+     0.1448
+    ]
+   },
+   "recomputed": {
+    "point": 0.0644,
+    "ci95_exp_boot": [
+     0.0031,
+     0.1441
+    ],
+    "ci95_spk_boot": [
+     -0.0012,
+     0.1382
+    ]
+   }
+  }
+ },
+ "gates": {
+  "historical": {
+   "G1": false,
+   "G2": true,
+   "G3": true,
+   "G5_historical": true,
+   "gain_ruled_out": false,
+   "verdict": "INCONCLUSIVE"
+  },
+  "recomputed_exp_boot": {
+   "G1": false,
+   "G2": true,
+   "G3": true,
+   "G5_historical": true,
+   "gain_ruled_out": false,
+   "verdict": "INCONCLUSIVE"
+  },
+  "recomputed_spk_boot": {
+   "G1": true,
+   "G2": true,
+   "G3": true,
+   "G5_historical": true,
+   "gain_ruled_out": false,
+   "verdict": "CONTINUE"
+  }
+ }
+}

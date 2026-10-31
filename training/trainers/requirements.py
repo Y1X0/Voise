@@ -5,7 +5,9 @@ internal_consistency(cfg_raw, mix_cfgs)  CODE problems only (no file access): ev
     flag matches the implementation. Must be empty in a correct repository (tested).
 artifact_requirements(cfg)  DATA artifacts `train.py` consumes (checked on disk at start):
     mix manifests (+ verified index), feature indexes, teacher units REFERENCED BY the train index
-    (k-means K == model.n_units), role-TRAIN speaker encoders with matching arch metadata.
+    (k-means K == model.n_units), role-TRAIN speaker encoders with matching arch metadata and a
+    licence_path admissible for the run (encoder_licence_problem: a research-path encoder is never
+    accepted on the commercial path; missing licence metadata is refused on every path).
     Things train.py does not consume (Whisper checkpoint, noise/RIR while augmentation is off)
     are NOT required here; they belong to the data-preparation step that uses them.
 
@@ -13,7 +15,7 @@ Producers (keep in sync; tests compare them with the configs and the documented 
   datasets/mix.py                    -> <mix.out>/{train,valid,test}.jsonl + manifest_index.json
   datasets/feature_cache.py          -> <cache>/index.jsonl  (entries carry "units" if --units-dir)
   scripts/compute_teacher_units.py   -> <out>/kmeans.npy + <out>/<row_key>.npy
-  scripts/train_speaker_encoder.py   -> models_train/<name>.pt + <name>.json {arch, role}
+  scripts/train_speaker_encoder.py   -> models_train/<name>.pt + <name>.json {arch, role, licence_path}
 """
 import json
 import os
@@ -22,6 +24,28 @@ import numpy as np
 
 KMEANS_FILE = "kmeans.npy"                 # compute_teacher_units.py writes <out>/kmeans.npy
 ENCODER_ARCHS = ("ecapa", "resnet34")      # train_speaker_encoder.py --arch
+# run licence path -> encoder licence paths (<name>.json "licence_path") it may load. An encoder
+# trained on research-path data carries that restriction into every model trained with its loss.
+ENCODER_LICENCE_ADMISSIBLE = {"commercial": ("commercial",), "research": ("commercial", "research"),
+                              "smoke": ("commercial", "smoke")}
+
+
+def run_licence_path(cfg, licence_path=None):
+    """The licence path a run uses: the explicit one (train.py --licence-path) or the config's."""
+    lp = licence_path or cfg.data.get("licence_path", "commercial")
+    if lp not in ENCODER_LICENCE_ADMISSIBLE:
+        raise ValueError(f"unknown licence path {lp!r}")
+    return lp
+
+
+def encoder_licence_problem(meta, run_path, where):
+    """-> message if an encoder's licence_path may not be loaded on run_path, else None (fail-closed)."""
+    ok = ENCODER_LICENCE_ADMISSIBLE[run_path]
+    got = meta.get("licence_path")
+    if got not in ok:
+        return (f"{where}: licence_path {got!r} is not admissible on the {run_path} path "
+                f"(allowed: {', '.join(ok)}); speaker encoder refused")
+    return None
 
 
 def encoder_specs(data_cfg):
@@ -79,9 +103,11 @@ def internal_consistency(cfg_raw, mix_cfgs=()):
     return errs
 
 
-def artifact_requirements(cfg, models_dir="models_train", sample=2000):
+def artifact_requirements(cfg, models_dir="models_train", sample=2000, licence_path=None):
     """-> list of missing / invalid DATA artifacts that train.py would consume. Paths are LOGICAL
-    (config / index strings); files are looked up through datasets/paths.py (VOISE_PATH_MAP)."""
+    (config / index strings); files are looked up through datasets/paths.py (VOISE_PATH_MAP).
+    licence_path: the run's path if it differs from data.licence_path (train.py --licence-path)."""
+    run_path = run_licence_path(cfg, licence_path)
     from datasets.paths import resolve as R
     exists = lambda p: bool(p) and os.path.exists(R(p))
     miss = []
@@ -129,4 +155,7 @@ def artifact_requirements(cfg, models_dir="models_train", sample=2000):
             meta = json.load(f)
         if meta.get("arch") != s["arch"] or meta.get("role") != "TRAIN":
             miss.append(f"{js}: arch/role {meta.get('arch')}/{meta.get('role')} != config {s['arch']}/TRAIN")
+        lic = encoder_licence_problem(meta, run_path, js)
+        if lic:
+            miss.append(lic)
     return miss
