@@ -6,8 +6,9 @@
   status  what is in the pool and which version is in use
 
 Design (each point fixes something we measured):
-  * Learning starts from the ORIGINAL Lahgtna every time, not from the last learned version, so errors never
-    accumulate and a revoked voice is really gone after the next `train`.
+  * Learning builds on itself: each `train` continues from the current learned version and is judged against it,
+    so the model keeps improving as the pool grows. Only `revoke` (or --from-scratch) restarts from the original
+    Lahgtna, because a revoked voice must not stay inside the weights.
   * Only the top transformer layers, the final norm and the audio heads learn; the rest stays frozen, so the model
     keeps what it knows (a full-model run on 30 h of Syrian speech drifted the accent to Syrian).
   * Clips are pooled across people, so the model learns the dialect and the way people talk, not one person's
@@ -158,6 +159,12 @@ def cmd_train(a):
     train_s, held_s = [tokens(i) for i in train], [tokens(i) for i in held]
     del codec
     model = OmniVoice.from_pretrained(a.model_dir, device_map="cpu")
+    prev_people, generation = [], 0
+    if os.path.exists(a.adapter) and not a.from_scratch:
+        st = torch.load(a.adapter, map_location="cpu", weights_only=True)
+        model.load_state_dict(st["weights"], strict=False)
+        prev_people, generation = st.get("people", []), int(st.get("generation", 0))
+        print(f"continuing from the current learned version (generation {generation})")
     proc = OmniVoiceSampleProcessor(text_tokenizer=model.text_tokenizer, num_channels=model.config.num_audio_codebook,
                                     audio_mask_id=model.config.audio_mask_id, prompt_ratio_range=(0.0, 0.3),
                                     mask_ratio_range=(0.0, 1.0), drop_cond_ratio=0.1, language_ratio=0.8,
@@ -192,7 +199,8 @@ def cmd_train(a):
         return round(float(np.mean(errs)), 4)
 
     report = dict(started_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
-                  people=people, train_clips=len(train), held_clips=len(held), minutes=round(minutes, 1))
+                  people=people, train_clips=len(train), held_clips=len(held), minutes=round(minutes, 1),
+                  continued_from_generation=generation if prev_people or generation else None)
     report["held_loss_before"] = held_loss()
     report["cer_before"] = heard_cer()
     print("before:", report["held_loss_before"], report["cer_before"], flush=True)
@@ -227,8 +235,8 @@ def cmd_train(a):
     os.makedirs(os.path.dirname(os.path.abspath(a.adapter)), exist_ok=True)
     if ok:
         tmp = a.adapter + ".tmp"
-        torch.save({"base": os.path.abspath(a.model_dir), "people": people, "weights":
-                    {n: params[n].detach().clone() for n in names}}, tmp)
+        torch.save({"base": os.path.abspath(a.model_dir), "people": sorted(set(people) | set(prev_people)),
+                    "generation": generation + 1, "weights": {n: params[n].detach().clone() for n in names}}, tmp)
         os.replace(tmp, a.adapter)
         print("accepted: the model learned from the pool and the new version is in use")
     else:
@@ -271,6 +279,7 @@ def main(argv=None):
     ap.add_argument("--min-snr", type=float, default=12.0)
     ap.add_argument("--steps", type=int, default=0)
     ap.add_argument("--lr", type=float, default=1e-5)
+    ap.add_argument("--from-scratch", action="store_true", help="ignore the current learned version and start from Lahgtna")
     a = ap.parse_args(argv)
     {"add": cmd_add, "train": cmd_train, "revoke": cmd_revoke, "status": cmd_status}[a.command](a)
 
