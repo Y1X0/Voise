@@ -4,6 +4,9 @@
 #   ./voise.sh setup                  install packages and download the models (once; resumes if cut)
 #   ./voise.sh prepare                read C:\Voise_Voices\<Person>\ (consent.* + voice notes) into runs/
 #   ./voise.sh speak <person> <text>  speak <text> in <person>'s voice -> runs/voices/<person>/output/
+#   ./voise.sh fast <person> <text>   the same, about 2x faster per take (16 steps instead of 32)
+#   ./voise.sh serve                  keep the models loaded (leave it open in its own window); speak/fast then
+#                                     skip the ~5 min of loading and reuse each person's prepared voice
 #   ./voise.sh list                   people who are ready
 #   ./voise.sh revoke <person>        consent withdrawn: delete that person's recordings, outputs and learned voice
 #   ./voise.sh learn                  learn now from every voice in the learning pool
@@ -103,13 +106,32 @@ PY
 learn)
   python3 training/scripts/voise_learn.py train --asr-dir "$ASR"
   ;;
-speak)
-  person=$2; shift 2
-  [ -n "$person" ] && [ -n "$*" ] || { echo "usage: ./voise.sh speak <person> <text>"; exit 1; }
-  python3 training/scripts/voice_clone_tts.py --consent "runs/consent/$person.json" \
-    --ref-dir "runs/voices/$person" --model-dir models/lahgtna-omnivoice-v2 --asr-dir "$ASR" \
-    --out "runs/voices/$person/output" --adapter runs/learn/adapter.pt --text "$*"
+speak|fast)
+  mode=$1; person=$2; shift 2
+  [ -n "$person" ] && [ -n "$*" ] || { echo "usage: ./voise.sh speak|fast <person> <text>"; exit 1; }
+  if curl -s -m 2 http://127.0.0.1:8765/health >/dev/null 2>&1; then
+    # the engine is running (./voise.sh serve): models are already loaded, only the sentence is made
+    python3 - "$person" "$mode" "$*" <<'PY'
+import json, sys, urllib.request
+person, mode, text = sys.argv[1:4]
+req = urllib.request.Request("http://127.0.0.1:8765/speak", method="POST", headers={"Content-Type": "application/json"},
+                             data=json.dumps({"person": person, "text": text, "fast": mode == "fast"}).encode())
+try:
+    r = json.load(urllib.request.urlopen(req, timeout=3600))
+    print(r["wav"], f"({r['seconds']} s, {r['takes']} take(s), heard: {r['heard']})")
+except urllib.error.HTTPError as e:
+    sys.exit(json.load(e).get("error"))
+PY
+  else
+    extra=""; [ "$mode" = fast ] && extra="--fast"
+    python3 training/scripts/voice_clone_tts.py --consent "runs/consent/$person.json" \
+      --ref-dir "runs/voices/$person" --model-dir models/lahgtna-omnivoice-v2 --asr-dir "$ASR" \
+      --out "runs/voices/$person/output" --adapter runs/learn/adapter.pt $extra --text "$*"
+  fi
   command -v explorer.exe >/dev/null && explorer.exe "$(wslpath -w "runs/voices/$person/output")" || true
+  ;;
+serve)
+  python3 training/scripts/voise_server.py --asr-dir "$ASR"
   ;;
 list)
   for c in runs/consent/*.json; do [ -f "$c" ] && basename "$c" .json; done
@@ -122,6 +144,6 @@ revoke)
   echo "deleted $person's recordings, consent record and outputs; also delete $SRC/<their folder>"
   ;;
 *)
-  sed -n 2,18p "$0"
+  sed -n 2,21p "$0"
   ;;
 esac

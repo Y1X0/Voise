@@ -191,12 +191,109 @@ def target_duration(text, speed=None):
     return round(0.6 * n + 1.0, 1)
 
 
+class Engine:
+    """Models loaded once and reused: Lahgtna (+ learned version), Whisper, and a cache of prepared voices.
+
+    Preparing a voice (choosing the reference, transcribing it, encoding it for the model) is cached in memory and
+    on disk next to the person's recordings (<ref-dir>/.voise_cache/), keyed by the reference audio and its text,
+    so a person's voice is prepared once and reused by every later sentence and every later run."""
+
+    def __init__(self, model_dir, asr_dir, adapter=None, sv_dir=None, language="apc"):
+        from omnivoice.models.omnivoice import OmniVoice
+        if not os.path.isdir(model_dir):
+            raise SystemExit(f"model directory not found: {model_dir} (nothing is downloaded here)")
+        self.model = OmniVoice.from_pretrained(model_dir, device_map="cpu")
+        self.adapter = None
+        if adapter and os.path.exists(adapter):
+            import torch
+            st = torch.load(adapter, map_location="cpu", weights_only=True)
+            bad = self.model.load_state_dict(st["weights"], strict=False).unexpected_keys
+            if bad:
+                raise SystemExit(f"adapter does not fit this model: {bad[:3]}")
+            self.adapter = f"{os.path.basename(adapter)} (generation {st.get('generation', '?')})"
+        self.sr = getattr(self.model, "sampling_rate", None) or 24000
+        self.asr_dir, self.language = asr_dir, language
+        self.enc = load_speaker_encoder(sv_dir)
+        self.voices = {}
+
+    def voice(self, ref_dir, ref_text=None):
+        import soundfile as sf
+        import torch
+        from omnivoice.models.omnivoice import VoiceClonePrompt
+        ref_path, ref = pick_reference(ref_dir)
+        key = hashlib.sha256(ref.astype(np.float32).tobytes() + (ref_text or "").encode()).hexdigest()[:16]
+        if key in self.voices:
+            return self.voices[key]
+        cache = os.path.join(ref_dir, ".voise_cache")
+        os.makedirs(cache, exist_ok=True)
+        meta_p, prompt_p, wav_p = (os.path.join(cache, f"{key}.{e}") for e in ("json", "pt", "wav"))
+        if os.path.exists(meta_p) and os.path.exists(prompt_p):
+            meta = json.load(open(meta_p, encoding="utf-8"))
+            prompt = VoiceClonePrompt.load(prompt_p)
+        else:
+            sf.write(wav_p, ref, SR, subtype="PCM_16")
+            meta = dict(reference=os.path.basename(ref_path), reference_transcript=ref_text or transcribe(ref, self.asr_dir))
+            prompt = self.model.create_voice_clone_prompt(ref_audio=wav_p, ref_text=meta["reference_transcript"])
+            prompt.save(prompt_p)
+            json.dump(meta, open(meta_p, "w", encoding="utf-8"), ensure_ascii=False)
+        v = dict(prompt=prompt, ref=ref, emb=speaker_embedding(self.enc, ref) if self.enc else None, **meta)
+        self.voices[key] = v
+        return v
+
+    def takes(self, v, text, candidates=3, steps=32, speed=None, good_enough=0.02):
+        """Up to `candidates` takes; stops early once Whisper hears a take with at most `good_enough` letter
+        errors, so a clean first take costs one generation instead of three."""
+        import librosa
+        import torch
+        from omnivoice.models.omnivoice import OmniVoiceGenerationConfig
+        cands = []
+        for seed in range(max(1, candidates)):
+            torch.manual_seed(seed)
+            y = self.model.generate(text=text, language=self.language, voice_clone_prompt=v["prompt"],
+                                    duration=target_duration(text, speed), speed=speed,
+                                    generation_config=OmniVoiceGenerationConfig(num_step=steps))
+            y = np.asarray(y[0] if isinstance(y, list) else y, dtype=np.float32).squeeze()
+            y16 = librosa.resample(y, orig_sr=self.sr, target_sr=SR)
+            heard = transcribe(y16, self.asr_dir)
+            sim = float(speaker_embedding(self.enc, y16) @ v["emb"]) if self.enc else None
+            cands.append(dict(seed=seed, y=y, heard=heard, cer=round(cer(text, heard), 3),
+                              sim=None if sim is None else round(sim, 3)))
+            if cands[-1]["cer"] <= good_enough:
+                break
+        return choose_best(cands), cands
+
+    def say(self, consent_path, ref_dir, text, out, ref_text=None, candidates=3, steps=32, speed=None,
+            use_watermark=True, n=0, stamp=None):
+        """One sentence -> SYNTHETIC_*.wav + provenance .json under runs/. The consent record is re-read on every
+        call, so a record revoked while the engine is running takes effect immediately."""
+        import soundfile as sf
+        consent, consent_sha = load_consent(consent_path)
+        out = check_out_dir(out)
+        stamp = stamp or datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        wav_path, meta_path = output_paths(out, consent["voice_owner"], n, stamp)
+        v = self.voice(ref_dir, ref_text)
+        best, cands = self.takes(v, text, candidates, steps, speed)
+        y = best["y"] / max(1e-6, np.abs(best["y"]).max()) * 0.9
+        wm = None
+        if use_watermark:
+            y, wm = watermark(y, self.sr)
+        sf.write(wav_path, y, self.sr, subtype="PCM_16")
+        json.dump(dict(synthetic=True, text=text, voice_owner=consent["voice_owner"], consent_record=consent_path,
+                       consent_sha256=consent_sha, consent_scope=consent["scope"], reference=v["reference"],
+                       reference_transcript=v["reference_transcript"],
+                       model="oddadmix/lahgtna-omnivoice-v2 (no licence stated)", adapter=self.adapter,
+                       language=self.language, created_utc=stamp, watermark=wm, num_step=steps,
+                       chosen_seed=best["seed"], candidates=[{k: c[k] for k in ("seed", "heard", "cer", "sim")} for c in cands]),
+                  open(meta_path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+        return wav_path, best, cands
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--consent", required=True, help="consent record JSON (runs/consent/...)")
     ap.add_argument("--ref-dir", required=True, help="folder with the consenting person's recordings")
     ap.add_argument("--model-dir", required=True, help="local lahgtna-omnivoice-v2 directory (nothing is downloaded)")
-    ap.add_argument("--asr-dir", required=True, help="local whisper-small directory, to transcribe the reference")
+    ap.add_argument("--asr-dir", required=True, help="local Whisper directory, to transcribe the reference and the takes")
     ap.add_argument("--out", required=True, help="output folder under runs/")
     ap.add_argument("--text", action="append", default=[], help="sentence to speak (repeatable)")
     ap.add_argument("--text-file", help="one sentence per line")
@@ -204,68 +301,25 @@ def main(argv=None):
     ap.add_argument("--speed", type=float, help="speaking speed (<1 slower); default: automatic")
     ap.add_argument("--ref-text", help="what the person says in the reference, if Whisper mishears it")
     ap.add_argument("--candidates", type=int, default=3,
-                    help="takes per sentence; the one Whisper hears best (then closest to the voice) is kept")
+                    help="at most this many takes per sentence; stops at the first take Whisper hears correctly")
+    ap.add_argument("--steps", type=int, default=32, help="generation steps (fewer = faster, rougher)")
+    ap.add_argument("--fast", action="store_true", help="16 steps: about 2.4x faster per take on CPU")
     ap.add_argument("--sv-dir", help="local speechbrain/spkrec-ecapa-voxceleb directory, to rank takes by voice")
     ap.add_argument("--no-watermark", action="store_true", help="skip the inaudible Perth watermark")
     ap.add_argument("--adapter", help="learned version from voise_learn.py train (used only if the file exists)")
     a = ap.parse_args(argv)
 
-    consent, consent_sha = load_consent(a.consent)
+    load_consent(a.consent)
     texts = list(a.text) + ([l.strip() for l in open(a.text_file, encoding="utf-8") if l.strip()] if a.text_file else [])
     if not texts:
         raise SystemExit("nothing to say: give --text or --text-file")
-    if not os.path.isdir(a.model_dir):
-        raise SystemExit(f"model directory not found: {a.model_dir} (nothing is downloaded here)")
-    out = check_out_dir(a.out)
-
-    import soundfile as sf
-    ref_path, ref = pick_reference(a.ref_dir)
-    ref_wav = os.path.join(out, "_reference.wav")
-    sf.write(ref_wav, ref, SR, subtype="PCM_16")
-    ref_text = a.ref_text or transcribe(ref, a.asr_dir)
-    enc = load_speaker_encoder(a.sv_dir)
-    ref_emb = speaker_embedding(enc, ref) if enc else None
-
-    from omnivoice.models.omnivoice import OmniVoice
-    model = OmniVoice.from_pretrained(a.model_dir, device_map="cpu")
-    adapter = None
-    if a.adapter and os.path.exists(a.adapter):
-        import torch
-        st = torch.load(a.adapter, map_location="cpu", weights_only=True)
-        bad = model.load_state_dict(st["weights"], strict=False).unexpected_keys
-        if bad:
-            raise SystemExit(f"adapter does not fit this model: {bad[:3]}")
-        adapter = os.path.basename(a.adapter)
-    sr = getattr(model, "sampling_rate", None) or 24000
+    check_out_dir(a.out)
+    eng = Engine(a.model_dir, a.asr_dir, a.adapter, a.sv_dir, a.language)
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     for n, text in enumerate(texts):
-        wav_path, meta_path = output_paths(out, consent["voice_owner"], n, stamp)
-        import librosa
-        import torch
-        cands = []
-        for seed in range(max(1, a.candidates)):
-            torch.manual_seed(seed)
-            y = model.generate(text=text, language=a.language, ref_audio=ref_wav, ref_text=ref_text,
-                               duration=target_duration(text, a.speed), speed=a.speed)
-            y = np.asarray(y[0] if isinstance(y, list) else y, dtype=np.float32).squeeze()
-            y16 = librosa.resample(y, orig_sr=sr, target_sr=SR)
-            heard = transcribe(y16, a.asr_dir)
-            sim = float(speaker_embedding(enc, y16) @ ref_emb) if enc else None
-            cands.append(dict(seed=seed, y=y, heard=heard, cer=round(cer(text, heard), 3),
-                              sim=None if sim is None else round(sim, 3)))
-        best = choose_best(cands)
-        y = best["y"] / max(1e-6, np.abs(best["y"]).max()) * 0.9
-        wm = None
-        if not a.no_watermark:
-            y, wm = watermark(y, sr)
-        sf.write(wav_path, y, sr, subtype="PCM_16")
-        json.dump(dict(synthetic=True, text=text, voice_owner=consent["voice_owner"], consent_record=a.consent,
-                       consent_sha256=consent_sha, consent_scope=consent["scope"], reference=os.path.basename(ref_path),
-                       reference_transcript=ref_text, model="oddadmix/lahgtna-omnivoice-v2 (no licence stated)",
-                       language=a.language, created_utc=stamp, watermark=wm, chosen_seed=best["seed"], adapter=adapter,
-                       candidates=[{k: c[k] for k in ("seed", "heard", "cer", "sim")} for c in cands]),
-                  open(meta_path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
-        print(wav_path, f"(take {best['seed'] + 1}/{len(cands)}, heard: {best['heard']})", flush=True)
+        wav_path, best, cands = eng.say(a.consent, a.ref_dir, text, a.out, a.ref_text, a.candidates,
+                                        16 if a.fast else a.steps, a.speed, not a.no_watermark, n, stamp)
+        print(wav_path, f"(take {best['seed'] + 1}, {len(cands)} made, heard: {best['heard']})", flush=True)
 
 
 if __name__ == "__main__":
