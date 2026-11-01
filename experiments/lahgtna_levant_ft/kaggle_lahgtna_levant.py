@@ -196,7 +196,9 @@ res["eval_loss_after"] = eval_loss(); log("eval loss after", res["eval_loss_afte
 
 # ---------------------------------------------------------------- save: the original folder, new model.safetensors
 dst = f"{OUT}/lahgtna-levant"
-shutil.copytree(MODEL, dst, ignore=shutil.ignore_patterns("model.safetensors", ".cache"), dirs_exist_ok=True)
+# skip only the top-level weights we replace; audio_tokenizer/model.safetensors (the frozen codec) must be kept
+shutil.copytree(MODEL, dst, ignore=lambda d, names: [n for n in names if n == ".cache" or (d == MODEL and n == "model.safetensors")],
+                dirs_exist_ok=True)
 sd = {n: t.detach().float().cpu().contiguous() for n, t in model.state_dict().items() if not n.startswith("audio_tokenizer.")}
 save_file(sd, f"{dst}/model.safetensors", metadata={"format": "pt"})
 json.dump(res, open(f"{OUT}/results.json", "w"), indent=1)
