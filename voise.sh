@@ -5,7 +5,13 @@
 #   ./voise.sh prepare                read C:\Voise_Voices\<Person>\ (consent.* + voice notes) into runs/
 #   ./voise.sh speak <person> <text>  speak <text> in <person>'s voice -> runs/voices/<person>/output/
 #   ./voise.sh list                   people who are ready
-#   ./voise.sh revoke <person>        consent withdrawn: delete that person's recordings and outputs
+#   ./voise.sh revoke <person>        consent withdrawn: delete that person's recordings, outputs and learned voice
+#   ./voise.sh learn                  learn now from every voice in the learning pool
+#
+# Learning: if a person's folder also holds a file named train_ok (any extension, e.g. a screenshot of them
+# agreeing to their voice being used to TRAIN the model), prepare adds their clean clips to the learning pool and,
+# once 3 or more minutes of new voice have arrived, the model learns from everything in the pool. Each learned
+# version builds on the last one and replaces it only if it tests better. speak always uses the latest version.
 #
 # A folder without a consent.* file (screenshot or text) is skipped; the tool itself refuses to run without
 # a complete, unrevoked consent record. Every output is named SYNTHETIC_*.
@@ -56,22 +62,44 @@ prepare)
 }
 JSON
     fi
+    if ls "$dir"train_ok* >/dev/null 2>&1; then
+      python3 - "runs/consent/$person.json" <<'PY'
+import json, sys
+p = sys.argv[1]; d = json.load(open(p))
+if not d.get("training"):
+    d["training"] = True
+    d["scope"] = d["scope"].replace(" only", "") + ", including training the Voise model"
+    json.dump(d, open(p, "w"), ensure_ascii=False, indent=1)
+PY
+      learn_people="$learn_people $person"
+    fi
     n=0
     for f in "$dir"*; do
       [ -f "$f" ] || continue
-      case "$(basename "${f,,}")" in consent.*|._*|*.jpg|*.jpeg|*.png|*.txt) continue;; esac
+      case "$(basename "${f,,}")" in consent.*|train_ok*|._*|*.jpg|*.jpeg|*.png|*.txt) continue;; esac
       out="runs/voices/$person/$(basename "${f%.*}" | tr -c 'A-Za-z0-9_\n-' '_').wav"
       ffmpeg -nostdin -loglevel error -y -i "$f" -ac 1 -ar 16000 "$out" && n=$((n+1))
     done
     echo "READY $person: $n recording(s)"
   done
+  for person in $learn_people; do
+    python3 training/scripts/voise_learn.py add --consent "runs/consent/$person.json" --src "runs/voices/$person" \
+      --person "$person" --asr-dir "$ASR"
+  done
+  if [ -n "$learn_people" ]; then
+    echo "learning from the pool if 3+ minutes of new voice arrived (this can take a while on a laptop)..."
+    python3 training/scripts/voise_learn.py train --min-new-minutes 3 --asr-dir "$ASR"
+  fi
+  ;;
+learn)
+  python3 training/scripts/voise_learn.py train --asr-dir "$ASR"
   ;;
 speak)
   person=$2; shift 2
   [ -n "$person" ] && [ -n "$*" ] || { echo "usage: ./voise.sh speak <person> <text>"; exit 1; }
   python3 training/scripts/voice_clone_tts.py --consent "runs/consent/$person.json" \
     --ref-dir "runs/voices/$person" --model-dir models/lahgtna-omnivoice-v2 --asr-dir "$ASR" \
-    --out "runs/voices/$person/output" --text "$*"
+    --out "runs/voices/$person/output" --adapter runs/learn/adapter.pt --text "$*"
   command -v explorer.exe >/dev/null && explorer.exe "$(wslpath -w "runs/voices/$person/output")" || true
   ;;
 list)
@@ -81,9 +109,10 @@ revoke)
   person=$2
   [ -n "$person" ] || { echo "usage: ./voise.sh revoke <person>"; exit 1; }
   rm -rf "runs/voices/$person" runs/consent/"$person".*
+  python3 training/scripts/voise_learn.py revoke --person "$person"
   echo "deleted $person's recordings, consent record and outputs; also delete $SRC/<their folder>"
   ;;
 *)
-  sed -n 2,10p "$0"
+  sed -n 2,18p "$0"
   ;;
 esac

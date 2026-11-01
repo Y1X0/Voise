@@ -134,6 +134,14 @@ def cmd_train(a):
     random.seed(0); torch.manual_seed(0); np.random.seed(0)
     items = pool_items(a.pool)
     people = sorted({i["person"] for i in items})
+    rel = lambda w: os.path.relpath(w, a.pool)
+    seen = set()
+    if os.path.exists(a.adapter) and not a.from_scratch:
+        seen = set(torch.load(a.adapter, map_location="cpu", weights_only=True).get("clips", []))
+    new_min = sum(sf.info(i["wav"]).duration for i in items if rel(i["wav"]) not in seen) / 60
+    if new_min < a.min_new_minutes:
+        print(f"only {new_min:.1f} min of new voice since the last learning (need {a.min_new_minutes}); nothing to do")
+        return
     minutes = sum(sf.info(i["wav"]).duration for i in items) / 60
     print(f"pool: {len(items)} clips, {minutes:.1f} min, {len(people)} people")
     if len(items) < 20:
@@ -236,7 +244,7 @@ def cmd_train(a):
     if ok:
         tmp = a.adapter + ".tmp"
         torch.save({"base": os.path.abspath(a.model_dir), "people": sorted(set(people) | set(prev_people)),
-                    "generation": generation + 1, "weights": {n: params[n].detach().clone() for n in names}}, tmp)
+                    "generation": generation + 1, "clips": sorted(rel(i["wav"]) for i in items), "weights": {n: params[n].detach().clone() for n in names}}, tmp)
         os.replace(tmp, a.adapter)
         print("accepted: the model learned from the pool and the new version is in use")
     else:
@@ -279,6 +287,8 @@ def main(argv=None):
     ap.add_argument("--min-snr", type=float, default=12.0)
     ap.add_argument("--steps", type=int, default=0)
     ap.add_argument("--lr", type=float, default=1e-5)
+    ap.add_argument("--min-new-minutes", type=float, default=0.0,
+                    help="learn only if at least this much new voice arrived since the current version")
     ap.add_argument("--from-scratch", action="store_true", help="ignore the current learned version and start from Lahgtna")
     a = ap.parse_args(argv)
     {"add": cmd_add, "train": cmd_train, "revoke": cmd_revoke, "status": cmd_status}[a.command](a)
