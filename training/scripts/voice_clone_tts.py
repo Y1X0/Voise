@@ -102,7 +102,88 @@ def pick_reference(ref_dir, min_s=8.0, max_s=12.0):
     return p, t / max(1e-6, np.abs(t).max()) * 0.9
 
 
+def select_reference(ref_dir, asr_dir, enc=None, min_s=7.0, max_s=12.0, max_candidates=12):
+    """Choose the reference by quality instead of taking the first clip of the right length.
+
+    Every 7-12 s stretch of speech in the person's recordings is a candidate, scored on
+      * background noise   - speech level minus pause level (dB);
+      * clarity            - how confident Whisper is in its transcript;
+      * typicality         - how close it sounds to the person's voice across ALL their recordings (needs a speaker
+                             encoder), so a one-off phone, room or mood is not what gets cloned.
+    Each score is turned into a rank (0..1) and the ranks are averaged. Returns (path, audio, transcript, report)."""
+    sys.path.insert(0, HERE)
+    import audio_preprocess as A
+    from unit_vocoder_pilot import load_audio_16k
+    clips = sorted(glob.glob(os.path.join(ref_dir, "*.wav")) + glob.glob(os.path.join(ref_dir, "*.flac")))
+    if not clips:
+        raise SystemExit(f"refusing: no reference recordings in {ref_dir}")
+    vad = A.load_vad()
+    db = lambda x: 10 * np.log10(float(np.mean(np.square(x))) + 1e-12)
+    cands, all_speech = [], []
+    for p in clips:
+        y, _ = load_audio_16k(p, min_sr=8000)
+        regs = A.speech_regions(y, vad)
+        if not regs:
+            continue
+        all_speech.append(A.compact(y, regs, max_pause_s=0.3)[0])
+        group = []
+        for r in regs + [None]:                       # greedily group consecutive speech regions into 7-12 s
+            speech = sum(b - a for a, b in group)
+            if r is None or speech + (r[1] - r[0]) > max_s * SR:
+                if speech >= min_s * SR:
+                    gaps = [y[b:a] for (_, b), (a, _) in zip(group[:-1], group[1:]) if a - b > 800]
+                    t = A.compact(y[group[0][0]:group[-1][1]], [(a - group[0][0], b - group[0][0]) for a, b in group],
+                                  max_pause_s=0.3)[0]
+                    snr = db(np.concatenate([y[a:b] for a, b in group])) - db(np.concatenate(gaps)) if gaps else None
+                    cands.append(dict(path=p, audio=t / max(1e-6, float(np.abs(t).max())) * 0.9, snr=snr))
+                group = [] if r is None or (r[1] - r[0]) > max_s * SR else [r]
+            else:
+                group.append(r)
+    if not cands:                                    # nothing 7-12 s long: fall back to the old rule
+        p, t = pick_reference(ref_dir)
+        return p, t, transcribe(t, asr_dir), {"fallback": True}
+    if len(cands) > max_candidates:                  # bound the time: keep the quietest-background candidates
+        cands = sorted(cands, key=lambda c: -(c["snr"] if c["snr"] is not None else 0))[:max_candidates]
+    for c in cands:
+        c["text"], c["clarity"] = transcribe_with_confidence(c["audio"], asr_dir)
+    if enc is not None:
+        centroid = sum(speaker_embedding(enc, s) for s in all_speech if len(s) >= SR)
+        centroid = centroid / centroid.norm()
+        for c in cands:
+            c["typicality"] = float(speaker_embedding(enc, c["audio"]) @ centroid)
+
+    def rank(key):
+        vals = [c.get(key) for c in cands]
+        if any(v is None for v in vals) or len(set(vals)) < 2:
+            return None
+        order = sorted(range(len(cands)), key=lambda i: vals[i])
+        r = [0.0] * len(cands)
+        for pos, i in enumerate(order):
+            r[i] = pos / (len(cands) - 1)
+        return r
+    ranks = [r for r in (rank("snr"), rank("clarity"), rank("typicality")) if r is not None]
+    score = [float(np.mean([r[i] for r in ranks])) if ranks else 0.0 for i in range(len(cands))]
+    best = cands[int(np.argmax(score))]
+    report = dict(candidates=len(cands), score=round(max(score), 3),
+                  **{k: (round(best[k], 3) if isinstance(best.get(k), float) else best.get(k)) for k in ("snr", "clarity", "typicality")})
+    return best["path"], best["audio"], best["text"], report
+
+
 _ASR = {}
+
+
+def transcribe_with_confidence(y, asr_dir):
+    """(transcript, confidence 0..1). Confidence is the mean token probability from faster-whisper; None with a
+    Hugging Face Whisper folder."""
+    if os.path.exists(os.path.join(asr_dir, "model.bin")):
+        transcribe(np.zeros(SR // 10, np.float32), asr_dir)           # make sure the model is loaded
+        segs, _ = _ASR[asr_dir].transcribe(np.asarray(y, np.float32), language="ar", beam_size=5,
+                                           condition_on_previous_text=False)
+        segs = list(segs)
+        text = " ".join(s.text.strip() for s in segs).strip()
+        conf = float(np.exp(np.mean([s.avg_logprob for s in segs]))) if segs else 0.0
+        return text, conf
+    return transcribe(y, asr_dir), None
 
 
 def transcribe(y, asr_dir):
@@ -222,8 +303,10 @@ class Engine:
         import soundfile as sf
         import torch
         from omnivoice.models.omnivoice import VoiceClonePrompt
-        ref_path, ref = pick_reference(ref_dir)
-        key = hashlib.sha256(ref.astype(np.float32).tobytes() + (ref_text or "").encode()).hexdigest()[:16]
+        # the choice depends only on the recordings, so it is cached under a key made from their names and sizes
+        files = sorted(glob.glob(os.path.join(ref_dir, "*.wav")) + glob.glob(os.path.join(ref_dir, "*.flac")))
+        key = hashlib.sha256(json.dumps([[os.path.basename(f), os.path.getsize(f)] for f in files] +
+                                        [ref_text or "", bool(self.enc)]).encode()).hexdigest()[:16]
         if key in self.voices:
             return self.voices[key]
         cache = os.path.join(ref_dir, ".voise_cache")
@@ -232,9 +315,12 @@ class Engine:
         if os.path.exists(meta_p) and os.path.exists(prompt_p):
             meta = json.load(open(meta_p, encoding="utf-8"))
             prompt = VoiceClonePrompt.load(prompt_p)
+            ref = sf.read(wav_p, dtype="float32")[0]
         else:
+            ref_path, ref, heard, report = select_reference(ref_dir, self.asr_dir, self.enc)
             sf.write(wav_p, ref, SR, subtype="PCM_16")
-            meta = dict(reference=os.path.basename(ref_path), reference_transcript=ref_text or transcribe(ref, self.asr_dir))
+            meta = dict(reference=os.path.basename(ref_path), reference_transcript=ref_text or heard,
+                        reference_choice=report)
             prompt = self.model.create_voice_clone_prompt(ref_audio=wav_p, ref_text=meta["reference_transcript"])
             prompt.save(prompt_p)
             json.dump(meta, open(meta_p, "w", encoding="utf-8"), ensure_ascii=False)
@@ -283,6 +369,7 @@ class Engine:
         sf.write(wav_path, y, self.sr, subtype="PCM_16")
         json.dump(dict(synthetic=True, text=text, voice_owner=consent["voice_owner"], consent_record=consent_path,
                        consent_sha256=consent_sha, consent_scope=consent["scope"], reference=v["reference"],
+                       reference_choice=v.get("reference_choice"),
                        reference_transcript=v["reference_transcript"],
                        model="oddadmix/lahgtna-omnivoice-v2 (no licence stated)", adapter=self.adapter,
                        language=self.language, created_utc=stamp, watermark=wm, num_step=steps,
