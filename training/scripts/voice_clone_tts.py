@@ -106,6 +106,16 @@ _ASR = {}
 
 
 def transcribe(y, asr_dir):
+    """Arabic transcript of 16 kHz audio. A CTranslate2 folder (model.bin, e.g. the int8 conversion of
+    oddadmix/whisper-large-v3-turbo-arabic-dialectal-v2) runs with faster-whisper: on 20 Jordanian clips it made
+    fewer letter errors than plain Whisper turbo (0.083 vs 0.093) and was faster on CPU."""
+    if os.path.exists(os.path.join(asr_dir, "model.bin")):
+        if asr_dir not in _ASR:
+            from faster_whisper import WhisperModel
+            _ASR[asr_dir] = WhisperModel(asr_dir, device="cpu", compute_type="int8")
+        segs, _ = _ASR[asr_dir].transcribe(np.asarray(y, np.float32), language="ar", beam_size=5,
+                                           condition_on_previous_text=False)
+        return " ".join(s.text.strip() for s in segs).strip()
     from transformers import WhisperForConditionalGeneration, WhisperProcessor
     import torch
     if asr_dir not in _ASR:

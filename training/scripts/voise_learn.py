@@ -280,7 +280,7 @@ def main(argv=None):
     ap.add_argument("--pool", default=os.path.join(V.RUNS, "learn", "pool"))
     ap.add_argument("--adapter", default=os.path.join(V.RUNS, "learn", "adapter.pt"))
     ap.add_argument("--model-dir", default="models/lahgtna-omnivoice-v2")
-    ap.add_argument("--asr-dir", default="models/whisper-large-v3-turbo")
+    ap.add_argument("--asr-dir", default="models/whisper-turbo-dialectal-v2-ct2")
     ap.add_argument("--consent")
     ap.add_argument("--src", help="folder of the person's recordings (add)")
     ap.add_argument("--person")

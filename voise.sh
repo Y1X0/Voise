@@ -18,7 +18,8 @@
 set -e
 cd "$(dirname "$0")"
 SRC=${SRC:-/mnt/c/Voise_Voices}
-ASR=models/whisper-large-v3-turbo
+ASR=models/whisper-turbo-dialectal-v2-ct2
+[ -d "$ASR" ] || ASR=models/whisper-large-v3-turbo
 [ -d "$ASR" ] || ASR=models/whisper-small
 
 fetch() {  # repo revision dest patterns...
@@ -34,12 +35,20 @@ case "$1" in
 setup)
   sudo apt install -y ffmpeg
   pip install -q --no-deps omnivoice==0.2.1
-  pip install -q pydub tensorboardx webdataset accelerate silero-vad soundfile librosa audioop-lts transformers
+  pip install -q pydub tensorboardx webdataset accelerate silero-vad soundfile librosa audioop-lts transformers \
+    faster-whisper resemble-perth
   export HF_HUB_DISABLE_XET=1 HF_HUB_DOWNLOAD_TIMEOUT=120
   until fetch oddadmix/lahgtna-omnivoice-v2 55c38a613e31 models/lahgtna-omnivoice-v2 '*.json' '*.safetensors' '*.jinja' \
      && fetch eustlb/higgs-audio-v2-tokenizer 528e871c2a26 models/lahgtna-omnivoice-v2/audio_tokenizer '*.json' '*.safetensors' \
      && fetch openai/whisper-large-v3-turbo 41f01f3fe87f models/whisper-large-v3-turbo '*.json' '*.safetensors' '*.txt'
   do echo "download interrupted, retrying in 15 s..."; sleep 15; done
+  # Arabic-dialect Whisper (Apache-2.0), converted to a fast int8 CPU model
+  until fetch oddadmix/whisper-large-v3-turbo-arabic-dialectal-v2 b12b09bc6601 models/whisper-turbo-dialectal-v2 '*.json' '*.safetensors'
+  do echo "download interrupted, retrying in 15 s..."; sleep 15; done
+  [ -f models/whisper-turbo-dialectal-v2-ct2/model.bin ] || {
+    cp models/whisper-large-v3-turbo/preprocessor_config.json models/whisper-turbo-dialectal-v2/
+    ct2-transformers-converter --model models/whisper-turbo-dialectal-v2 --output_dir models/whisper-turbo-dialectal-v2-ct2 \
+      --quantization int8 --copy_files tokenizer.json preprocessor_config.json; }
   echo "setup done"
   ;;
 prepare)
