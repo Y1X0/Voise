@@ -33,10 +33,11 @@ def main(argv=None):
     ap.add_argument("--model-dir", default="models/lahgtna-omnivoice-v2")
     ap.add_argument("--asr-dir", default="models/whisper-turbo-dialectal-v2-ct2")
     ap.add_argument("--adapter", default=os.path.join(V.RUNS, "learn", "adapter.pt"))
+    ap.add_argument("--sv-dir", help="speaker encoder (speechbrain/spkrec-ecapa-voxceleb) for choosing references")
     a = ap.parse_args(argv)
 
     t0 = time.time()
-    eng = V.Engine(a.model_dir, a.asr_dir, a.adapter)
+    eng = V.Engine(a.model_dir, a.asr_dir, a.adapter, a.sv_dir)
     V.transcribe(__import__("numpy").zeros(V.SR, "float32"), a.asr_dir)       # load Whisper now, not on request 1
     state = {"adapter_mtime": os.path.getmtime(a.adapter) if os.path.exists(a.adapter) else None}
     lock = threading.Lock()
@@ -45,7 +46,7 @@ def main(argv=None):
     def refresh_adapter():
         m = os.path.getmtime(a.adapter) if os.path.exists(a.adapter) else None
         if m != state["adapter_mtime"]:
-            global_eng = V.Engine(a.model_dir, a.asr_dir, a.adapter)
+            global_eng = V.Engine(a.model_dir, a.asr_dir, a.adapter, a.sv_dir)
             eng.model, eng.adapter, eng.voices = global_eng.model, global_eng.adapter, {}
             state["adapter_mtime"] = m
             print("learned version changed: reloaded", eng.adapter, flush=True)

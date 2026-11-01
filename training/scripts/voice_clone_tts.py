@@ -139,7 +139,9 @@ def select_reference(ref_dir, asr_dir, enc=None, min_s=7.0, max_s=12.0, max_cand
                 group = [] if r is None or (r[1] - r[0]) > max_s * SR else [r]
             else:
                 group.append(r)
-    if not cands:                                    # nothing 7-12 s long: fall back to the old rule
+    if not cands and min_s > 4.0:                    # only short voice notes: accept 4-12 s stretches
+        return select_reference(ref_dir, asr_dir, enc, 4.0, max_s, max_candidates)
+    if not cands:                                    # nothing 4-12 s long: fall back to the old rule
         p, t = pick_reference(ref_dir)
         return p, t, transcribe(t, asr_dir), {"fallback": True}
     if len(cands) > max_candidates:                  # bound the time: keep the quietest-background candidates

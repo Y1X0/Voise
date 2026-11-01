@@ -21,6 +21,7 @@
 set -e
 cd "$(dirname "$0")"
 SRC=${SRC:-/mnt/c/Voise_Voices}
+SV=""; [ -d models/ecapa-voxceleb ] && SV="--sv-dir models/ecapa-voxceleb"
 ASR=models/whisper-turbo-dialectal-v2-ct2
 [ -d "$ASR" ] || ASR=models/whisper-large-v3-turbo
 [ -d "$ASR" ] || ASR=models/whisper-small
@@ -39,11 +40,14 @@ setup)
   sudo apt install -y ffmpeg
   pip install -q --no-deps omnivoice==0.2.1
   pip install -q pydub tensorboardx webdataset accelerate silero-vad soundfile librosa audioop-lts transformers \
-    faster-whisper resemble-perth
+    faster-whisper resemble-perth speechbrain
   export HF_HUB_DISABLE_XET=1 HF_HUB_DOWNLOAD_TIMEOUT=120
   until fetch oddadmix/lahgtna-omnivoice-v2 55c38a613e31 models/lahgtna-omnivoice-v2 '*.json' '*.safetensors' '*.jinja' \
      && fetch eustlb/higgs-audio-v2-tokenizer 528e871c2a26 models/lahgtna-omnivoice-v2/audio_tokenizer '*.json' '*.safetensors' \
      && fetch openai/whisper-large-v3-turbo 41f01f3fe87f models/whisper-large-v3-turbo '*.json' '*.safetensors' '*.txt'
+  do echo "download interrupted, retrying in 15 s..."; sleep 15; done
+  # speaker encoder (Apache-2.0): picks the reference that sounds most like the person and ranks takes by voice
+  until fetch speechbrain/spkrec-ecapa-voxceleb 0f99f2d0ebe8 models/ecapa-voxceleb '*'
   do echo "download interrupted, retrying in 15 s..."; sleep 15; done
   # Arabic-dialect Whisper (Apache-2.0), converted to a fast int8 CPU model
   until fetch oddadmix/whisper-large-v3-turbo-arabic-dialectal-v2 b12b09bc6601 models/whisper-turbo-dialectal-v2 '*.json' '*.safetensors'
@@ -126,12 +130,12 @@ PY
     extra=""; [ "$mode" = fast ] && extra="--fast"
     python3 training/scripts/voice_clone_tts.py --consent "runs/consent/$person.json" \
       --ref-dir "runs/voices/$person" --model-dir models/lahgtna-omnivoice-v2 --asr-dir "$ASR" \
-      --out "runs/voices/$person/output" --adapter runs/learn/adapter.pt $extra --text "$*"
+      --out "runs/voices/$person/output" --adapter runs/learn/adapter.pt $SV $extra --text "$*"
   fi
   command -v explorer.exe >/dev/null && explorer.exe "$(wslpath -w "runs/voices/$person/output")" || true
   ;;
 serve)
-  python3 training/scripts/voise_server.py --asr-dir "$ASR"
+  python3 training/scripts/voise_server.py --asr-dir "$ASR" $SV
   ;;
 list)
   for c in runs/consent/*.json; do [ -f "$c" ] && basename "$c" .json; done
