@@ -209,8 +209,18 @@ def cmd_train(a):
     report = dict(started_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
                   people=people, train_clips=len(train), held_clips=len(held), minutes=round(minutes, 1),
                   continued_from_generation=generation if prev_people or generation else None)
-    report["held_loss_before"] = held_loss()
-    report["cer_before"] = heard_cer()
+    # progress is saved every 50 steps so a restart of the machine resumes instead of starting over
+    ckpt_path = os.path.join(os.path.dirname(os.path.abspath(a.adapter)), "train_progress.pt")
+    run_key = hashlib.sha256(json.dumps([sorted(i["wav"] for i in items), generation, a.lr, a.steps]).encode()).hexdigest()
+    ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False) if os.path.exists(ckpt_path) else None
+    if ckpt is not None and ckpt.get("key") != run_key:
+        ckpt = None                                   # the pool changed since: start this run afresh
+    if ckpt is not None:
+        report.update(ckpt["report"])
+        print("resuming an interrupted learning run from step", ckpt["step"], flush=True)
+    else:
+        report["held_loss_before"] = held_loss()
+        report["cer_before"] = heard_cer()
     print("before:", report["held_loss_before"], report["cer_before"], flush=True)
 
     layers = model.llm.layers
@@ -224,15 +234,31 @@ def cmd_train(a):
         params[n].requires_grad_(True)
     opt = torch.optim.AdamW([params[n] for n in names], lr=a.lr, weight_decay=0.01)
     steps = a.steps or min(600, 15 * len(train_s))
+    start = 1
+    if ckpt is not None:
+        model.load_state_dict(ckpt["weights"], strict=False)
+        opt.load_state_dict(ckpt["opt"])
+        random.setstate(ckpt["py_rng"]); torch.random.set_rng_state(ckpt["torch_rng"])
+        start = ckpt["step"] + 1
+    def save_progress(k):
+        tmp = ckpt_path + ".tmp"
+        torch.save(dict(key=run_key, step=k, report={x: report[x] for x in ("held_loss_before", "cer_before")},
+                        weights={n: params[n].detach().clone() for n in names}, opt=opt.state_dict(),
+                        py_rng=random.getstate(), torch_rng=torch.random.get_rng_state()), tmp)
+        os.replace(tmp, ckpt_path)
+
+    if ckpt is None:
+        save_progress(0)                              # the "before" scores took a while: keep them too
     model.train()
     t0 = time.time()
-    for k in range(1, steps + 1):
+    for k in range(start, steps + 1):
         loss = loss_of(random.choice(train_s))
         loss.backward()
         torch.nn.utils.clip_grad_norm_([params[n] for n in names], 1.0)
         opt.step(); opt.zero_grad()
         if k % 50 == 0:
             print(f"step {k}/{steps} loss {float(loss):.3f} ({time.time() - t0:.0f}s)", flush=True)
+            save_progress(k)
     report["steps"] = steps
     report["held_loss_after"] = held_loss()
     report["cer_after"] = heard_cer()
@@ -250,6 +276,8 @@ def cmd_train(a):
     else:
         print("not accepted: the new version was not better on held-out clips; the previous version stays in use")
     json.dump(report, open(os.path.join(os.path.dirname(os.path.abspath(a.adapter)), "last_train.json"), "w"), indent=1)
+    if os.path.exists(ckpt_path):
+        os.remove(ckpt_path)
 
 
 def cmd_revoke(a):
@@ -284,7 +312,7 @@ def main(argv=None):
     ap.add_argument("--consent")
     ap.add_argument("--src", help="folder of the person's recordings (add)")
     ap.add_argument("--person")
-    ap.add_argument("--min-snr", type=float, default=12.0)
+    ap.add_argument("--min-snr", type=float, default=8.0)
     ap.add_argument("--steps", type=int, default=0)
     ap.add_argument("--lr", type=float, default=1e-5)
     ap.add_argument("--min-new-minutes", type=float, default=0.0,
