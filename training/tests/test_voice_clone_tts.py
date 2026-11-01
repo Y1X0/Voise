@@ -78,6 +78,10 @@ class TestTakes(unittest.TestCase):
     def test_normalize_ignores_tags_marks_and_spelling_variants(self):
         self.assertEqual(V.normalize_ar("[laughter] أهلين، كيفكِ؟"), V.normalize_ar("اهلين كيفك"))
 
+    def test_dialect_spelling_variants_are_not_mistakes(self):
+        self.assertEqual(V.cer("شو رأيك نطلع بكرا عالبلد؟", "شو رأيك نطلع بكرة ع البلد؟"), 0.0)
+        self.assertGreater(V.cer("يلا خلص", "إلا خلاص"), 0.05)
+
     def test_cer(self):
         self.assertEqual(V.cer("إمتى صار هاد", "امتى صار هاد"), 0.0)
         self.assertGreater(V.cer("إمتى صار هاد", "انتصار هاد"), 0.1)

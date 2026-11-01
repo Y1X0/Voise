@@ -132,10 +132,12 @@ def normalize_ar(text):
     """Letters only, for comparing what was asked with what Whisper heard: drops [tags], diacritics, punctuation
     and spaces, and folds hamza/taa-marbuta/alef-maqsura variants that Whisper writes either way."""
     text = re.sub(r"\[[^\]]*\]", "", text)
-    text = re.sub(r"[^\u0621-\u064A]", "", text)
-    for a, b in (("أ", "ا"), ("إ", "ا"), ("آ", "ا"), ("ة", "ه"), ("ى", "ي"), ("ؤ", "و"), ("ئ", "ي")):
+    text = re.sub(r"[^\u0621-\u064A\s]", "", text)
+    for a, b in (("أ", "ا"), ("إ", "ا"), ("آ", "ا"), ("ؤ", "و"), ("ئ", "ي")):
         text = text.replace(a, b)
-    return text
+    # a word-final alif / taa marbuta / haa / alif maqsura is the same sound in dialect spelling
+    # (بكرا = بكرة, هيك = هيك): fold them so spelling choices are not counted as mistakes
+    return "".join(w[:-1] + "ه" if w[-1] in "اةهى" else w for w in text.split())
 
 
 def cer(ref, hyp):
@@ -240,9 +242,10 @@ class Engine:
         self.voices[key] = v
         return v
 
-    def takes(self, v, text, candidates=3, steps=32, speed=None, good_enough=0.02):
+    def takes(self, v, text, candidates=3, steps=32, speed=None, good_enough=0.05):
         """Up to `candidates` takes; stops early once Whisper hears a take with at most `good_enough` letter
-        errors, so a clean first take costs one generation instead of three."""
+        errors (about one letter in twenty, which Whisper's own slips already reach on a correct take), so a clean
+        first take costs one generation instead of three."""
         import librosa
         import torch
         from omnivoice.models.omnivoice import OmniVoiceGenerationConfig
