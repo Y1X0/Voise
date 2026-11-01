@@ -197,6 +197,7 @@ def main(argv=None):
                     help="takes per sentence; the one Whisper hears best (then closest to the voice) is kept")
     ap.add_argument("--sv-dir", help="local speechbrain/spkrec-ecapa-voxceleb directory, to rank takes by voice")
     ap.add_argument("--no-watermark", action="store_true", help="skip the inaudible Perth watermark")
+    ap.add_argument("--adapter", help="learned version from voise_learn.py train (used only if the file exists)")
     a = ap.parse_args(argv)
 
     consent, consent_sha = load_consent(a.consent)
@@ -217,6 +218,14 @@ def main(argv=None):
 
     from omnivoice.models.omnivoice import OmniVoice
     model = OmniVoice.from_pretrained(a.model_dir, device_map="cpu")
+    adapter = None
+    if a.adapter and os.path.exists(a.adapter):
+        import torch
+        st = torch.load(a.adapter, map_location="cpu", weights_only=True)
+        bad = model.load_state_dict(st["weights"], strict=False).unexpected_keys
+        if bad:
+            raise SystemExit(f"adapter does not fit this model: {bad[:3]}")
+        adapter = os.path.basename(a.adapter)
     sr = getattr(model, "sampling_rate", None) or 24000
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     for n, text in enumerate(texts):
@@ -243,7 +252,7 @@ def main(argv=None):
         json.dump(dict(synthetic=True, text=text, voice_owner=consent["voice_owner"], consent_record=a.consent,
                        consent_sha256=consent_sha, consent_scope=consent["scope"], reference=os.path.basename(ref_path),
                        reference_transcript=ref_text, model="oddadmix/lahgtna-omnivoice-v2 (no licence stated)",
-                       language=a.language, created_utc=stamp, watermark=wm, chosen_seed=best["seed"],
+                       language=a.language, created_utc=stamp, watermark=wm, chosen_seed=best["seed"], adapter=adapter,
                        candidates=[{k: c[k] for k in ("seed", "heard", "cer", "sim")} for c in cands]),
                   open(meta_path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
         print(wav_path, f"(take {best['seed'] + 1}/{len(cands)}, heard: {best['heard']})", flush=True)
