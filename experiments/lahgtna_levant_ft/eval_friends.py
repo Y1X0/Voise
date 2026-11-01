@@ -43,10 +43,15 @@ def main(orig, new, friends, ecapa_dir, out):
         rp = os.path.join(friends, "baseline", f"{spk}_ref.wav")
         refs[spk] = (rp, V.transcribe(load(rp), asr))
     res = {s: {} for s in SPEAKERS}
+    done = lambda spk, tag, i: os.path.join(out, f"SYNTHETIC_{spk}_{tag}_{i}.json")
     for tag, d in (("original", orig), ("levant", new)):
-        m = OmniVoice.from_pretrained(d, device_map="cpu")
+        todo = [(spk, i) for spk in SPEAKERS for i in range(len(TEXTS)) if not os.path.exists(done(spk, tag, i))]
+        m = OmniVoice.from_pretrained(d, device_map="cpu") if todo else None
         for spk in SPEAKERS:
             for i, t in enumerate(TEXTS):
+                if (spk, i) not in todo:            # finished in an earlier, interrupted run
+                    res[spk][f"{tag}_{i}"] = json.load(open(done(spk, tag, i)))
+                    continue
                 torch.manual_seed(0)
                 y = m.generate(text=t, language="apc", ref_audio=refs[spk][0], ref_text=refs[spk][1],
                                duration=V.target_duration(t))
@@ -57,6 +62,7 @@ def main(orig, new, friends, ecapa_dir, out):
                 heard = V.transcribe(g, asr)
                 res[spk][f"{tag}_{i}"] = dict(sim=round(float(np.mean([float(emb(g) @ x) for x in tests[spk]])), 3),
                                               cer=round(V.cer(t, heard), 3), heard=heard)
+                json.dump(res[spk][f"{tag}_{i}"], open(done(spk, tag, i), "w"), ensure_ascii=False)
                 print(spk, tag, i, res[spk][f"{tag}_{i}"], flush=True)
         del m
     json.dump(res, open(os.path.join(out, "results.json"), "w"), ensure_ascii=False, indent=1)
