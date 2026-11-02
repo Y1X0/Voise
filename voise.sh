@@ -23,6 +23,7 @@ set -e
 cd "$(dirname "$0")"
 SRC=${SRC:-/mnt/c/Voise_Voices}
 SV=""; [ -d models/ecapa-voxceleb ] && SV="--sv-dir models/ecapa-voxceleb"
+MOS=models/utmos/utmos22_strong_step7459_v1.pt; [ -f "$MOS" ] && SV="$SV --mos $MOS"
 ASR=models/whisper-turbo-dialectal-v2-ct2
 [ -d "$ASR" ] || ASR=models/whisper-large-v3-turbo
 [ -d "$ASR" ] || ASR=models/whisper-small
@@ -50,6 +51,10 @@ setup)
   # speaker encoder (Apache-2.0): picks the reference that sounds most like the person and ranks takes by voice
   until fetch speechbrain/spkrec-ecapa-voxceleb 0f99f2d0ebe8 models/ecapa-voxceleb '*'
   do echo "download interrupted, retrying in 15 s..."; sleep 15; done
+  # naturalness predictor (SpeechMOS UTMOS22-strong, MIT), reported for every take
+  [ -f "$MOS" ] || { mkdir -p models/utmos && curl -sSL -o "$MOS" \
+    https://github.com/tarepan/SpeechMOS/releases/download/v1.0.0/utmos22_strong_step7459_v1.pt; }
+  echo "38aa51ab79e2a4e09a1449758a4b37e9cbb2e8235a49662a732d33a9ba1e9bff  $MOS" | sha256sum -c --quiet || { rm -f "$MOS"; echo "UTMOS download corrupt; rerun setup"; }
   # Arabic-dialect Whisper (Apache-2.0), converted to a fast int8 CPU model
   until fetch oddadmix/whisper-large-v3-turbo-arabic-dialectal-v2 b12b09bc6601 models/whisper-turbo-dialectal-v2 '*.json' '*.safetensors'
   do echo "download interrupted, retrying in 15 s..."; sleep 15; done

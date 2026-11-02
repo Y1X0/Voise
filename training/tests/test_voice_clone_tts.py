@@ -74,6 +74,13 @@ class TestTiming(unittest.TestCase):
         self.assertIsNone(V.target_duration("جملة قصيرة", speed=0.9))
 
 
+class TestReactions(unittest.TestCase):
+    def test_reaction_tags_are_recognised(self):
+        self.assertTrue(V.REACTION.search("[laughter] يلا خلص"))
+        self.assertTrue(V.REACTION.search("شو؟ [surprise-wa]"))
+        self.assertFalse(V.REACTION.search("يلا خلص [not-a-tag]"))
+
+
 class TestTakes(unittest.TestCase):
     def test_normalize_ignores_tags_marks_and_spelling_variants(self):
         self.assertEqual(V.normalize_ar("[laughter] أهلين، كيفكِ؟"), V.normalize_ar("اهلين كيفك"))

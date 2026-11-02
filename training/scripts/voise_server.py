@@ -64,10 +64,11 @@ def main(argv=None):
     ap.add_argument("--asr-dir", default="models/whisper-turbo-dialectal-v2-ct2")
     ap.add_argument("--adapter", default=os.path.join(V.RUNS, "learn", "adapter.pt"))
     ap.add_argument("--sv-dir", help="speaker encoder (speechbrain/spkrec-ecapa-voxceleb) for choosing references")
+    ap.add_argument("--mos", help="UTMOS22-strong checkpoint, to report each take's predicted naturalness")
     a = ap.parse_args(argv)
 
     t0 = time.time()
-    eng = V.Engine(a.model_dir, a.asr_dir, a.adapter, a.sv_dir)
+    eng = V.Engine(a.model_dir, a.asr_dir, a.adapter, a.sv_dir, mos_path=a.mos)
     V.transcribe(__import__("numpy").zeros(V.SR, "float32"), a.asr_dir)       # load Whisper now, not on request 1
     state = {"adapter_mtime": os.path.getmtime(a.adapter) if os.path.exists(a.adapter) else None}
     lock = threading.Lock()
@@ -77,7 +78,7 @@ def main(argv=None):
     def refresh_adapter():
         m = os.path.getmtime(a.adapter) if os.path.exists(a.adapter) else None
         if m != state["adapter_mtime"]:
-            global_eng = V.Engine(a.model_dir, a.asr_dir, a.adapter, a.sv_dir)
+            global_eng = V.Engine(a.model_dir, a.asr_dir, a.adapter, a.sv_dir, mos_path=a.mos)
             eng.model, eng.adapter, eng.voices = global_eng.model, global_eng.adapter, {}
             state["adapter_mtime"] = m
             print("learned version changed: reloaded", eng.adapter, flush=True)
@@ -151,7 +152,8 @@ def main(argv=None):
                                                os.path.join(V.RUNS, "voices", person, "output"),
                                                candidates=int(req.get("candidates", 3)),
                                                steps=16 if req.get("fast") else 32)
-                self.reply(200, {"wav": wav, "heard": best["heard"], "takes": len(cands), "seconds": round(time.time() - t)})
+                self.reply(200, {"wav": wav, "heard": best["heard"], "takes": len(cands), "seconds": round(time.time() - t),
+                                 "naturalness": best.get("mos")})
             except SystemExit as e:                     # consent refused, missing recordings, ...
                 self.reply(403, {"error": str(e)})
             except Exception as e:                       # keep serving after a bad request

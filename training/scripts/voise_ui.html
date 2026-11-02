@@ -150,6 +150,7 @@ $("go").addEventListener("click", async () => {
     $("player").src = audioUrl(r.wav, person); $("result").hidden = false; $("player").play().catch(() => {});
     $("meta").innerHTML = `<dt>الوقت</dt><dd>${r.seconds} ثانية</dd>
       <dt>المحاولات</dt><dd>${r.takes}</dd>
+      <dt>الطبيعية (1-5)</dt><dd>${r.naturalness ?? "—"}</dd>
       <dt>Whisper سمع</dt><dd>${esc(r.heard)}</dd>
       <dt>الملف</dt><dd style="direction:ltr;text-align:right">${esc(r.wav.split("/").pop())}</dd>`;
     $("status").textContent = "خلص ✓";

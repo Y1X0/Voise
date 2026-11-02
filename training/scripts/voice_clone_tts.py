@@ -37,6 +37,7 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 RUNS = os.path.join(ROOT, "runs")
 SR = 16000
 REQUIRED_CONSENT = ("voice_owner", "scope", "revocable")
+REACTION = re.compile(r"\[(laughter|sigh|confirmation-en|question-[a-z]+|surprise-[a-z]+|dissatisfaction-hnn)\]")
 
 
 def load_consent(path):
@@ -255,6 +256,27 @@ def speaker_embedding(enc, y16):
         return torch.nn.functional.normalize(enc.encode_batch(torch.as_tensor(y16)[None]).squeeze(), dim=-1)
 
 
+def load_mos(path):
+    """UTMOS22-strong naturalness predictor (SpeechMOS, MIT; architecture shipped with OmniVoice). None if absent.
+    It was trained on English listening tests, so on Arabic it is a relative naturalness score, not a MOS."""
+    if not path or not os.path.exists(path):
+        return None
+    import torch
+    from omnivoice.eval.models.utmos import UTMOS22Strong
+    m = UTMOS22Strong()
+    m.load_state_dict(torch.load(path, map_location="cpu", weights_only=True))
+    return m.eval()
+
+
+def naturalness(model, y16):
+    """Predicted naturalness on a 1-5 scale for 16 kHz audio (None without a model)."""
+    if model is None:
+        return None
+    import torch
+    with torch.no_grad():
+        return float(model(torch.as_tensor(np.asarray(y16, np.float32))[None], SR))
+
+
 def watermark(y, sr):
     """Inaudible Perth watermark (resemble-perth, MIT) so the file can later be shown to be synthetic.
     Returns (audio, name) or (audio, None) when the package is not installed."""
@@ -283,7 +305,7 @@ class Engine:
     on disk next to the person's recordings (<ref-dir>/.voise_cache/), keyed by the reference audio and its text,
     so a person's voice is prepared once and reused by every later sentence and every later run."""
 
-    def __init__(self, model_dir, asr_dir, adapter=None, sv_dir=None, language="apc"):
+    def __init__(self, model_dir, asr_dir, adapter=None, sv_dir=None, language="apc", mos_path=None):
         from omnivoice.models.omnivoice import OmniVoice
         if not os.path.isdir(model_dir):
             raise SystemExit(f"model directory not found: {model_dir} (nothing is downloaded here)")
@@ -299,6 +321,7 @@ class Engine:
         self.sr = getattr(self.model, "sampling_rate", None) or 24000
         self.asr_dir, self.language = asr_dir, language
         self.enc = load_speaker_encoder(sv_dir)
+        self.mos = load_mos(mos_path)
         self.voices = {}
 
     def voice(self, ref_dir, ref_text=None):
@@ -347,8 +370,9 @@ class Engine:
             y16 = librosa.resample(y, orig_sr=self.sr, target_sr=SR)
             heard = transcribe(y16, self.asr_dir)
             sim = float(speaker_embedding(self.enc, y16) @ v["emb"]) if self.enc else None
+            nat = naturalness(self.mos, y16)
             cands.append(dict(seed=seed, y=y, heard=heard, cer=round(cer(text, heard), 3),
-                              sim=None if sim is None else round(sim, 3)))
+                              sim=None if sim is None else round(sim, 3), mos=None if nat is None else round(nat, 2)))
             if cands[-1]["cer"] <= good_enough:
                 break
         return choose_best(cands), cands
@@ -363,6 +387,8 @@ class Engine:
         stamp = stamp or datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         wav_path, meta_path = output_paths(out, consent["voice_owner"], n, stamp)
         v = self.voice(ref_dir, ref_text)
+        if steps < 32 and REACTION.search(text):
+            steps = 32          # at 16 steps a [laughter] came out as near-silence and was trimmed away
         best, cands = self.takes(v, text, candidates, steps, speed)
         y = best["y"] / max(1e-6, np.abs(best["y"]).max()) * 0.9
         wm = None
@@ -375,7 +401,7 @@ class Engine:
                        reference_transcript=v["reference_transcript"],
                        model="oddadmix/lahgtna-omnivoice-v2 (no licence stated)", adapter=self.adapter,
                        language=self.language, created_utc=stamp, watermark=wm, num_step=steps,
-                       chosen_seed=best["seed"], candidates=[{k: c[k] for k in ("seed", "heard", "cer", "sim")} for c in cands]),
+                       chosen_seed=best["seed"], candidates=[{k: c[k] for k in ("seed", "heard", "cer", "sim", "mos")} for c in cands]),
                   open(meta_path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
         return wav_path, best, cands
 
@@ -399,6 +425,7 @@ def main(argv=None):
     ap.add_argument("--sv-dir", help="local speechbrain/spkrec-ecapa-voxceleb directory, to rank takes by voice")
     ap.add_argument("--no-watermark", action="store_true", help="skip the inaudible Perth watermark")
     ap.add_argument("--adapter", help="learned version from voise_learn.py train (used only if the file exists)")
+    ap.add_argument("--mos", help="UTMOS22-strong checkpoint, to record each take's predicted naturalness")
     a = ap.parse_args(argv)
 
     load_consent(a.consent)
@@ -406,7 +433,7 @@ def main(argv=None):
     if not texts:
         raise SystemExit("nothing to say: give --text or --text-file")
     check_out_dir(a.out)
-    eng = Engine(a.model_dir, a.asr_dir, a.adapter, a.sv_dir, a.language)
+    eng = Engine(a.model_dir, a.asr_dir, a.adapter, a.sv_dir, a.language, a.mos)
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     for n, text in enumerate(texts):
         wav_path, best, cands = eng.say(a.consent, a.ref_dir, text, a.out, a.ref_text, a.candidates,
