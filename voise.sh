@@ -5,8 +5,9 @@
 #   ./voise.sh prepare                read C:\Voise_Voices\<Person>\ (consent.* + voice notes) into runs/
 #   ./voise.sh speak <person> <text>  speak <text> in <person>'s voice -> runs/voices/<person>/output/
 #   ./voise.sh fast <person> <text>   the same, about 2x faster per take (16 steps instead of 32)
-#   ./voise.sh serve                  keep the models loaded (leave it open in its own window); speak/fast then
-#                                     skip the ~5 min of loading and reuse each person's prepared voice
+#   ./voise.sh serve                  keep the models loaded (leave it open in its own window) and open the demo
+#                                     page http://127.0.0.1:8765 in the browser; speak/fast then skip the
+#                                     ~5 min of loading and reuse each person's prepared voice
 #   ./voise.sh list                   people who are ready
 #   ./voise.sh revoke <person>        consent withdrawn: delete that person's recordings, outputs and learned voice
 #   ./voise.sh learn                  learn now from every voice in the learning pool
@@ -135,7 +136,11 @@ PY
   command -v explorer.exe >/dev/null && explorer.exe "$(wslpath -w "runs/voices/$person/output")" || true
   ;;
 serve)
-  python3 training/scripts/voise_server.py --asr-dir "$ASR" $SV
+  python3 training/scripts/voise_server.py --asr-dir "$ASR" $SV &
+  pid=$!
+  until curl -s -m 2 http://127.0.0.1:8765/health >/dev/null 2>&1; do sleep 3; kill -0 $pid 2>/dev/null || exit 1; done
+  command -v explorer.exe >/dev/null && explorer.exe "http://127.0.0.1:8765" || true   # open the page in Windows
+  wait $pid
   ;;
 list)
   for c in runs/consent/*.json; do [ -f "$c" ] && basename "$c" .json; done
@@ -148,6 +153,6 @@ revoke)
   echo "deleted $person's recordings, consent record and outputs; also delete $SRC/<their folder>"
   ;;
 *)
-  sed -n 2,21p "$0"
+  sed -n 2,22p "$0"
   ;;
 esac

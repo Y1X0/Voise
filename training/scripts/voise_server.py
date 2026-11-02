@@ -3,7 +3,11 @@
 Loading Lahgtna, the learned version, Whisper and preparing a voice took about 5 minutes on every run; this
 process pays that once and then serves sentences. It listens on 127.0.0.1 only (this computer, never the network).
 
-  POST /speak   {"person": "khaled", "text": "...", "fast": false, "candidates": 3}  ->  {"wav": ..., "heard": ...}
+  GET  /             a simple page to pick a person, type a sentence and listen (for demos)
+  POST /speak        {"person": "khaled", "text": "...", "fast": false, "candidates": 3}  ->  {"wav": ..., "heard": ...}
+  GET  /people       people with a complete, unrevoked consent record and recordings
+  GET  /history/<p>  that person's latest outputs
+  GET  /audio/<p>/<SYNTHETIC_*.wav>
   GET  /health
 
 Every request re-reads the person's consent record (a revoked record is refused at once), and the learned version
@@ -12,6 +16,7 @@ is reloaded automatically when voise_learn.py writes a new generation.
 Usage: python voise_server.py [--port 8765] [--model-dir ...] [--asr-dir ...] [--adapter runs/learn/adapter.pt]
 """
 import argparse
+import glob
 import json
 import os
 import re
@@ -25,6 +30,31 @@ sys.path.insert(0, HERE)
 import voice_clone_tts as V  # noqa: E402
 
 PERSON = re.compile(r"^[a-z0-9_]{1,64}$")
+AUDIO = re.compile(r"^SYNTHETIC_[A-Za-z0-9_]+\.wav$")
+
+
+def people():
+    """People the page may offer: a complete, unrevoked consent record and at least one recording."""
+    out = []
+    for c in sorted(glob.glob(os.path.join(V.RUNS, "consent", "*.json"))):
+        person = os.path.basename(c)[:-5]
+        if not PERSON.match(person) or not glob.glob(os.path.join(V.RUNS, "voices", person, "*.wav")):
+            continue
+        try:
+            rec, _ = V.load_consent(c)
+        except SystemExit:
+            continue
+        out.append(dict(person=person, owner=rec["voice_owner"], scope=rec["scope"], training=bool(rec.get("training"))))
+    return out
+
+
+def history(person, n=8):
+    items = []
+    for j in sorted(glob.glob(os.path.join(V.RUNS, "voices", person, "output", "SYNTHETIC_*.json")),
+                    key=os.path.getmtime, reverse=True)[:n]:
+        if os.path.exists(j[:-5] + ".wav"):
+            items.append(dict(wav=j[:-5] + ".wav", text=json.load(open(j, encoding="utf-8")).get("text", "")))
+    return items
 
 
 def main(argv=None):
@@ -41,7 +71,8 @@ def main(argv=None):
     V.transcribe(__import__("numpy").zeros(V.SR, "float32"), a.asr_dir)       # load Whisper now, not on request 1
     state = {"adapter_mtime": os.path.getmtime(a.adapter) if os.path.exists(a.adapter) else None}
     lock = threading.Lock()
-    print(f"ready in {time.time() - t0:.0f}s on http://127.0.0.1:{a.port} (learned version: {eng.adapter})", flush=True)
+    print(f"ready in {time.time() - t0:.0f}s: open http://127.0.0.1:{a.port} in your browser "
+          f"(learned version: {eng.adapter})", flush=True)
 
     def refresh_adapter():
         m = os.path.getmtime(a.adapter) if os.path.exists(a.adapter) else None
@@ -60,9 +91,28 @@ def main(argv=None):
             self.end_headers()
             self.wfile.write(body)
 
+        def send_file(self, path, ctype):
+            data = open(path, "rb").read()
+            self.send_response(200)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
         def do_GET(self):
-            if self.path == "/health":
+            parts = [p for p in self.path.split("?")[0].split("/") if p]
+            if not parts:
+                return self.send_file(os.path.join(HERE, "voise_ui.html"), "text/html; charset=utf-8")
+            if parts == ["health"]:
                 return self.reply(200, {"ok": True, "adapter": eng.adapter, "voices_cached": len(eng.voices)})
+            if parts == ["people"]:
+                return self.reply(200, {"people": people()})
+            if len(parts) == 2 and parts[0] == "history" and PERSON.match(parts[1]):
+                return self.reply(200, {"items": history(parts[1])})
+            if len(parts) == 3 and parts[0] == "audio" and PERSON.match(parts[1]) and AUDIO.match(parts[2]):
+                path = os.path.join(V.RUNS, "voices", parts[1], "output", parts[2])
+                if os.path.isfile(path):
+                    return self.send_file(path, "audio/wav")
             self.reply(404, {"error": "not found"})
 
         def do_POST(self):
