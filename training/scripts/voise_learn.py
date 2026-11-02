@@ -42,7 +42,11 @@ SR, TSR = 16000, 24000
 TOP_LAYERS = 6
 TEST_TEXTS = ["أهلين، كيفك؟ اليوم كان يوم طويل، بس الحمد لله خلص.",
               "ولك والله ما بصدق! إمتى صار هاد؟ ليش ما حكيتلي؟",
-              "شو رأيك نطلع بكرا عالبلد؟ بدي أشتري كم غرض وبعدين منشرب قهوة."]
+              "شو رأيك نطلع بكرا عالبلد؟ بدي أشتري كم غرض وبعدين منشرب قهوة.",
+              "والله تعبت اليوم، شغل وجامعة ومشاوير، وما لحقت آكل إشي.",
+              "مبروك يا زلمة! والله فرحتلك من كل قلبي.",
+              "خلص ولا يهمك، بكرا منحكي ومنشوف شو بدنا نعمل."]
+GATE_STEPS = 16       # the acceptance test compares versions, so before and after use the same (faster) setting
 
 
 def allows_training(rec):
@@ -146,11 +150,21 @@ def cmd_train(a):
     print(f"pool: {len(items)} clips, {minutes:.1f} min, {len(people)} people")
     if len(items) < 20:
         raise SystemExit("not enough to learn from yet: need at least 20 clean clips")
-    # hold out ~15% of every person's clips for the acceptance gate
-    held, train = [], []
+    # Acceptance data, never trained on in this run:
+    #   held   - ~15% of every other person's clips: does it still fit the voices it learns from?
+    #   unseen - ALL clips of one whole person: does it generalise to someone it has never heard?
+    # The unseen person rotates with the generation, so over generations everyone is learned from.
+    generation0 = int(torch.load(a.adapter, map_location="cpu", weights_only=True).get("generation", 0)) \
+        if os.path.exists(a.adapter) and not a.from_scratch else 0
+    eligible = [p for p in people if sum(i["person"] == p for i in items) >= 4]
+    unseen_person = eligible[generation0 % len(eligible)] if len(eligible) >= 2 else None
+    held, train, unseen = [], [], []
     for p in people:
         mine = [i for i in items if i["person"] == p]
         random.Random(0).shuffle(mine)
+        if p == unseen_person:
+            unseen += mine[:20]
+            continue
         k = max(1, round(len(mine) * 0.15)) if len(mine) >= 4 else 0
         held += mine[:k]; train += mine[k:]
 
@@ -164,7 +178,7 @@ def cmd_train(a):
             c = codec.encode(fe(raw_audio=y, sampling_rate=TSR, return_tensors="pt")["input_values"]).audio_codes.squeeze(0)
         return {"audio_tokens": c, "label": {"text": i["text"], "language_id": "apc"}}
 
-    train_s, held_s = [tokens(i) for i in train], [tokens(i) for i in held]
+    train_s, held_s, unseen_s = [tokens(i) for i in train], [tokens(i) for i in held], [tokens(i) for i in unseen]
     del codec
     model = OmniVoice.from_pretrained(a.model_dir, device_map="cpu")
     prev_people, generation = [], 0
@@ -183,31 +197,47 @@ def cmd_train(a):
         o = model(input_ids=b["input_ids"][None], audio_mask=b["audio_mask"][None], labels=b["labels"][None])
         return o.loss if hasattr(o, "loss") else o["loss"]
 
-    def held_loss():
+    def mean_loss(samples):
+        if not samples:
+            return None
         model.eval()
         st = random.getstate(); tst = torch.random.get_rng_state()
         random.seed(1); torch.manual_seed(1)
         with torch.no_grad():
-            v = float(np.mean([float(loss_of(s)) for s in held_s for _ in range(3)]))
+            v = float(np.mean([float(loss_of(s)) for s in samples for _ in range(3)]))
         random.setstate(st); torch.random.set_rng_state(tst)
         return round(v, 4)
 
-    ref = held[0]["wav"] if held else train[0]["wav"]
-    ref_text = next(i["text"] for i in items if i["wav"] == ref)
+    held_loss = lambda: mean_loss(held_s)
+
+    # two reference voices for the spoken test: one unseen person, one held-out clip of another person;
+    # each speaks half of the six test sentences
+    refs = [i for i in (unseen[:1] + held[:1]) if i] or train[:1]
+    mos_model = V.load_mos(a.mos)
 
     def heard_cer():
+        from omnivoice.models.omnivoice import OmniVoiceGenerationConfig
         model.eval()
-        errs = []
-        for t in TEST_TEXTS:
+        errs, nats = [], []
+        for k, t in enumerate(TEST_TEXTS):
+            r = refs[k % len(refs)]
             torch.manual_seed(0)
             with torch.no_grad():
-                y = model.generate(text=t, language="apc", ref_audio=ref, ref_text=ref_text, duration=V.target_duration(t))
-            y = np.asarray(y[0] if isinstance(y, list) else y, dtype=np.float32).squeeze()
-            errs.append(V.cer(t, V.transcribe(librosa.resample(y, orig_sr=TSR, target_sr=SR), a.asr_dir)))
+                y = model.generate(text=t, language="apc", ref_audio=r["wav"], ref_text=r["text"],
+                                   duration=V.target_duration(t),
+                                   generation_config=OmniVoiceGenerationConfig(num_step=GATE_STEPS))
+            y16 = librosa.resample(np.asarray(y[0] if isinstance(y, list) else y, dtype=np.float32).squeeze(),
+                                   orig_sr=TSR, target_sr=SR)
+            errs.append(V.cer(t, V.transcribe(y16, a.asr_dir)))
+            n = V.naturalness(mos_model, y16)
+            if n is not None:
+                nats.append(n)
+        heard_cer.mos = round(float(np.mean(nats)), 3) if nats else None
         return round(float(np.mean(errs)), 4)
 
     report = dict(started_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
                   people=people, train_clips=len(train), held_clips=len(held), minutes=round(minutes, 1),
+                  unseen_person=unseen_person, unseen_clips=len(unseen),
                   continued_from_generation=generation if prev_people or generation else None)
     # progress is saved every 50 steps so a restart of the machine resumes instead of starting over
     ckpt_path = os.path.join(os.path.dirname(os.path.abspath(a.adapter)), "train_progress.pt")
@@ -220,8 +250,10 @@ def cmd_train(a):
         print("resuming an interrupted learning run from step", ckpt["step"], flush=True)
     else:
         report["held_loss_before"] = held_loss()
+        report["unseen_loss_before"] = mean_loss(unseen_s)
         report["cer_before"] = heard_cer()
-    print("before:", report["held_loss_before"], report["cer_before"], flush=True)
+        report["mos_before"] = heard_cer.mos
+    print("before:", {k: report[k] for k in ("held_loss_before", "unseen_loss_before", "cer_before", "mos_before")}, flush=True)
 
     layers = model.llm.layers
     first = len(layers) - TOP_LAYERS
@@ -242,7 +274,7 @@ def cmd_train(a):
         start = ckpt["step"] + 1
     def save_progress(k):
         tmp = ckpt_path + ".tmp"
-        torch.save(dict(key=run_key, step=k, report={x: report[x] for x in ("held_loss_before", "cer_before")},
+        torch.save(dict(key=run_key, step=k, report={x: report[x] for x in ("held_loss_before", "unseen_loss_before", "cer_before", "mos_before")},
                         weights={n: params[n].detach().clone() for n in names}, opt=opt.state_dict(),
                         py_rng=random.getstate(), torch_rng=torch.random.get_rng_state()), tmp)
         os.replace(tmp, ckpt_path)
@@ -261,10 +293,17 @@ def cmd_train(a):
             save_progress(k)
     report["steps"] = steps
     report["held_loss_after"] = held_loss()
+    report["unseen_loss_after"] = mean_loss(unseen_s)
     report["cer_after"] = heard_cer()
-    print("after:", report["held_loss_after"], report["cer_after"], flush=True)
+    report["mos_after"] = heard_cer.mos
+    print("after:", {k: report[k] for k in ("held_loss_after", "unseen_loss_after", "cer_after", "mos_after")}, flush=True)
 
-    ok = report["held_loss_after"] < report["held_loss_before"] and report["cer_after"] <= report["cer_before"] + 0.02
+    # keep the new version only if it fits the known voices better, does not get worse for a stranger,
+    # and is not heard worse
+    ub, ua = report["unseen_loss_before"], report["unseen_loss_after"]
+    ok = (report["held_loss_after"] < report["held_loss_before"]
+          and (ub is None or ua <= ub * 1.01)
+          and report["cer_after"] <= report["cer_before"] + 0.02)
     report["accepted"] = ok
     os.makedirs(os.path.dirname(os.path.abspath(a.adapter)), exist_ok=True)
     if ok:
@@ -315,6 +354,8 @@ def main(argv=None):
     ap.add_argument("--min-snr", type=float, default=8.0)
     ap.add_argument("--steps", type=int, default=0)
     ap.add_argument("--lr", type=float, default=1e-5)
+    ap.add_argument("--mos", default="models/utmos/utmos22_strong_step7459_v1.pt",
+                    help="UTMOS checkpoint; naturalness of the test sentences is reported (if present)")
     ap.add_argument("--min-new-minutes", type=float, default=0.0,
                     help="learn only if at least this much new voice arrived since the current version")
     ap.add_argument("--from-scratch", action="store_true", help="ignore the current learned version and start from Lahgtna")
