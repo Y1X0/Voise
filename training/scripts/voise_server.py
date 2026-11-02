@@ -99,7 +99,25 @@ def main(argv=None):
             self.end_headers()
             self.wfile.write(data)
 
+        def trusted(self, post=False):
+            """Only this computer's own page may use the engine. The Host check stops DNS-rebinding sites; for
+            POST, a JSON content type (which a cross-site form cannot send without a preflight this server never
+            answers) and, when present, a matching Origin stop another website open in the browser from making
+            voices through it."""
+            ok_hosts = {f"127.0.0.1:{a.port}", f"localhost:{a.port}"}
+            if self.headers.get("Host", "") not in ok_hosts:
+                return False
+            if post:
+                origin = self.headers.get("Origin")
+                if origin is not None and origin not in {f"http://{h}" for h in ok_hosts}:
+                    return False
+                if not self.headers.get("Content-Type", "").split(";")[0].strip() == "application/json":
+                    return False
+            return True
+
         def do_GET(self):
+            if not self.trusted():
+                return self.reply(403, {"error": "forbidden"})
             parts = [p for p in self.path.split("?")[0].split("/") if p]
             if not parts:
                 return self.send_file(os.path.join(HERE, "voise_ui.html"), "text/html; charset=utf-8")
@@ -116,6 +134,8 @@ def main(argv=None):
             self.reply(404, {"error": "not found"})
 
         def do_POST(self):
+            if not self.trusted(post=True):
+                return self.reply(403, {"error": "forbidden"})
             if self.path != "/speak":
                 return self.reply(404, {"error": "not found"})
             try:
