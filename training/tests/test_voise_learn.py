@@ -37,6 +37,15 @@ class TestLearn(unittest.TestCase):
         with self.assertRaises(SystemExit):
             L.main(["add", "--consent", c, "--src", self.d, "--pool", os.path.join(self.d, "pool")])
 
+    def test_long_continuous_speech_is_split_not_dropped(self):
+        import numpy as np
+        y = np.random.RandomState(0).randn(40 * 16000).astype("float32") * 0.1
+        y[16000 * 9:16000 * 9 + 400] = 0.0                       # a quiet gap near the 10 s mark
+        pieces = L.split_long(y, 0, len(y))
+        self.assertTrue(all((b - a) <= 14 * 16000 for a, b in pieces))
+        self.assertEqual(sum(b - a for a, b in pieces), len(y))
+        self.assertTrue(abs(pieces[0][1] - 16000 * 9) < 16000)    # cut lands in the quiet gap
+
     def test_revoke_removes_person_and_learned_version_that_contains_them(self):
         import torch
         pool, ad = os.path.join(self.d, "pool"), os.path.join(self.d, "adapter.pt")

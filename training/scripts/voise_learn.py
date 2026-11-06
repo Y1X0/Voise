@@ -53,10 +53,27 @@ def allows_training(rec):
     return rec.get("training") is True or "train" in str(rec.get("scope", "")).lower()
 
 
+def split_long(y, a, b, max_s=14.0, target_s=10.0):
+    """Split one long stretch of continuous speech (no pause the VAD can see) into pieces of at most max_s,
+    cutting each time at the quietest 20 ms frame within 2 s of every target_s mark (a breath or a word gap)."""
+    out, start, hop = [], a, int(0.02 * SR)
+    while b - start > max_s * SR:
+        lo, hi = start + int((target_s - 2) * SR), min(b, start + int((target_s + 2) * SR))
+        frames = [(float(np.mean(y[i:i + hop] ** 2)), i) for i in range(lo, hi - hop, hop)]
+        cut = min(frames)[1] if frames else start + int(target_s * SR)
+        out.append((start, cut)); start = cut
+    out.append((start, b))
+    return out
+
+
 def segments(y, vad, min_s=2.0, max_s=14.0):
-    """Cut a recording at its pauses into speech spans of min_s..max_s seconds."""
+    """Cut a recording into speech spans of min_s..max_s seconds: neighbouring stretches are joined at pauses,
+    and a stretch longer than max_s (continuous talk, as in a podcast) is split at its quietest points instead
+    of being dropped."""
     import audio_preprocess as A
-    regs = A.speech_regions(y, vad)
+    regs = []
+    for a, b in A.speech_regions(y, vad):
+        regs += split_long(y, a, b, max_s) if b - a > max_s * SR else [(a, b)]
     out, cur = [], None
     for a, b in regs:
         if cur is None:
@@ -67,7 +84,7 @@ def segments(y, vad, min_s=2.0, max_s=14.0):
             out.append(cur); cur = [a, b]
     if cur:
         out.append(cur)
-    return [(max(0, a - 800), min(len(y), b + 800)) for a, b in out if (b - a) >= min_s * SR and (b - a) <= max_s * SR]
+    return [(max(0, a - 800), min(len(y), b + 800)) for a, b in out if min_s * SR <= (b - a) <= max_s * SR]
 
 
 def noise_db(y, vad):
