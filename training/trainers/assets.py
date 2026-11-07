@@ -76,15 +76,17 @@ class GpuAssets:
                      (docs/CONTENT_TEACHER_DECISION.md: no external teacher in the training loop)
     speaker encoders role-TRAIN TorchScript models models_train/<name>.pt, mel [B,T,80] -> [B,D];
                      config entries {name, arch}; <name>.json (scripts/train_speaker_encoder.py)
-                     must carry the same arch and role TRAIN; frozen; never used for evaluation
+                     must carry the same arch and role TRAIN and a licence_path admissible for the
+                     run (requirements.encoder_licence_problem); frozen; never used for evaluation
     centroids        protected training-speaker centroids from encoder 0 over a few fixed segments
                      per speaker (sampler.speaker_audio); tau = p99 of unrelated-speaker similarity
     """
     PLACEHOLDERS = []
 
-    def __init__(self, cfg, device="cuda", models_dir="models_train"):
+    def __init__(self, cfg, device="cuda", models_dir="models_train", licence_path=None):
         from datasets.paths import resolve
-        from trainers.requirements import encoder_specs
+        from trainers.requirements import encoder_licence_problem, encoder_specs, run_licence_path
+        run_path = run_licence_path(cfg, licence_path)
         models_dir = resolve(models_dir)
         specs = encoder_specs(cfg.data)
         if not specs:
@@ -98,6 +100,9 @@ class GpuAssets:
                 meta = json.load(f)
             if meta.get("arch") != s["arch"] or meta.get("role") != "TRAIN":
                 raise ValueError(f"{js}: arch/role {meta.get('arch')}/{meta.get('role')} != config {s['arch']}/TRAIN")
+            lic = encoder_licence_problem(meta, run_path, js)
+            if lic:
+                raise ValueError(lic)
             enc = torch.jit.load(p, map_location=device).eval()
             for prm in enc.parameters():
                 prm.requires_grad_(False)

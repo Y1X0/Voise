@@ -1,0 +1,13 @@
+transformers==5.18.0
+accelerate
+huggingface_hub
+numpy
+soundfile
+librosa
+pydub
+tensorboardx
+webdataset
+fastapi
+uvicorn
+python-multipart
+silero-vad

@@ -15,7 +15,8 @@ gate-admitted data only (docs/TRAINING_GO_NO_GO.md U6: no VoxCeleb-derived check
     TRAIN-role encoders use half "a", the VALID evaluator half "b" (one model = one role;
     evaluator speakers never overlap the encoders used inside the losses);
   * atomic, resumable checkpoints (trainers/checkpoint.py); final export TorchScript
-    models_train/<name>.pt + <name>.json (role, speaker-subset sha256, steps, VALID-split EER).
+    models_train/<name>.pt + <name>.json (role, speaker-subset sha256, steps, training-loss summary,
+    licence_path). No held-out EER is computed here: scripts/eval_speaker_encoder.py measures it.
 
   python3 training/scripts/train_speaker_encoder.py --index data/features/train/index.jsonl --arch resnet34 \\
       --name resnet34_train_inhouse --role TRAIN --steps 60000 --out runs/spk/resnet34_train --models-dir models_train
