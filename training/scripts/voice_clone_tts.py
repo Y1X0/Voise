@@ -327,7 +327,8 @@ class Engine:
     on disk next to the person's recordings (<ref-dir>/.voise_cache/), keyed by the reference audio and its text,
     so a person's voice is prepared once and reused by every later sentence and every later run."""
 
-    def __init__(self, model_dir, asr_dir, adapter=None, sv_dir=None, language="apc", mos_path=None):
+    def __init__(self, model_dir, asr_dir, adapter=None, sv_dir=None, language="apc", mos_path=None,
+                 temperature=0.5):
         from omnivoice.models.omnivoice import OmniVoice
         if not os.path.isdir(model_dir):
             raise SystemExit(f"model directory not found: {model_dir} (nothing is downloaded here)")
@@ -344,6 +345,10 @@ class Engine:
         self.asr_dir, self.language = asr_dir, language
         self.enc = load_speaker_encoder(sv_dir)
         self.mos = load_mos(mos_path)
+        # OmniVoice's default (0.0) always takes the most likely audio token, which sounds flat and machine-made;
+        # 0.5 raised predicted naturalness from 2.88 to 3.23 on three sentences with no loss of voice similarity
+        # (experiments/naturalness_2026-11-07)
+        self.temperature = temperature
         self.voices = {}
 
     def voice(self, ref_dir, ref_text=None):
@@ -387,7 +392,8 @@ class Engine:
             torch.manual_seed(seed)
             y = self.model.generate(text=text, language=self.language, voice_clone_prompt=v["prompt"],
                                     duration=target_duration(text, speed), speed=speed,
-                                    generation_config=OmniVoiceGenerationConfig(num_step=steps))
+                                    generation_config=OmniVoiceGenerationConfig(num_step=steps,
+                                                                                class_temperature=self.temperature))
             y = np.asarray(y[0] if isinstance(y, list) else y, dtype=np.float32).squeeze()
             y16 = librosa.resample(y, orig_sr=self.sr, target_sr=SR)
             heard = transcribe(y16, self.asr_dir)
@@ -437,7 +443,8 @@ class Engine:
                        reference=v["reference"], reference_choice=v.get("reference_choice"),
                        reference_transcript=v["reference_transcript"],
                        model="oddadmix/lahgtna-omnivoice-v2 (no licence stated)", adapter=self.adapter,
-                       language=self.language, created_utc=stamp, watermark=wm, pieces=all_cands),
+                       language=self.language, created_utc=stamp, watermark=wm, class_temperature=self.temperature,
+                       pieces=all_cands),
                   open(meta_path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
         return wav_path, summary, [c for p in all_cands for c in p["candidates"]]
 
@@ -463,6 +470,8 @@ def main(argv=None):
     ap.add_argument("--adapter", help="learned version from voise_learn.py train (used only if the file exists)")
     ap.add_argument("--mos", help="UTMOS22-strong checkpoint, to record each take's predicted naturalness")
     ap.add_argument("--person", help="name for the output files when one consent record covers several people")
+    ap.add_argument("--temperature", type=float, default=0.5,
+                    help="sampling temperature (0 = always the most likely token: flatter, more machine-like)")
     a = ap.parse_args(argv)
 
     load_consent(a.consent)
@@ -470,7 +479,7 @@ def main(argv=None):
     if not texts:
         raise SystemExit("nothing to say: give --text or --text-file")
     check_out_dir(a.out)
-    eng = Engine(a.model_dir, a.asr_dir, a.adapter, a.sv_dir, a.language, a.mos)
+    eng = Engine(a.model_dir, a.asr_dir, a.adapter, a.sv_dir, a.language, a.mos, a.temperature)
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     for n, text in enumerate(texts):
         wav_path, best, cands = eng.say(a.consent, a.ref_dir, text, a.out, a.ref_text, a.candidates,
