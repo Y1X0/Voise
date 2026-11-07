@@ -1,5 +1,9 @@
 # Voice Anonymizer (Android prototype)
 
+> **Voise TTS (graduation project):** consent-gated voice cloning in Jordanian/Levantine Arabic that keeps learning
+> from consented voices, runs on a laptop and watermarks every output. See **[docs/VOISE_TTS.md](docs/VOISE_TTS.md)**
+> and `./voise.sh`. The rest of this README is the earlier voice-anonymizer prototype.
+
 Real-time **voice anonymization / speaker-identity obfuscation** on Android,
 fully offline. The microphone is processed with low latency so the same words,
 in the same language and with similar clarity, come out with clearly different
