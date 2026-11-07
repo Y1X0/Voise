@@ -74,6 +74,23 @@ class TestTiming(unittest.TestCase):
         self.assertIsNone(V.target_duration("جملة قصيرة", speed=0.9))
 
 
+class TestSplitText(unittest.TestCase):
+    def test_short_text_is_one_piece(self):
+        self.assertEqual(V.split_text("شو أخبارك؟ إن شاء الله منيح."), ["شو أخبارك؟ إن شاء الله منيح."])
+
+    def test_paragraph_splits_at_sentences_and_keeps_every_word(self):
+        para = ("اليوم صحيت بكير وشربت قهوة وطلعت عالجامعة بس الطريق كان زحمة كثير. "
+                "لما وصلت لقيت المحاضرة تأجلت، فقعدت مع صحابي بالكافتيريا وحكينا عن المشروع ساعتين! "
+                "بعدين رجعت عالبيت تعبان.")
+        pieces = V.split_text(para, max_words=12)
+        self.assertGreater(len(pieces), 1)
+        self.assertTrue(all(len(p.split()) <= 12 for p in pieces))
+        self.assertEqual(" ".join(pieces).split(), para.split())
+
+    def test_reaction_tag_stays_with_its_words(self):
+        self.assertIn("[laughter] ولك", " ".join(V.split_text("[laughter] ولك والله ما بصدق!")))
+
+
 class TestReactions(unittest.TestCase):
     def test_reaction_tags_are_recognised(self):
         self.assertTrue(V.REACTION.search("[laughter] يلا خلص"))

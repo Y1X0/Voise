@@ -287,6 +287,28 @@ def watermark(y, sr):
     return np.asarray(perth.PerthImplicitWatermarker().apply_watermark(y, sample_rate=sr), np.float32), "perth"
 
 
+def split_text(text, max_words=18):
+    """Split a paragraph into pieces the model speaks well: at sentence ends (. ! ? ؟ …), then, for a sentence
+    longer than max_words, at Arabic/Latin commas, then by word count. Short neighbours are joined back up to
+    max_words, so a reply of two short sentences stays one piece. Reaction tags stay with their words."""
+    sentences = [x.strip() for x in re.split(r"(?<=[.!?؟…])\s+", text.strip()) if x.strip()]
+    parts = []
+    for sent in sentences:
+        if len(sent.split()) <= max_words:
+            parts.append(sent)
+            continue
+        for clause in [c.strip() for c in re.split(r"(?<=[،,])\s+", sent) if c.strip()]:
+            words = clause.split()
+            parts += [" ".join(words[i:i + max_words]) for i in range(0, len(words), max_words)]
+    pieces = []
+    for part in parts:
+        if pieces and len(pieces[-1].split()) + len(part.split()) <= max_words:
+            pieces[-1] += " " + part
+        else:
+            pieces.append(part)
+    return pieces or [text.strip()]
+
+
 def target_duration(text, speed=None):
     """Seconds to force for a short sentence, else None (model's own estimate).
 
@@ -378,32 +400,46 @@ class Engine:
         return choose_best(cands), cands
 
     def say(self, consent_path, ref_dir, text, out, ref_text=None, candidates=3, steps=32, speed=None,
-            use_watermark=True, n=0, stamp=None):
-        """One sentence -> SYNTHETIC_*.wav + provenance .json under runs/. The consent record is re-read on every
-        call, so a record revoked while the engine is running takes effect immediately."""
+            use_watermark=True, n=0, stamp=None, who=None):
+        """Text -> SYNTHETIC_*.wav + provenance .json under runs/. A paragraph is split into pieces (split_text),
+        each made with its own takes, and joined with short pauses; one watermark covers the whole file. The
+        consent record is re-read on every call, so a record revoked while the engine is running takes effect
+        immediately. `who` names the file when one consent record covers several people."""
         import soundfile as sf
         consent, consent_sha = load_consent(consent_path)
         out = check_out_dir(out)
         stamp = stamp or datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        wav_path, meta_path = output_paths(out, consent["voice_owner"], n, stamp)
+        wav_path, meta_path = output_paths(out, who or consent["voice_owner"], n, stamp)
         v = self.voice(ref_dir, ref_text)
-        if steps < 32 and REACTION.search(text):
-            steps = 32          # at 16 steps a [laughter] came out as near-silence and was trimmed away
-        best, cands = self.takes(v, text, candidates, steps, speed)
-        y = best["y"] / max(1e-6, np.abs(best["y"]).max()) * 0.9
+        pieces, audio, chosen, all_cands = split_text(text), [], [], []
+        for k, piece in enumerate(pieces):
+            st = 32 if steps < 32 and REACTION.search(piece) else steps   # at 16 steps a [laughter] was trimmed away
+            best, cands = self.takes(v, piece, candidates, st, speed)
+            y = best["y"] / max(1e-6, np.abs(best["y"]).max()) * 0.9
+            if k:
+                pause = 0.45 if re.search(r"[.!?؟…]$", pieces[k - 1]) else 0.2
+                audio.append(np.zeros(int(pause * self.sr), np.float32))
+            audio.append(y)
+            chosen.append(best)
+            all_cands.append(dict(piece=piece, num_step=st, chosen_seed=best["seed"],
+                                  candidates=[{x: c[x] for x in ("seed", "heard", "cer", "sim", "mos")} for c in cands]))
+        y = np.concatenate(audio)
         wm = None
         if use_watermark:
             y, wm = watermark(y, self.sr)
         sf.write(wav_path, y, self.sr, subtype="PCM_16")
-        json.dump(dict(synthetic=True, text=text, voice_owner=consent["voice_owner"], consent_record=consent_path,
-                       consent_sha256=consent_sha, consent_scope=consent["scope"], reference=v["reference"],
-                       reference_choice=v.get("reference_choice"),
+        moss = [c["mos"] for c in chosen if c.get("mos") is not None]
+        summary = dict(seed=chosen[0]["seed"], heard=" ".join(c["heard"] for c in chosen),
+                       cer=round(float(np.mean([c["cer"] for c in chosen])), 3),
+                       mos=round(float(np.mean(moss)), 2) if moss else None)
+        json.dump(dict(synthetic=True, text=text, voice_owner=who or consent["voice_owner"],
+                       consent_record=consent_path, consent_sha256=consent_sha, consent_scope=consent["scope"],
+                       reference=v["reference"], reference_choice=v.get("reference_choice"),
                        reference_transcript=v["reference_transcript"],
                        model="oddadmix/lahgtna-omnivoice-v2 (no licence stated)", adapter=self.adapter,
-                       language=self.language, created_utc=stamp, watermark=wm, num_step=steps,
-                       chosen_seed=best["seed"], candidates=[{k: c[k] for k in ("seed", "heard", "cer", "sim", "mos")} for c in cands]),
+                       language=self.language, created_utc=stamp, watermark=wm, pieces=all_cands),
                   open(meta_path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
-        return wav_path, best, cands
+        return wav_path, summary, [c for p in all_cands for c in p["candidates"]]
 
 
 def main(argv=None):
@@ -426,6 +462,7 @@ def main(argv=None):
     ap.add_argument("--no-watermark", action="store_true", help="skip the inaudible Perth watermark")
     ap.add_argument("--adapter", help="learned version from voise_learn.py train (used only if the file exists)")
     ap.add_argument("--mos", help="UTMOS22-strong checkpoint, to record each take's predicted naturalness")
+    ap.add_argument("--person", help="name for the output files when one consent record covers several people")
     a = ap.parse_args(argv)
 
     load_consent(a.consent)
@@ -437,7 +474,7 @@ def main(argv=None):
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     for n, text in enumerate(texts):
         wav_path, best, cands = eng.say(a.consent, a.ref_dir, text, a.out, a.ref_text, a.candidates,
-                                        16 if a.fast else a.steps, a.speed, not a.no_watermark, n, stamp)
+                                        16 if a.fast else a.steps, a.speed, not a.no_watermark, n, stamp, a.person)
         print(wav_path, f"(take {best['seed'] + 1}, {len(cands)} made, heard: {best['heard']})", flush=True)
 
 

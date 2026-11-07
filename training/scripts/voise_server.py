@@ -142,8 +142,8 @@ def main(argv=None):
             try:
                 req = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
                 person, text = str(req.get("person", "")), str(req.get("text", "")).strip()
-                if not PERSON.match(person) or not text or len(text) > 600:
-                    return self.reply(400, {"error": "need person (a-z, 0-9, _) and text (1-600 characters)"})
+                if not PERSON.match(person) or not text or len(text) > 1500:
+                    return self.reply(400, {"error": "need person (a-z, 0-9, _) and text (1-1500 characters)"})
                 with lock:
                     refresh_adapter()
                     t = time.time()
@@ -151,7 +151,7 @@ def main(argv=None):
                                                os.path.join(V.RUNS, "voices", person), text,
                                                os.path.join(V.RUNS, "voices", person, "output"),
                                                candidates=int(req.get("candidates", 3)),
-                                               steps=16 if req.get("fast") else 32)
+                                               steps=16 if req.get("fast") else 32, who=person)
                 self.reply(200, {"wav": wav, "heard": best["heard"], "takes": len(cands), "seconds": round(time.time() - t),
                                  "naturalness": best.get("mos")})
             except SystemExit as e:                     # consent refused, missing recordings, ...
