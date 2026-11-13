@@ -23,3 +23,17 @@ speech should teach theirs.
 - Voice similarity is unchanged within noise.
 - UTMOS rates his real recordings (2.05) below the synthetic ones because it scores recording quality. It cannot
   measure "sounds like AI", so that verdict needs listeners (the listening test).
+
+## Re-run from the base model (2026-11-13)
+
+The container was rebuilt and generation 2 was lost, so this run starts from the base Lahgtna model (`none` as the
+third argument). Omar's same recording, re-split: 161 clips (137 trained, 24 held out). Everything else unchanged.
+The "before" row is the base model, not generation 2.
+
+| | held-out loss | letter error | similarity to Omar | naturalness (UTMOS) |
+|---|---|---|---|---|
+| base model | 5.967 | 0.025 (0.019 / 0.057 / 0.000) | 0.619 | 2.84 |
+| **personal** | **5.186** | **0.016** (0.019 / 0.029 / 0.000) | **0.718** | **2.97** |
+
+Starting from the base model, personal learning also raises voice similarity clearly (+0.10, every sentence
+higher), not only pronunciation. Held-out loss on his unseen clips falls 5.97 → 5.19.
