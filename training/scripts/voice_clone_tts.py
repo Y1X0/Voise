@@ -236,10 +236,12 @@ def cer(ref, hyp):
 
 
 def choose_best(cands):
-    """cands: [{"cer", "sim" (or None), ...}]. Fewest wrong letters wins; within 2 points of CER, the candidate
-    closest to the reference voice wins (when speaker similarity was measured)."""
-    best_cer = min(c["cer"] for c in cands)
-    near = [c for c in cands if c["cer"] <= best_cer + 0.02]
+    """cands: [{"cer", "sim" (or None), "vowels_wrong" (optional), ...}]. Fewest mistakes wins (a word with a
+    wrong vowel counts like three wrong letters out of a hundred); within 2 points, the candidate closest to the
+    reference voice wins (when speaker similarity was measured)."""
+    score = lambda c: c["cer"] + 0.03 * len(c.get("vowels_wrong") or [])
+    best_cer = min(score(c) for c in cands)
+    near = [c for c in cands if score(c) <= best_cer + 0.02]
     return max(near, key=lambda c: (c["sim"] if c["sim"] is not None else 0.0, -c["cer"]))
 
 
@@ -373,6 +375,11 @@ class Engine:
         # (experiments/naturalness_2026-11-07)
         self.temperature = temperature
         self.voices = {}
+        # vowel check: Whisper cannot hear a wrong vowel (bikra for bukra); a phoneme recogniser can, against the
+        # pronunciations learned from real speech (pronlex.py). Off when either is missing.
+        import pronlex
+        self.pronlex_mod = pronlex
+        self.check_vowels = os.path.isdir(pronlex.PHONE_DIR)
 
     def voice(self, ref_dir, ref_text=None):
         import soundfile as sf
@@ -434,9 +441,12 @@ class Engine:
             heard = transcribe(y16, self.asr_dir)
             sim = float(speaker_embedding(self.enc, y16) @ v["emb"]) if self.enc else None
             nat = naturalness(self.mos, y16)
+            lex = self.pronlex_mod.load() if getattr(self, "check_vowels", False) else {}
+            wrong = self.pronlex_mod.check(y16, spoken or text, lex, self.asr_dir) if lex else []
             cands.append(dict(seed=seed, y=y, heard=heard, cer=round(cer(spoken or text, heard), 3),
-                              sim=None if sim is None else round(sim, 3), mos=None if nat is None else round(nat, 2)))
-            if cands[-1]["cer"] <= good_enough:
+                              sim=None if sim is None else round(sim, 3), mos=None if nat is None else round(nat, 2),
+                              vowels_wrong=wrong))
+            if cands[-1]["cer"] <= good_enough and not wrong:
                 break
         return choose_best(cands), cands
 
@@ -465,7 +475,8 @@ class Engine:
             audio.append(y)
             chosen.append(best)
             all_cands.append(dict(piece=piece, spoken=spoken, num_step=st, chosen_seed=best["seed"],
-                                  candidates=[{x: c[x] for x in ("seed", "heard", "cer", "sim", "mos")} for c in cands]))
+                                  candidates=[{x: c.get(x) for x in ("seed", "heard", "cer", "sim", "mos", "vowels_wrong")}
+                                              for c in cands]))
         y = np.concatenate(audio)
         wm = None
         if use_watermark:

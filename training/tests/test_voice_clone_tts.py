@@ -90,7 +90,7 @@ class TestLexicon(unittest.TestCase):
         self.assertIsInstance(V.load_lexicon(), dict)
 
 
-class TestTakes(unittest.TestCase):
+class TestTakeSelection(unittest.TestCase):
     """Engine.takes with a stand-in model and Whisper: what is heard is scripted per take."""
 
     def run_takes(self, heard, text="طب اسمع، بكرا بنطلع ومنحكي."):
@@ -137,6 +137,29 @@ class TestTakes(unittest.TestCase):
             V.transcribe = old
         self.assertEqual(calls, ["وبنحكي"])
         self.assertEqual(best["cer"], 0.0)
+
+    def test_wrong_vowel_gets_another_take(self):
+        import numpy as np
+        import types
+
+        class Model:
+            def generate(self, **kw):
+                return np.zeros(2400, np.float32)
+
+        e = V.Engine.__new__(V.Engine)
+        e.model, e.language, e.temperature, e.sr, e.asr_dir, e.enc, e.mos = Model(), "apc", 0.5, 24000, None, None, None
+        verdicts = iter([[("بكره", "u-a", "i")], []])          # first take says bikra, second bukra
+        e.check_vowels = True
+        e.pronlex_mod = types.SimpleNamespace(load=lambda: {"بكره": {"vowels": "u-a"}},
+                                              check=lambda y, t, lex, d: next(verdicts))
+        old = V.transcribe
+        V.transcribe = lambda y, d: "بكرا منحكي"
+        try:
+            best, cands = e.takes({"prompt": None}, "بكرا منحكي", candidates=3)
+        finally:
+            V.transcribe = old
+        self.assertEqual(len(cands), 2)                    # Whisper heard every word both times
+        self.assertEqual(best["seed"], 1)
 
     def test_timing_from_model_and_last_take_slower(self):
         _, cands, calls = self.run_takes(["خطأ"] * 3)

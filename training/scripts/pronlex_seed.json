@@ -1,0 +1,6 @@
+{
+ "_note": "Vowel patterns confirmed by a listener, for words missing or rare in the recordings. Keys are normalize_ar forms (word-final ا/ة/ى become ه).",
+ "words": {
+  "بكره": {"vowels": "u-a", "by": "Yazan, by ear (2026-11-13): بُكرة, not بِكرة"}
+ }
+}
