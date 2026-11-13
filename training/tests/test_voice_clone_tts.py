@@ -74,6 +74,41 @@ class TestTiming(unittest.TestCase):
         self.assertIsNone(V.target_duration("جملة قصيرة", speed=0.9))
 
 
+class TestTakes(unittest.TestCase):
+    """Engine.takes with a stand-in model and Whisper: what is heard is scripted per take."""
+
+    def run_takes(self, heard, text="طب اسمع، بكرا بنطلع ومنحكي."):
+        import numpy as np
+        calls = []
+
+        class Model:
+            def generate(self, **kw):
+                calls.append(kw)
+                return np.zeros(2400, np.float32)
+
+        e = V.Engine.__new__(V.Engine)
+        e.model, e.language, e.temperature, e.sr, e.asr_dir, e.enc, e.mos = Model(), "apc", 0.5, 24000, None, None, None
+        said = iter(heard)
+        old = V.transcribe
+        V.transcribe = lambda y, d: next(said)
+        try:
+            best, cands = e.takes({"prompt": None}, text, candidates=3)
+        finally:
+            V.transcribe = old
+        return best, cands, calls
+
+    def test_one_wrong_word_gets_another_take(self):
+        best, cands, calls = self.run_takes(["طب اسمع، بكرا بنطلع وما نحكي.", "طب اسمع، بكرة بنطلع ومنحكي."])
+        self.assertEqual(len(cands), 2)                 # «وما نحكي» was 3% of the letters but still rejected
+        self.assertEqual(best["seed"], 1)
+
+    def test_timing_from_model_and_last_take_slower(self):
+        _, cands, calls = self.run_takes(["خطأ"] * 3)
+        self.assertEqual(len(cands), 3)
+        self.assertTrue(all("duration" not in c or c["duration"] is None for c in calls))
+        self.assertEqual([c["speed"] for c in calls], [None, None, 0.85])
+
+
 class TestSplitText(unittest.TestCase):
     def test_short_text_is_one_piece(self):
         self.assertEqual(V.split_text("شو أخبارك؟ إن شاء الله منيح."), ["شو أخبارك؟ إن شاء الله منيح."])

@@ -57,6 +57,7 @@ Each result has a README under `experiments/`.
 | Continued training on 30 h of Syrian speech (Kaggle) | Held-out loss fell, but the accent drifted to Syrian. Not used. See `lahgtna_levant_ft` |
 | int8 quantisation | 3.6× faster, but speech broke down (letter error above 1). Not used. See `int8_2026-11-02` |
 | Speed | The local engine loads once (27 s instead of about 5 min per run). Prepared voices are cached, and takes stop early |
+| Sounding machine-made (Omar) | Forcing 0.6 s/word made speech ~50% slower than he talks. The one clip a listener found real used the model's own timing and spoken-style text. Timing is now left to the model, and a take is accepted early only if Whisper hears every word. See `natural_2026-11-13` |
 
 **Listening test.** `listening_test.py` builds a blind test in which listeners rate each clip 1–5 for "sounds like the
 person" and "sounds natural". `score` reports the mean, a 95% confidence interval and head-to-head wins.

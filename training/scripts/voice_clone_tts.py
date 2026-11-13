@@ -310,7 +310,9 @@ def split_text(text, max_words=18):
 
 
 def target_duration(text, speed=None):
-    """Seconds to force for a short sentence, else None (model's own estimate).
+    """Seconds to force for a short sentence, else None (model's own estimate). No longer used when speaking
+    (Engine.takes leaves timing to the model, which is closer to how the person talks); the learning loop's
+    acceptance test still uses it so its numbers stay comparable across generations.
 
     The model's estimate rushes short sentences (7 words came out in 2.9 s with words swallowed); about
     0.6 s/word + 1 s keeps every word. An explicit --speed leaves timing to the model."""
@@ -380,18 +382,26 @@ class Engine:
         self.voices[key] = v
         return v
 
-    def takes(self, v, text, candidates=3, steps=32, speed=None, good_enough=0.05):
-        """Up to `candidates` takes; stops early once Whisper hears a take with at most `good_enough` letter
-        errors (about one letter in twenty, which Whisper's own slips already reach on a correct take), so a clean
-        first take costs one generation instead of three."""
+    def takes(self, v, text, candidates=3, steps=32, speed=None, good_enough=0.0):
+        """Up to `candidates` takes; stops early once Whisper hears a take with no wrong letter (normalize_ar
+        already folds the spellings Whisper writes either way, such as بكرا/بكرة). A looser bar let one wrong word
+        through: «ومنحكي» spoken as «وما نحكي» is only 3% of a sentence's letters but flips its meaning.
+
+        Timing comes from the model, which estimates it from the person's own reference clip: forcing 0.6 s/word
+        (target_duration) made speech about 50% slower than the person talks and was the clearest machine-made
+        tell (experiments/natural_2026-11-13). If short text still has mistakes after the earlier takes, the last
+        take speaks 15% slower so no word is swallowed."""
         import librosa
         import torch
         from omnivoice.models.omnivoice import OmniVoiceGenerationConfig
         cands = []
-        for seed in range(max(1, candidates)):
+        n = max(1, candidates)
+        for seed in range(n):
             torch.manual_seed(seed)
-            y = self.model.generate(text=text, language=self.language, voice_clone_prompt=v["prompt"],
-                                    duration=target_duration(text, speed), speed=speed,
+            sp = speed
+            if sp is None and n > 1 and seed == n - 1 and len(text.split()) <= 10:
+                sp = 0.85
+            y = self.model.generate(text=text, language=self.language, voice_clone_prompt=v["prompt"], speed=sp,
                                     generation_config=OmniVoiceGenerationConfig(num_step=steps,
                                                                                 class_temperature=self.temperature))
             y = np.asarray(y[0] if isinstance(y, list) else y, dtype=np.float32).squeeze()
