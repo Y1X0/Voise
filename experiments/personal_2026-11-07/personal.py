@@ -8,7 +8,7 @@ held-out masked-token loss; three sentences (same reference, seed 0, temperature
 dialect-Whisper letter error, ECAPA similarity to the person's clips; plus UTMOS of the person's REAL held-out clips
 as the ceiling.
 
-Usage: python personal.py PERSON POOL_DIR GEN2_ADAPTER OUT_DIR [steps] [lr]
+Usage: python personal.py PERSON POOL_DIR GEN2_ADAPTER|none OUT_DIR [steps] [lr]
 """
 import glob, json, os, random, sys, time
 import librosa, numpy as np, soundfile as sf, torch
@@ -53,7 +53,8 @@ def main(person, pool, gen2, out, steps=800, lr=1e-5):
     del codec
 
     m = OmniVoice.from_pretrained(MODEL, device_map="cpu")
-    m.load_state_dict(torch.load(gen2, map_location="cpu", weights_only=True)["weights"], strict=False)
+    if gen2 != "none":                        # "none": start from the base model (no learned version available)
+        m.load_state_dict(torch.load(gen2, map_location="cpu", weights_only=True)["weights"], strict=False)
     proc = OmniVoiceSampleProcessor(text_tokenizer=m.text_tokenizer, num_channels=m.config.num_audio_codebook,
                                     audio_mask_id=m.config.audio_mask_id, prompt_ratio_range=(0.0, 0.3),
                                     mask_ratio_range=(0.0, 1.0), drop_cond_ratio=0.1, language_ratio=0.8,
