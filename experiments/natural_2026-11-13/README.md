@@ -27,3 +27,15 @@ round-1 personal version (`../personal_2026-11-07`).
   letter error is one word: «بصدق» heard as «بصدقك».
 - Guidance 1.5 is worse than 2.0 on every measure.
 - No metric measures "sounds like AI"; the samples were sent to Yazan for listening.
+
+## Listener verdict and follow-up
+
+Of the 12 clips, Yazan found only one real-sounding: `A`, sentence 3 («يعني والله ما كنت ناوي أحكيلك، بس هيك صار، شو
+بدي أعمل»). It is 12 words, so the tool did not force its timing: the model estimated it from Omar's reference
+clip. It is also the only sentence written the way people talk, with «يعني» and «هيك».
+
+The model's own estimate is close to his pace (sentence 1: 3.9 s estimated, 3.6 s at his pace, 7.0 s forced).
+
+`spoken.py` tests both together: five sentences written as speech, model timing, otherwise setting A. Letter error
+is 0 on three sentences and 0.023/0.028 on the other two («ما نمت منيح» → «ما نمتمني», «ومنحكي» → «وما نحكي»).
+The clips were sent for listening.
