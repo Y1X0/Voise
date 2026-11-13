@@ -118,7 +118,7 @@ class TestTakes(unittest.TestCase):
         self.assertEqual(len(cands), 2)                 # «وما نحكي» was 3% of the letters but still rejected
         self.assertEqual(best["seed"], 1)
 
-    def test_model_reads_dictionary_spelling_but_whisper_checks_written_words(self):
+    def test_model_reads_dictionary_spelling_and_whisper_checks_it(self):
         import numpy as np
         calls = []
 
@@ -130,12 +130,12 @@ class TestTakes(unittest.TestCase):
         e = V.Engine.__new__(V.Engine)
         e.model, e.language, e.temperature, e.sr, e.asr_dir, e.enc, e.mos = Model(), "apc", 0.5, 24000, None, None, None
         old = V.transcribe
-        V.transcribe = lambda y, d: "ومنحكي"
+        V.transcribe = lambda y, d: "وبنحكي"
         try:
-            best, cands = e.takes({"prompt": None}, "ومنحكي", candidates=3, spoken="ومِنْحكي")
+            best, cands = e.takes({"prompt": None}, "ومنحكي", candidates=3, spoken="وبنحكي")
         finally:
             V.transcribe = old
-        self.assertEqual(calls, ["ومِنْحكي"])
+        self.assertEqual(calls, ["وبنحكي"])
         self.assertEqual(best["cer"], 0.0)
 
     def test_timing_from_model_and_last_take_slower(self):

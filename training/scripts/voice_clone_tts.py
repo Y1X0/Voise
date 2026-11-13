@@ -413,8 +413,9 @@ class Engine:
         tell (experiments/natural_2026-11-13). If short text still has mistakes after the earlier takes, the last
         take speaks 15% slower so no word is swallowed.
 
-        `spoken` is the text as the model reads it (after the pronunciation dictionary); Whisper's transcript is
-        still checked against `text`, the words the user wrote."""
+        `spoken` is the text as the model reads it (after the pronunciation dictionary), and Whisper's transcript is
+        checked against it: a dictionary entry may swap a word for an equivalent one (ومنحكي -> وبنحكي, same
+        meaning in Jordanian), and diacritics are ignored by the comparison anyway."""
         import librosa
         import torch
         from omnivoice.models.omnivoice import OmniVoiceGenerationConfig
@@ -433,7 +434,7 @@ class Engine:
             heard = transcribe(y16, self.asr_dir)
             sim = float(speaker_embedding(self.enc, y16) @ v["emb"]) if self.enc else None
             nat = naturalness(self.mos, y16)
-            cands.append(dict(seed=seed, y=y, heard=heard, cer=round(cer(text, heard), 3),
+            cands.append(dict(seed=seed, y=y, heard=heard, cer=round(cer(spoken or text, heard), 3),
                               sim=None if sim is None else round(sim, 3), mos=None if nat is None else round(nat, 2)))
             if cands[-1]["cer"] <= good_enough:
                 break
