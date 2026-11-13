@@ -28,7 +28,8 @@ SR = 16000
 # (ليه، برضه، عارف) are not on the list
 FOREIGN = (r"(^|\s)(شنو|علاش|باهي|ماكو|بركي|هيدي|وش|كليش|مكشفت|ڨ\w*|سامسوش|نقول|كده|إزاي|بتاع)"
            r"($|[\s،,.؟?!])")
-CLUSTER_DIST, FOREIGN_SHARE, MIN_VOICE_S, MATCH, PURITY = 0.6, 0.06, 45, 0.6, 0.55
+CLUSTER_DIST, FOREIGN_SHARE, MIN_VOICE_S, MATCH, PURITY = 0.6, 0.06, 45, 0.8, 0.55
+# MATCH: on the pool, the same person half-vs-half scored 0.867-0.97 and two different people at most 0.743
 
 
 def pool_centres(pool, enc, cache):
