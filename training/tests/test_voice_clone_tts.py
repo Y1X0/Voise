@@ -74,6 +74,22 @@ class TestTiming(unittest.TestCase):
         self.assertIsNone(V.target_duration("جملة قصيرة", speed=0.9))
 
 
+class TestLexicon(unittest.TestCase):
+    def test_whole_words_only(self):
+        lex = {"منحكي": "مِنْحكي"}
+        self.assertEqual(V.apply_lexicon("بكرا منحكي، ومنحكي", lex), "بكرا مِنْحكي، ومنحكي")
+
+    def test_notes_ignored_and_missing_file(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "lex.json")
+            json.dump({"_note": "x", "ومنحكي": "ومِنْحكي"}, open(p, "w", encoding="utf-8"))
+            self.assertEqual(V.load_lexicon(p), {"ومنحكي": "ومِنْحكي"})
+            self.assertEqual(V.load_lexicon(os.path.join(d, "none.json")), {})
+
+    def test_shipped_dictionary_loads(self):
+        self.assertIsInstance(V.load_lexicon(), dict)
+
+
 class TestTakes(unittest.TestCase):
     """Engine.takes with a stand-in model and Whisper: what is heard is scripted per take."""
 
@@ -101,6 +117,26 @@ class TestTakes(unittest.TestCase):
         best, cands, calls = self.run_takes(["طب اسمع، بكرا بنطلع وما نحكي.", "طب اسمع، بكرة بنطلع ومنحكي."])
         self.assertEqual(len(cands), 2)                 # «وما نحكي» was 3% of the letters but still rejected
         self.assertEqual(best["seed"], 1)
+
+    def test_model_reads_dictionary_spelling_but_whisper_checks_written_words(self):
+        import numpy as np
+        calls = []
+
+        class Model:
+            def generate(self, **kw):
+                calls.append(kw["text"])
+                return np.zeros(2400, np.float32)
+
+        e = V.Engine.__new__(V.Engine)
+        e.model, e.language, e.temperature, e.sr, e.asr_dir, e.enc, e.mos = Model(), "apc", 0.5, 24000, None, None, None
+        old = V.transcribe
+        V.transcribe = lambda y, d: "ومنحكي"
+        try:
+            best, cands = e.takes({"prompt": None}, "ومنحكي", candidates=3, spoken="ومِنْحكي")
+        finally:
+            V.transcribe = old
+        self.assertEqual(calls, ["ومِنْحكي"])
+        self.assertEqual(best["cer"], 0.0)
 
     def test_timing_from_model_and_last_take_slower(self):
         _, cands, calls = self.run_takes(["خطأ"] * 3)

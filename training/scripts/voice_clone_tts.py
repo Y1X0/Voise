@@ -287,6 +287,27 @@ def watermark(y, sr):
     return np.asarray(perth.PerthImplicitWatermarker().apply_watermark(y, sample_rate=sr), np.float32), "perth"
 
 
+LEXICON = os.path.join(HERE, "pronunciation.json")
+_AR = "\u0621-\u064A\u064B-\u0652"
+
+
+def load_lexicon(path=LEXICON):
+    """{word as written: spelling the model says right}. Keys starting with "_" are notes. Read on every call, so a
+    word added while the engine is running is used from the next sentence on."""
+    try:
+        d = json.load(open(path, encoding="utf-8"))
+    except FileNotFoundError:
+        return {}
+    return {k: v for k, v in d.items() if not k.startswith("_")}
+
+
+def apply_lexicon(text, lex):
+    """Replace whole words only (a word inside a longer word is left alone); [tags] are untouched."""
+    for word, spoken in sorted(lex.items(), key=lambda x: -len(x[0])):
+        text = re.sub(f"(?<![{_AR}]){re.escape(word)}(?![{_AR}])", lambda m, s=spoken: s, text)
+    return text
+
+
 def split_text(text, max_words=18):
     """Split a paragraph into pieces the model speaks well: at sentence ends (. ! ? ؟ …), then, for a sentence
     longer than max_words, at Arabic/Latin commas, then by word count. Short neighbours are joined back up to
@@ -382,7 +403,7 @@ class Engine:
         self.voices[key] = v
         return v
 
-    def takes(self, v, text, candidates=3, steps=32, speed=None, good_enough=0.0):
+    def takes(self, v, text, candidates=3, steps=32, speed=None, good_enough=0.0, spoken=None):
         """Up to `candidates` takes; stops early once Whisper hears a take with no wrong letter (normalize_ar
         already folds the spellings Whisper writes either way, such as بكرا/بكرة). A looser bar let one wrong word
         through: «ومنحكي» spoken as «وما نحكي» is only 3% of a sentence's letters but flips its meaning.
@@ -390,7 +411,10 @@ class Engine:
         Timing comes from the model, which estimates it from the person's own reference clip: forcing 0.6 s/word
         (target_duration) made speech about 50% slower than the person talks and was the clearest machine-made
         tell (experiments/natural_2026-11-13). If short text still has mistakes after the earlier takes, the last
-        take speaks 15% slower so no word is swallowed."""
+        take speaks 15% slower so no word is swallowed.
+
+        `spoken` is the text as the model reads it (after the pronunciation dictionary); Whisper's transcript is
+        still checked against `text`, the words the user wrote."""
         import librosa
         import torch
         from omnivoice.models.omnivoice import OmniVoiceGenerationConfig
@@ -401,7 +425,7 @@ class Engine:
             sp = speed
             if sp is None and n > 1 and seed == n - 1 and len(text.split()) <= 10:
                 sp = 0.85
-            y = self.model.generate(text=text, language=self.language, voice_clone_prompt=v["prompt"], speed=sp,
+            y = self.model.generate(text=spoken or text, language=self.language, voice_clone_prompt=v["prompt"], speed=sp,
                                     generation_config=OmniVoiceGenerationConfig(num_step=steps,
                                                                                 class_temperature=self.temperature))
             y = np.asarray(y[0] if isinstance(y, list) else y, dtype=np.float32).squeeze()
@@ -428,16 +452,18 @@ class Engine:
         wav_path, meta_path = output_paths(out, who or consent["voice_owner"], n, stamp)
         v = self.voice(ref_dir, ref_text)
         pieces, audio, chosen, all_cands = split_text(text), [], [], []
+        lex = load_lexicon()
         for k, piece in enumerate(pieces):
             st = 32 if steps < 32 and REACTION.search(piece) else steps   # at 16 steps a [laughter] was trimmed away
-            best, cands = self.takes(v, piece, candidates, st, speed)
+            spoken = apply_lexicon(piece, lex)
+            best, cands = self.takes(v, piece, candidates, st, speed, spoken=spoken)
             y = best["y"] / max(1e-6, np.abs(best["y"]).max()) * 0.9
             if k:
                 pause = 0.45 if re.search(r"[.!?؟…]$", pieces[k - 1]) else 0.2
                 audio.append(np.zeros(int(pause * self.sr), np.float32))
             audio.append(y)
             chosen.append(best)
-            all_cands.append(dict(piece=piece, num_step=st, chosen_seed=best["seed"],
+            all_cands.append(dict(piece=piece, spoken=spoken, num_step=st, chosen_seed=best["seed"],
                                   candidates=[{x: c[x] for x in ("seed", "heard", "cer", "sim", "mos")} for c in cands]))
         y = np.concatenate(audio)
         wm = None

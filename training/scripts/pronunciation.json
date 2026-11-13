@@ -1,0 +1,3 @@
+{
+ "_note": "Words the model says wrong -> the spelling it says right. The tool swaps them before speaking; Whisper still checks the words as written. Add a line per word."
+}
