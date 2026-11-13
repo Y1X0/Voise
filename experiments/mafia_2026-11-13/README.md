@@ -18,3 +18,18 @@ consent record is `runs/consent/mafia1.json`. No audio is in the repository.
      so a person who withdraws can be found and removed.
 5. Clips shorter than 2 s or far from their voice's centre (cosine < 0.55, likely overlapping speech) are dropped.
    This leaves 10 voices, 302 clips and 23.8 min.
+
+## Result: generation 1 of the rebuilt pool (accepted)
+
+Pool: the 10 Mafia voices (291 clips after the quality filter) plus Omar (161 clips). Training: 600 steps from
+the base model (generation 2 was lost with the container). Same acceptance test as `voise_learn.py`.
+
+| | before (base model) | after |
+|---|---|---|
+| held-out loss | 6.058 | **5.476** |
+| unseen person's loss | 6.046 | **5.281** |
+| letter error (6 sentences, 2 voices) | 3.4% | **1.3%** |
+| UTMOS | 2.74 | **2.92** |
+
+The unseen person's loss falls by 0.77, much more than generation 2's 0.14 (5.22 → 5.08), and letter error falls
+by more than half.
