@@ -56,5 +56,54 @@ class TestLearn(unittest.TestCase):
         self.assertFalse(os.path.exists(ad))
 
 
+
+
+class TestHistory(unittest.TestCase):
+    def test_previous_versions_kept_and_revoke_cleans_them(self):
+        import argparse
+        import torch
+        with tempfile.TemporaryDirectory() as d:
+            ad = os.path.join(d, "adapter.pt")
+            for g in range(1, 6):                    # five accepted generations in a row
+                if os.path.exists(ad):
+                    L.archive_previous(ad, keep=3)
+                torch.save({"generation": g, "people": ["omar", "abood"] if g >= 4 else ["omar"], "weights": {}}, ad)
+            hist = sorted(os.listdir(os.path.join(d, "history")))
+            self.assertEqual(hist, ["adapter_gen2.pt", "adapter_gen3.pt", "adapter_gen4.pt"])
+            L.cmd_revoke(argparse.Namespace(person="abood", pool=os.path.join(d, "pool"), adapter=ad))
+            self.assertFalse(os.path.exists(ad))     # generation 5 had abood's voice
+            self.assertEqual(sorted(os.listdir(os.path.join(d, "history"))), ["adapter_gen2.pt", "adapter_gen3.pt"])
+
+
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestPronlexCumulative(unittest.TestCase):
+    def test_only_new_clips_listened_to_and_revoked_person_drops_out(self):
+        import argparse
+        import pronlex as P
+        heard = []
+        old_wv = P.word_vowels
+        P.word_vowels = lambda y, d: heard.append(1) or [("بكره", "u-a")]
+        try:
+            with tempfile.TemporaryDirectory() as d:
+                import numpy as np
+                import soundfile as sf
+                pool = os.path.join(d, "pool")
+                for person in ("omar", "abood"):
+                    os.makedirs(os.path.join(pool, person))
+                    for k in range(2):
+                        sf.write(os.path.join(pool, person, f"{k}.wav"), np.zeros(1600, np.float32), 16000)
+                a = argparse.Namespace(pool=pool, out=os.path.join(d, "pronlex.json"), asr_dir=None, min_count=2)
+                P.build(a)
+                self.assertEqual(len(heard), 4)
+                P.build(a)                                    # nothing new: nothing re-listened to
+                self.assertEqual(len(heard), 4)
+                self.assertEqual(P.load(a.out, seed="")["بكره"]["heard"], 4)
+                import shutil
+                shutil.rmtree(os.path.join(pool, "abood"))     # revoked
+                P.build(a)
+                self.assertEqual(P.load(a.out, seed="")["بكره"]["heard"], 2)
+        finally:
+            P.word_vowels = old_wv

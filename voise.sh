@@ -15,7 +15,9 @@
 # Learning: if a person's folder also holds a file named train_ok (any extension, e.g. a screenshot of them
 # agreeing to their voice being used to TRAIN the model), prepare adds their clean clips to the learning pool and,
 # once 3 or more minutes of new voice have arrived, the model learns from everything in the pool. Each learned
-# version builds on the last one and replaces it only if it tests better. speak always uses the latest version.
+# version builds on the last one and replaces it only if it tests better (the last three are kept in
+# runs/learn/history/). The pronunciation dictionary (how each word is said) grows from the same recordings.
+# speak always uses the latest version.
 #
 # A folder without a consent.* file (screenshot or text) is skipped; the tool itself refuses to run without
 # a complete, unrevoked consent record. Every output is named SYNTHETIC_*.
@@ -62,6 +64,9 @@ setup)
     cp models/whisper-large-v3-turbo/preprocessor_config.json models/whisper-turbo-dialectal-v2/
     ct2-transformers-converter --model models/whisper-turbo-dialectal-v2 --output_dir models/whisper-turbo-dialectal-v2-ct2 \
       --quantization int8 --copy_files tokenizer.json preprocessor_config.json; }
+  # phoneme recogniser (Apache-2.0): hears vowels Whisper cannot (bukra vs bikra), for the pronunciation check
+  until fetch facebook/wav2vec2-xlsr-53-espeak-cv-ft 2c733782da56 models/w2v2-phoneme '*.json' '*.txt' '*.bin'
+  do echo "download interrupted, retrying in 15 s..."; sleep 15; done
   echo "setup done"
   ;;
 prepare)
@@ -111,10 +116,13 @@ PY
   if [ -n "$learn_people" ]; then
     echo "learning from the pool if 3+ minutes of new voice arrived (this can take a while on a laptop)..."
     python3 training/scripts/voise_learn.py train --min-new-minutes 3 --asr-dir "$ASR"
+    [ -d models/w2v2-phoneme ] && python3 training/scripts/pronlex.py build --asr-dir "$ASR"
   fi
   ;;
 learn)
   python3 training/scripts/voise_learn.py train --asr-dir "$ASR"
+  # how each word is said, learned from the same recordings; only new clips are listened to
+  [ -d models/w2v2-phoneme ] && python3 training/scripts/pronlex.py build --asr-dir "$ASR"
   ;;
 speak|fast)
   mode=$1; person=$2; shift 2

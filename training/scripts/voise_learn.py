@@ -28,6 +28,7 @@ import hashlib
 import json
 import os
 import random
+import re
 import shutil
 import sys
 import time
@@ -324,6 +325,7 @@ def cmd_train(a):
     report["accepted"] = ok
     os.makedirs(os.path.dirname(os.path.abspath(a.adapter)), exist_ok=True)
     if ok:
+        archive_previous(a.adapter)
         tmp = a.adapter + ".tmp"
         torch.save({"base": os.path.abspath(a.model_dir), "people": sorted(set(people) | set(prev_people)),
                     "generation": generation + 1, "clips": sorted(rel(i["wav"]) for i in items), "weights": {n: params[n].detach().clone() for n in names}}, tmp)
@@ -336,6 +338,24 @@ def cmd_train(a):
         os.remove(ckpt_path)
 
 
+def archive_previous(adapter, keep=3):
+    """Before a better version replaces the current one, keep the current one under history/ (the last `keep`), so
+    a version can be compared with or rolled back to; nothing learned is thrown away when a new one wins."""
+    if not os.path.exists(adapter):
+        return None
+    import torch
+    gen = int(torch.load(adapter, map_location="cpu", weights_only=True).get("generation", 0))
+    hist = os.path.join(os.path.dirname(os.path.abspath(adapter)), "history")
+    os.makedirs(hist, exist_ok=True)
+    dst = os.path.join(hist, f"adapter_gen{gen}.pt")
+    shutil.copy2(adapter, dst)
+    old = sorted(glob.glob(os.path.join(hist, "adapter_gen*.pt")),
+                 key=lambda f: int(re.search(r"gen(\d+)", f).group(1)))
+    for f in old[:-keep]:
+        os.remove(f)
+    return dst
+
+
 def cmd_revoke(a):
     person = V.safe_slug(a.person)
     d = os.path.join(a.pool, person)
@@ -346,6 +366,10 @@ def cmd_revoke(a):
         if person in people:
             os.remove(a.adapter)
             print("the learned version contained this voice and was deleted; run train again to rebuild it without them")
+    for f in glob.glob(os.path.join(os.path.dirname(os.path.abspath(a.adapter)), "history", "adapter_gen*.pt")):
+        if person in __import__("torch").load(f, map_location="cpu", weights_only=True).get("people", []):
+            os.remove(f)
+            print(f"deleted the earlier version {os.path.basename(f)}: it contained this voice")
     print(f"removed {person} from the learning pool")
 
 

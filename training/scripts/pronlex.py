@@ -4,8 +4,10 @@ Whisper writes words, not vowels: «بُكرة» and «بِكرة» come out the
 letter check. A phoneme recogniser (facebook/wav2vec2-xlsr-53-espeak-cv-ft, Apache-2.0) does hear the vowel: on
 Omar's take it gave "b i k r", on the takes a listener judged right "b u k r a".
 
-  build   for every clip in the learning pool (real, consented speech): Whisper word timings + phonemes, so each
-          word gets the vowels the people actually say; the most common pattern per word is kept.
+  build   for every NEW clip in the learning pool (real, consented speech): Whisper word timings + phonemes, so
+          each word gets the vowels the people actually say; the most common pattern per word is kept. Earlier
+          clips are not re-listened to and their counts are kept, so the dictionary only grows; a revoked
+          person's counts drop out.
   check   for a synthetic take: the vowels of each known word, compared with the learned ones.
 
 The lexicon is learned from the pool, so it grows with every recording added; words never heard in real speech
@@ -85,23 +87,49 @@ def word_vowels(y16, asr_dir, words=None):
 
 
 def build(a):
-    lex = collections.defaultdict(collections.Counter)
+    """Cumulative: clips already learned from are skipped, their counts kept; only new clips are listened to.
+    Counts are kept per person, so a person removed from the pool (revoked) drops out of the dictionary."""
+    import soundfile as sf
+    try:
+        old = json.load(open(a.out, encoding="utf-8"))
+    except FileNotFoundError:
+        old = {}
+    done = set(old.get("clips_done", []))
+    counts = old.get("counts", {})                          # word -> person -> pattern -> n
     wavs = sorted(glob.glob(os.path.join(a.pool, "*", "*.wav")))
-    for k, w in enumerate(wavs):
-        import soundfile as sf
-        y = sf.read(w, dtype="float32")[0]
-        for key, pat in word_vowels(y, a.asr_dir):
-            lex[key][pat] += 1
-        if k % 50 == 0:
-            print(f"{k}/{len(wavs)} clips, {len(lex)} words", flush=True)
-    keep = {}
-    for key, c in lex.items():
-        pat, n = c.most_common(1)[0]
-        if n >= a.min_count and n / sum(c.values()) >= 0.5:
-            keep[key] = dict(vowels=pat, heard=n, of=sum(c.values()))
-    json.dump(dict(source=a.pool, clips=len(wavs), words=keep), open(a.out, "w", encoding="utf-8"),
-              ensure_ascii=False, indent=0)
-    print(f"{len(keep)} words with a stable pronunciation (of {len(lex)} heard) -> {a.out}")
+    rel = lambda w: os.path.relpath(w, a.pool)
+    new = [w for w in wavs if rel(w) not in done]
+    print(f"{len(wavs)} clips in the pool, {len(new)} new", flush=True)
+    for k, w in enumerate(new):
+        person = os.path.basename(os.path.dirname(w))
+        for key, pat in word_vowels(sf.read(w, dtype="float32")[0], a.asr_dir):
+            c = counts.setdefault(key, {}).setdefault(person, {})
+            c[pat] = c.get(pat, 0) + 1
+        done.add(rel(w))
+        if k % 50 == 0 or k == len(new) - 1:
+            print(f"{k + 1}/{len(new)} new clips, {len(counts)} words", flush=True)
+            save(a, counts, done, wavs)
+    save(a, counts, done, wavs)
+
+
+def save(a, counts, done, wavs):
+    people = {os.path.basename(os.path.dirname(w)) for w in wavs}
+    words = {}
+    for key, per in counts.items():
+        tot = collections.Counter()
+        for person, pats in per.items():
+            if person in people:
+                tot.update(pats)
+        if not tot:
+            continue
+        pat, n = tot.most_common(1)[0]
+        if n >= a.min_count and n / sum(tot.values()) >= 0.5:
+            words[key] = dict(vowels=pat, heard=n, of=sum(tot.values()), people=sum(1 for p in per if p in people))
+    tmp = a.out + ".tmp"
+    json.dump(dict(source=a.pool, clips_done=sorted(done & {os.path.relpath(w, a.pool) for w in wavs}),
+                   counts=counts, words=words), open(tmp, "w", encoding="utf-8"), ensure_ascii=False)
+    os.replace(tmp, a.out)
+    print(f"{len(words)} words with a stable pronunciation (of {len(counts)} heard) -> {a.out}", flush=True)
 
 
 SEED = os.path.join(HERE, "pronlex_seed.json")
