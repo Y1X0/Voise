@@ -37,3 +37,17 @@ The "before" row is the base model, not generation 2.
 
 Starting from the base model, personal learning also raises voice similarity clearly (+0.10, every sentence
 higher), not only pronunciation. Held-out loss on his unseen clips falls 5.97 → 5.19.
+
+## Round 2: 800 more steps on Omar, from the round-1 personal version (2026-11-13)
+
+Six test sentences (`MORE_TEXTS=1`), one take each, same reference and seed.
+
+| | held-out loss | letter error | similarity to Omar | naturalness (UTMOS) |
+|---|---|---|---|---|
+| round 1 (800 steps) | 5.186 | 0.012 | 0.705 | **2.72** |
+| round 2 (1600 steps total) | **5.135** | 0.013 | **0.733** | 2.63 |
+
+Pronunciation is flat: the only errors left are Whisper writing «ولك» as «ولاك/ولاكي» and a comma heard as «و»,
+so letter error can no longer separate the versions. Round 2 is a little closer to Omar's voice (5 of 6 sentences)
+and its held-out loss is lower, but UTMOS falls slightly. More steps on the same 23 minutes now trade naturalness
+for similarity; further pronunciation gains need more speech (more people or more of Omar), not more steps.
