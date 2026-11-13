@@ -8,6 +8,9 @@ held-out masked-token loss; three sentences (same reference, seed 0, temperature
 dialect-Whisper letter error, ECAPA similarity to the person's clips; plus UTMOS of the person's REAL held-out clips
 as the ceiling.
 
+Set MORE_TEXTS=1 to test on six sentences instead of three. GEN2_ADAPTER can also be an earlier personal
+version, to keep training it.
+
 Usage: python personal.py PERSON POOL_DIR GEN2_ADAPTER|none OUT_DIR [steps] [lr]
 """
 import glob, json, os, random, sys, time
@@ -22,6 +25,10 @@ SV, MOS = "models/ecapa-voxceleb", "models/utmos/utmos22_strong_step7459_v1.pt"
 TEXTS = ["اليوم صحيت بكير وشربت قهوة، وطلعت عالجامعة بس الطريق كان زحمة كثير.",
          "ولك والله ما بصدق! إمتى صار هاد؟ ليش ما حكيتلي؟",
          "خلص ولا يهمك، بكرا منحكي ومنشوف شو بدنا نعمل."]
+if os.environ.get("MORE_TEXTS"):              # a wider pronunciation test: three more everyday sentences
+    TEXTS += ["شو رأيك نطلع بكرا عالبلد؟ بدي أشتري كم غرض وبعدين منشرب قهوة.",
+              "والله تعبت اليوم، شغل وجامعة ومشاوير، وما لحقت آكل إشي.",
+              "مبروك يا زلمة! والله فرحتلك من كل قلبي."]
 
 
 def main(person, pool, gen2, out, steps=800, lr=1e-5):
