@@ -8,7 +8,7 @@ they are to themself).
 
 Conditions:
   base   the current tool: one 7-12 s reference clip (select_reference)
-  long   A: several of the person's clips joined into a 20-30 s reference
+  long   A: several of the person's clips joined into a reference of up to 19 s (the model's limit is 20 s)
   vc     B: the base take, then kNN-VC toward the person's real speech (voise_convert.Converter)
   long_vc  A then B
 
@@ -25,7 +25,7 @@ SR, TSR = 16000, 24000
 MODEL, ASR = "models/lahgtna-omnivoice-v2", "models/whisper-turbo-dialectal-v2-ct2"
 ADAPTER, SV = "runs/learn/adapter.pt", "models/ecapa-voxceleb"
 POOL = "runs/learn/pool"
-N_TEST, LONG_S = 3, 25.0
+N_TEST, LONG_S = 3, 19.0          # OmniVoice warns that a reference over 20 s degrades cloning
 
 
 def clips(person):
@@ -63,9 +63,7 @@ def main(out, people):
         ranked = sorted(rest, key=lambda c: -float(emb(sf.read(c["wav"], dtype="float32")[0]) @ cen))
         parts, texts, tot = [], [], 0.0
         for c in ranked:
-            if tot >= LONG_S:
-                break
-            if c["dur"] < 3:
+            if c["dur"] < 3 or tot + c["dur"] > LONG_S:
                 continue
             parts += [sf.read(c["wav"], dtype="float32")[0], np.zeros(int(0.3 * SR), np.float32)]
             texts.append(c["text"]); tot += c["dur"] + 0.3
