@@ -103,7 +103,7 @@ def pick_reference(ref_dir, min_s=8.0, max_s=12.0):
     return p, t / max(1e-6, np.abs(t).max()) * 0.9
 
 
-def select_reference(ref_dir, asr_dir, enc=None, min_s=7.0, max_s=12.0, max_candidates=12):
+def select_reference(ref_dir, asr_dir, enc=None, min_s=7.0, max_s=12.0, max_candidates=12, long_s=19.0):
     """Choose the reference by quality instead of taking the first clip of the right length.
 
     Every 7-12 s stretch of speech in the person's recordings is a candidate, scored on
@@ -111,7 +111,12 @@ def select_reference(ref_dir, asr_dir, enc=None, min_s=7.0, max_s=12.0, max_cand
       * clarity            - how confident Whisper is in its transcript;
       * typicality         - how close it sounds to the person's voice across ALL their recordings (needs a speaker
                              encoder), so a one-off phone, room or mood is not what gets cloned.
-    Each score is turned into a rank (0..1) and the ranks are averaged. Returns (path, audio, transcript, report)."""
+    Each score is turned into a rank (0..1) and the ranks are averaged.
+
+    The best candidates are then joined (0.3 s apart) into one reference of up to `long_s` seconds: more of the
+    person to copy from. On the cloning bench (experiments/clone_bench_2026-11-14) a ~19 s reference was closer to
+    the person than the single 7-12 s clip on every voice tested, with fewer misread words; OmniVoice warns that past
+    20 s cloning degrades. long_s=0 keeps the single clip. Returns (path, audio, transcript, report)."""
     sys.path.insert(0, HERE)
     import audio_preprocess as A
     from unit_vocoder_pilot import load_audio_16k
@@ -169,7 +174,21 @@ def select_reference(ref_dir, asr_dir, enc=None, min_s=7.0, max_s=12.0, max_cand
     best = cands[int(np.argmax(score))]
     report = dict(candidates=len(cands), score=round(max(score), 3),
                   **{k: (round(best[k], 3) if isinstance(best.get(k), float) else best.get(k)) for k in ("snr", "clarity", "typicality")})
-    return best["path"], best["audio"], best["text"], report
+    audio, text = best["audio"], best["text"]
+    if long_s and long_s > len(audio) / SR:
+        # join the next-best candidates into a longer reference (up to long_s): more of the person to copy from
+        gap = np.zeros(int(0.3 * SR), np.float32)
+        parts, texts, used = [audio], [text], len(audio) / SR
+        for i in sorted(range(len(cands)), key=lambda i: -score[i]):
+            c = cands[i]
+            if c is best or not c["text"].strip() or used + 0.3 + len(c["audio"]) / SR > long_s:
+                continue
+            parts += [gap, c["audio"]]
+            texts.append(c["text"])
+            used += 0.3 + len(c["audio"]) / SR
+        audio, text = np.concatenate(parts).astype(np.float32), " ".join(texts)
+        report["parts"], report["seconds"] = len(texts), round(used, 1)
+    return best["path"], audio, text, report
 
 
 _ASR = {}
@@ -388,7 +407,7 @@ class Engine:
         # the choice depends only on the recordings, so it is cached under a key made from their names and sizes
         files = sorted(glob.glob(os.path.join(ref_dir, "*.wav")) + glob.glob(os.path.join(ref_dir, "*.flac")))
         key = hashlib.sha256(json.dumps([[os.path.basename(f), os.path.getsize(f)] for f in files] +
-                                        [ref_text or "", bool(self.enc)]).encode()).hexdigest()[:16]
+                                        [ref_text or "", bool(self.enc), "long19"]).encode()).hexdigest()[:16]
         if key in self.voices:
             return self.voices[key]
         cache = os.path.join(ref_dir, ".voise_cache")
@@ -399,7 +418,9 @@ class Engine:
             prompt = VoiceClonePrompt.load(prompt_p)
             ref = sf.read(wav_p, dtype="float32")[0]
         else:
-            ref_path, ref, heard, report = select_reference(ref_dir, self.asr_dir, self.enc)
+            # a hand-typed reference text matches one clip only, so it keeps the single-clip reference
+            ref_path, ref, heard, report = select_reference(ref_dir, self.asr_dir, self.enc,
+                                                            long_s=0 if ref_text else 19.0)
             sf.write(wav_p, ref, SR, subtype="PCM_16")
             meta = dict(reference=os.path.basename(ref_path), reference_transcript=ref_text or heard,
                         reference_choice=report)
