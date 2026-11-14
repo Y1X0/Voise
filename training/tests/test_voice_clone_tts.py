@@ -212,3 +212,25 @@ class TestTakes(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestWatermarkFailsClosed(unittest.TestCase):
+    def test_no_unmarked_output_when_watermark_unavailable(self):
+        import builtins
+        import numpy as np
+        real_import = builtins.__import__
+
+        def fake_import(name, *a, **k):
+            if name == "perth":
+                raise ImportError("perth missing")
+            return real_import(name, *a, **k)
+        builtins.__import__ = fake_import
+        try:
+            with self.assertRaises(SystemExit):
+                V.watermark(np.zeros(1600, np.float32), 16000)
+        finally:
+            builtins.__import__ = real_import
+
+    def test_no_bypass_flag(self):
+        src = open(V.__file__, encoding="utf-8").read()
+        self.assertNotIn("--no-watermark", src)

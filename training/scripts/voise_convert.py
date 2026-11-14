@@ -88,7 +88,6 @@ def main(argv=None):
     ap.add_argument("--asr-dir", default="models/whisper-turbo-dialectal-v2-ct2")
     ap.add_argument("--sv-dir", default="models/ecapa-voxceleb")
     ap.add_argument("--k", type=int, default=4)
-    ap.add_argument("--no-watermark", action="store_true")
     a = ap.parse_args(argv)
 
     consent, consent_sha = V.load_consent(a.consent)          # refuses a missing, incomplete or revoked record
@@ -102,9 +101,7 @@ def main(argv=None):
     conv = Converter(k=a.k)
     y, seconds = conv.convert(src, person_dir)
     y = y / max(1e-6, float(np.abs(y).max())) * 0.9
-    wm = None
-    if not a.no_watermark:
-        y, wm = V.watermark(y, SR)
+    y, wm = V.watermark(y, SR)                                # always: there is no unmarked output
     sf.write(wav_path, y, SR, subtype="PCM_16")
 
     said, heard = V.transcribe(src, a.asr_dir), V.transcribe(y, a.asr_dir)

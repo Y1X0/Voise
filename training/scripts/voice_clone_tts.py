@@ -299,13 +299,14 @@ def naturalness(model, y16):
 
 
 def watermark(y, sr):
-    """Inaudible Perth watermark (resemble-perth, MIT) so the file can later be shown to be synthetic.
-    Returns (audio, name) or (audio, None) when the package is not installed."""
+    """Inaudible Perth watermark (resemble-perth, MIT) so the file can later be shown to be synthetic. Returns
+    (audio, "perth"). Fails closed: if the watermark cannot be applied, nothing is written (no unmarked output)."""
     try:
         import perth
-    except ImportError:
-        return y, None
-    return np.asarray(perth.PerthImplicitWatermarker().apply_watermark(y, sample_rate=sr), np.float32), "perth"
+        marker = perth.PerthImplicitWatermarker()
+    except Exception as e:                     # missing package, or a broken install (e.g. no pkg_resources)
+        raise SystemExit(f"refusing to write audio without the watermark: {e} (run ./voise.sh setup)")
+    return np.asarray(marker.apply_watermark(y, sample_rate=sr), np.float32), "perth"
 
 
 LEXICON = os.path.join(HERE, "pronunciation.json")
@@ -404,9 +405,10 @@ class Engine:
         import soundfile as sf
         import torch
         from omnivoice.models.omnivoice import VoiceClonePrompt
-        # the choice depends only on the recordings, so it is cached under a key made from their names and sizes
+        # the choice depends only on the recordings, so it is cached under a key made from their names, sizes and
+        # modification times (a recording replaced by one of the same size still changes the key)
         files = sorted(glob.glob(os.path.join(ref_dir, "*.wav")) + glob.glob(os.path.join(ref_dir, "*.flac")))
-        key = hashlib.sha256(json.dumps([[os.path.basename(f), os.path.getsize(f)] for f in files] +
+        key = hashlib.sha256(json.dumps([[os.path.basename(f), os.path.getsize(f), os.stat(f).st_mtime_ns] for f in files] +
                                         [ref_text or "", bool(self.enc), "long19"]).encode()).hexdigest()[:16]
         if key in self.voices:
             return self.voices[key]
@@ -472,7 +474,7 @@ class Engine:
         return choose_best(cands), cands
 
     def say(self, consent_path, ref_dir, text, out, ref_text=None, candidates=3, steps=32, speed=None,
-            use_watermark=True, n=0, stamp=None, who=None):
+            n=0, stamp=None, who=None):
         """Text -> SYNTHETIC_*.wav + provenance .json under runs/. A paragraph is split into pieces (split_text),
         each made with its own takes, and joined with short pauses; one watermark covers the whole file. The
         consent record is re-read on every call, so a record revoked while the engine is running takes effect
@@ -499,9 +501,7 @@ class Engine:
                                   candidates=[{x: c.get(x) for x in ("seed", "heard", "cer", "sim", "mos", "vowels_wrong")}
                                               for c in cands]))
         y = np.concatenate(audio)
-        wm = None
-        if use_watermark:
-            y, wm = watermark(y, self.sr)
+        y, wm = watermark(y, self.sr)                     # always: there is no unmarked output
         sf.write(wav_path, y, self.sr, subtype="PCM_16")
         moss = [c["mos"] for c in chosen if c.get("mos") is not None]
         summary = dict(seed=chosen[0]["seed"], heard=" ".join(c["heard"] for c in chosen),
@@ -535,7 +535,6 @@ def main(argv=None):
     ap.add_argument("--steps", type=int, default=32, help="generation steps (fewer = faster, rougher)")
     ap.add_argument("--fast", action="store_true", help="16 steps: about 2.4x faster per take on CPU")
     ap.add_argument("--sv-dir", help="local speechbrain/spkrec-ecapa-voxceleb directory, to rank takes by voice")
-    ap.add_argument("--no-watermark", action="store_true", help="skip the inaudible Perth watermark")
     ap.add_argument("--adapter", help="learned version from voise_learn.py train (used only if the file exists)")
     ap.add_argument("--mos", help="UTMOS22-strong checkpoint, to record each take's predicted naturalness")
     ap.add_argument("--person", help="name for the output files when one consent record covers several people")
@@ -552,7 +551,7 @@ def main(argv=None):
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     for n, text in enumerate(texts):
         wav_path, best, cands = eng.say(a.consent, a.ref_dir, text, a.out, a.ref_text, a.candidates,
-                                        16 if a.fast else a.steps, a.speed, not a.no_watermark, n, stamp, a.person)
+                                        16 if a.fast else a.steps, a.speed, n, stamp, a.person)
         print(wav_path, f"(take {best['seed'] + 1}, {len(cands)} made, heard: {best['heard']})", flush=True)
 
 
