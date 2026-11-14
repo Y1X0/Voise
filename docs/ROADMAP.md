@@ -24,6 +24,16 @@ without the voices drifting towards each other.
 | 4 | Weighted kNN and k | Does weighting nearer frames help voice conversion? | Closeness and CER of kNN-VC for k = 2, 4, 8, weighted vs mean (WavLM layer stays 6: the vocoder was trained on it) |
 | 5 | Cross-utterance training | Does training "hear clip A, say clip B's words in the same voice" improve cloning? | Closeness on unseen speakers in the acceptance gate, plus step 1 |
 
+| 6 | Candidate ranking in two stages | Pick takes by hard gates first (words, known vowels, no merged words), then by similarity, pitch, rhythm, naturalness | Bench closeness + CER on the chosen take |
+| 7 | Rhythm and prosody per speaker | Pace, pauses, question pitch, emphasis, phrase-final tone, each person's own | Per-speaker prosody distance to real clips |
+| 8 | Smaller fixes from the code review | Corrected reference text per clip (keeps the long reference); a seed derived per sentence; a confidence level on the vowel check | Tests + bench, no regression |
+
+Later: consistency of one voice across 20 sentences; a quality gate on new recordings (clipping, noise, reverb,
+overlapping speakers); a blind "which person is this?" listening test.
+
+Done from the code review (2026-11-14): the watermark fails closed and cannot be skipped; the prepared-voice cache
+key includes each recording's modification time.
+
 ## Bench measures (to add)
 
 - Speaker similarity with a second encoder (WavLM-SV) beside ECAPA.
