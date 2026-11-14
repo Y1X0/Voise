@@ -92,3 +92,18 @@ did not agree, such as public videos or broadcasts with guests.
 | `training/scripts/voise_learn.py` | Learning loop |
 | `training/scripts/listening_test.py` | Blind listening test |
 | `training/tests/test_voice_clone_tts.py`, `test_voise_learn.py`, `test_voise_server.py`, `test_listening_test.py` | Tests (no model needed) |
+
+## Since 2026-11-13
+
+- **Pronunciation dictionary and vowel check** (`pronlex.py`). Whisper cannot hear a wrong vowel. A phoneme
+  recogniser learns each word's first vowel from the consented recordings. The dictionary is cumulative: 810
+  words after two Mafia episodes. A take with a wrong vowel is retried.
+  - Example (Omar): take 1 said «يُطلع» for «يِطلع» and was rejected.
+  - `pronunciation.json` swaps words the model keeps getting wrong: ومنحكي → وبنحكي was right 2/2, against 0/2
+    as written.
+- **Learning keeps everything.** Each generation continues from the last; the last three are archived in
+  `runs/learn/history/`. Generation 2: letter error 0.86%, unseen person's loss 5.31.
+- **Say it yourself** (`voise_convert.py`, kNN-VC). Your recording, in a consenting person's voice, with your own
+  laughs and emotion. Same gates as the TTS tool.
+  - Test, Omar → عبود: similarity to عبود 0.34 → 0.68, to Omar 0.91 → 0.52; letter error vs the source 5.7%.
+- **Encrypted backup** of the model and dictionary in `backup/`.
