@@ -122,9 +122,15 @@ def save(a, counts, done, wavs):
                 tot.update(pats)
         if not tot:
             continue
-        pat, n = tot.most_common(1)[0]
-        if n >= a.min_count and n / sum(tot.values()) >= 0.5:
-            words[key] = dict(vowels=pat, heard=n, of=sum(tot.values()), people=sum(1 for p in per if p in people))
+        # the first vowel only: word edges from Whisper's timings are approximate, so later vowels sometimes leak
+        # in from the next word, but the first vowel is stable (والله a 70%, بدي i 70%, مواطن u 65%) and it is
+        # where the mistakes heard so far sit (بُكرة said بِكرة)
+        first = collections.Counter()
+        for pat, n in tot.items():
+            first[pat.split("-")[0]] += n
+        v, n = first.most_common(1)[0]
+        if n >= a.min_count and n / sum(first.values()) >= 0.6:
+            words[key] = dict(first=v, heard=n, of=sum(first.values()), people=sum(1 for p in per if p in people))
     tmp = a.out + ".tmp"
     json.dump(dict(source=a.pool, clips_done=sorted(done & {os.path.relpath(w, a.pool) for w in wavs}),
                    counts=counts, words=words), open(tmp, "w", encoding="utf-8"), ensure_ascii=False)
@@ -148,14 +154,16 @@ def load(path=os.path.join(V.RUNS, "learn", "pronlex.json"), seed=SEED):
 
 
 def check(y16, text, lex, asr_dir):
-    """Words of `text` whose vowels in the take differ from the learned ones: [(word, expected, heard)]."""
+    """Words of `text` whose first vowel in the take differs from the learned one: [(word, expected, heard)]."""
     if not lex:
         return []
     wanted = {V.normalize_ar(w) for w in text.split()}
     bad = []
     for key, pat in word_vowels(y16, asr_dir):
-        if key in wanted and key in lex and pat != lex[key]["vowels"]:
-            bad.append((key, lex[key]["vowels"], pat))
+        if key in wanted and key in lex:
+            want = lex[key].get("first") or lex[key]["vowels"].split("-")[0]
+            if pat.split("-")[0] != want:
+                bad.append((key, want, pat))
     return bad
 
 
