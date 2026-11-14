@@ -100,10 +100,10 @@ class TestPronlexCumulative(unittest.TestCase):
                 self.assertEqual(len(heard), 4)
                 P.build(a)                                    # nothing new: nothing re-listened to
                 self.assertEqual(len(heard), 4)
-                self.assertEqual(P.load(a.out, seed="")["بكره"]["heard"], 4)
+                self.assertEqual(P.load(a.out, seed="", exported="")["بكره"]["heard"], 4)
                 import shutil
                 shutil.rmtree(os.path.join(pool, "abood"))     # revoked
                 P.build(a)
-                self.assertEqual(P.load(a.out, seed="")["بكره"]["heard"], 2)
+                self.assertEqual(P.load(a.out, seed="", exported="")["بكره"]["heard"], 2)
         finally:
             P.word_vowels = old_wv

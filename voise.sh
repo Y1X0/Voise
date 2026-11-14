@@ -116,13 +116,13 @@ PY
   if [ -n "$learn_people" ]; then
     echo "learning from the pool if 3+ minutes of new voice arrived (this can take a while on a laptop)..."
     python3 training/scripts/voise_learn.py train --min-new-minutes 3 --asr-dir "$ASR"
-    [ -d models/w2v2-phoneme ] && python3 training/scripts/pronlex.py build --asr-dir "$ASR"
+    [ -d models/w2v2-phoneme ] && python3 training/scripts/pronlex.py build --asr-dir "$ASR" && python3 training/scripts/pronlex.py export
   fi
   ;;
 learn)
   python3 training/scripts/voise_learn.py train --asr-dir "$ASR"
   # how each word is said, learned from the same recordings; only new clips are listened to
-  [ -d models/w2v2-phoneme ] && python3 training/scripts/pronlex.py build --asr-dir "$ASR"
+  [ -d models/w2v2-phoneme ] && python3 training/scripts/pronlex.py build --asr-dir "$ASR" && python3 training/scripts/pronlex.py export
   ;;
 speak|fast)
   mode=$1; person=$2; shift 2

@@ -141,11 +141,27 @@ def save(a, counts, done, wavs):
 SEED = os.path.join(HERE, "pronlex_seed.json")
 
 
-def load(path=os.path.join(V.RUNS, "learn", "pronlex.json"), seed=SEED):
-    """Learned pronunciations, plus the seed file: vowels a listener confirmed by ear, which win over learned ones
-    (a word may be rare or missing in the recordings so far)."""
+EXPORT = os.path.join(HERE, "pronlex_learned.json")
+
+
+def export(src=os.path.join(V.RUNS, "learn", "pronlex.json"), dst=EXPORT):
+    """The dictionary without anything about people: word -> first vowel only (no names, no per-person counts,
+    no audio), small enough and safe to keep in the repository so it survives a lost machine and reaches the
+    laptop with git pull."""
+    words = json.load(open(src, encoding="utf-8"))["words"]
+    out = {k: {"first": v.get("first") or v["vowels"].split("-")[0]} for k, v in sorted(words.items())}
+    json.dump(dict(note="first vowel of each word as said in the consented recordings (pronlex.py export)",
+                   words=out), open(dst, "w", encoding="utf-8"), ensure_ascii=False, indent=0)
+    print(f"{len(out)} words -> {dst}")
+
+
+def load(path=os.path.join(V.RUNS, "learn", "pronlex.json"), seed=SEED, exported=EXPORT):
+    """The exported dictionary from the repository, then the local learned one (newer), then the seed file:
+    vowels a listener confirmed by ear win over learned ones (a word may be rare or missing in the recordings)."""
     words = {}
-    for p in (path, seed):
+    for p in (exported, path, seed):
+        if not p:
+            continue
         try:
             words.update({k: v for k, v in json.load(open(p, encoding="utf-8"))["words"].items()})
         except FileNotFoundError:
@@ -169,12 +185,13 @@ def check(y16, text, lex, asr_dir):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("command", choices=["build"])
+    ap.add_argument("command", choices=["build", "export"])
     ap.add_argument("--pool", default=os.path.join(V.RUNS, "learn", "pool"))
     ap.add_argument("--out", default=os.path.join(V.RUNS, "learn", "pronlex.json"))
     ap.add_argument("--asr-dir", default="models/whisper-turbo-dialectal-v2-ct2")
     ap.add_argument("--min-count", type=int, default=2)
-    build(ap.parse_args(argv))
+    a = ap.parse_args(argv)
+    build(a) if a.command == "build" else export(a.out)
 
 
 if __name__ == "__main__":
