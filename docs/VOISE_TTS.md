@@ -107,3 +107,18 @@ did not agree, such as public videos or broadcasts with guests.
   laughs and emotion. Same gates as the TTS tool.
   - Test, Omar → عبود: similarity to عبود 0.34 → 0.68, to Omar 0.91 → 0.52; letter error vs the source 5.7%.
 - **Encrypted backup** of the model and dictionary in `backup/`.
+
+## Telling a Voise recording from a real one (`voise_check.py`)
+
+Every output carries an inaudible Perth watermark in the sound itself, a SYNTHETIC_ name and a provenance sidecar.
+`python training/scripts/voise_check.py <file>` reads the watermark back. Test (2026-11-14), one synthetic clip:
+
+| file | watermark score |
+|---|---|
+| synthetic clip, renamed (no SYNTHETIC_ name, no sidecar) | 1.0, found |
+| the same clip as a WhatsApp-style voice note (Opus 24 kb/s) | 1.0, found |
+| the same clip as MP3 64 kb/s | 1.0, found |
+| the WhatsApp version resampled to 16 kHz | 1.0, found |
+| a real recording of the same person | 0.0, not found |
+
+A missing watermark does not prove a recording is real: audio from other tools carries no Voise mark.
