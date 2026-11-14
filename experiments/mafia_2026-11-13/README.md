@@ -33,3 +33,25 @@ the base model (generation 2 was lost with the container). Same acceptance test 
 
 The unseen person's loss falls by 0.77, much more than generation 2's 0.14 (5.22 → 5.08), and letter error falls
 by more than half.
+
+## Episode 2 and generation 2 of the rebuilt pool (accepted)
+
+`prepare_episode.py` (the steps above as one script) on episode 2 (49 min, 701 segments):
+- One voice matched an episode-1 player (عبود, centre cosine 0.817 ≥ 0.8) and was filed under him: +95 clips.
+- Five new voices (8.5 min) were kept.
+- Three voices with clearly non-Jordanian forms («ڨول ڨول طال عمرك»، «مكسيتو ڨاع محالو») were left out.
+- The match threshold comes from the pool: the same person half-vs-half scored at least 0.867, two different
+  people at most 0.743.
+
+Generation 2 continued from generation 1 (archived in `runs/learn/history/`):
+
+| | generation 1 | generation 2 |
+|---|---|---|
+| held-out loss | 5.557 | **5.515** |
+| unseen person's loss | 5.386 | **5.314** |
+| letter error | 0.93% | **0.86%** |
+| UTMOS | 3.21 | **3.25** |
+
+The gains are smaller than generation 1's, as expected when each episode adds ~15 min to a pool that is already
+~70 min. The pronunciation dictionary grew from 664 to 810 stable words (3,244 heard) without re-listening to the
+earlier clips.
