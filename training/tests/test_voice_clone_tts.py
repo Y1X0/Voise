@@ -234,3 +234,46 @@ class TestWatermarkFailsClosed(unittest.TestCase):
     def test_no_bypass_flag(self):
         src = open(V.__file__, encoding="utf-8").read()
         self.assertNotIn("--no-watermark", src)
+
+
+class TestPolish(unittest.TestCase):
+    """The automatic voice-conversion polish, with stand-ins for the encoder, the converter and Whisper."""
+
+    def engine(self, sims, heard):
+        import numpy as np
+        import torch
+        e = V.Engine.__new__(V.Engine)
+        e.sr, e.asr_dir, e.enc = 16000, None, object()
+        it = iter(sims)
+        self._old = (V.speaker_embedding, V.transcribe)
+        V.speaker_embedding = lambda enc, y: torch.tensor([next(it), 0.0])
+        V.transcribe = lambda y, d: heard
+
+        class Conv:
+            def convert(self, y, d):
+                return np.zeros(1600, np.float32), 60.0
+        e.converter = Conv()
+        return e
+
+    def tearDown(self):
+        V.speaker_embedding, V.transcribe = self._old
+
+    def run_polish(self, sims, heard, cer_before=0.0):
+        import numpy as np
+        e = self.engine(sims, heard)
+        v = {"centroid": [1.0, 0.0], "ceiling": 0.8}
+        best = {"y": np.zeros(1600, np.float32), "cer": cer_before}
+        return e.polish(v, "dir", "والله يا جماعة", best)
+
+    def test_close_take_is_left_alone(self):
+        self.assertIsNone(self.run_polish([0.70], "والله يا جماعة"))          # 0.70/0.8 = 88% >= 80%
+
+    def test_far_take_is_polished_when_closer_and_words_hold(self):
+        r = self.run_polish([0.40, 0.72], "والله يا جماعة")                  # 50% -> 90%, same words
+        self.assertTrue(r["polished"])
+        self.assertEqual(r["polish_closeness_before"], 0.5)
+
+    def test_polish_rejected_when_it_garbles_words(self):
+        r = self.run_polish([0.40, 0.72], "والله جماعة كلام ثاني خالص")
+        self.assertFalse(r["polished"])
+        self.assertNotIn("y", r)

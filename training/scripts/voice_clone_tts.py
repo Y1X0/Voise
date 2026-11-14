@@ -409,7 +409,7 @@ class Engine:
         # modification times (a recording replaced by one of the same size still changes the key)
         files = sorted(glob.glob(os.path.join(ref_dir, "*.wav")) + glob.glob(os.path.join(ref_dir, "*.flac")))
         key = hashlib.sha256(json.dumps([[os.path.basename(f), os.path.getsize(f), os.stat(f).st_mtime_ns] for f in files] +
-                                        [ref_text or "", bool(self.enc), "long19"]).encode()).hexdigest()[:16]
+                                        [ref_text or "", bool(self.enc), "long19-profile"]).encode()).hexdigest()[:16]
         if key in self.voices:
             return self.voices[key]
         cache = os.path.join(ref_dir, ".voise_cache")
@@ -425,13 +425,68 @@ class Engine:
                                                             long_s=0 if ref_text else 19.0)
             sf.write(wav_p, ref, SR, subtype="PCM_16")
             meta = dict(reference=os.path.basename(ref_path), reference_transcript=ref_text or heard,
-                        reference_choice=report)
+                        reference_choice=report, **self.profile(files))
             prompt = self.model.create_voice_clone_prompt(ref_audio=wav_p, ref_text=meta["reference_transcript"])
             prompt.save(prompt_p)
             json.dump(meta, open(meta_p, "w", encoding="utf-8"), ensure_ascii=False)
         v = dict(prompt=prompt, ref=ref, emb=speaker_embedding(self.enc, ref) if self.enc else None, **meta)
         self.voices[key] = v
         return v
+
+    def profile(self, files, n=30, max_s=20.0):
+        """The person's voice centre (mean ECAPA embedding of up to n real clips) and their own closeness to it
+        (mean cosine of those clips to the centre): the ceiling against which a clone is judged. {} without an
+        encoder."""
+        if not self.enc or not files:
+            return {}
+        import soundfile as sf
+        embs = []
+        for f in files[:n]:
+            y, sr = sf.read(f, dtype="float32", frames=int(max_s * 48000))
+            if y.ndim > 1:
+                y = y.mean(1)
+            if sr != SR:
+                import librosa
+                y = librosa.resample(y, orig_sr=sr, target_sr=SR)
+            if len(y) >= SR:
+                embs.append(speaker_embedding(self.enc, y[:int(max_s * SR)]))
+        if len(embs) < 2:
+            return {}
+        c = sum(embs) / len(embs)
+        c = c / c.norm()
+        return dict(centroid=[round(float(x), 6) for x in c], ceiling=round(float(np.mean([float(e @ c) for e in embs])), 4))
+
+    POLISH_BELOW, POLISH_GAIN, POLISH_CER = 0.80, 0.05, 0.03
+
+    def polish(self, v, ref_dir, text, best):
+        """Voice conversion (kNN-VC toward the person's real speech) for a take that came out far from the person.
+
+        The bench (experiments/clone_bench_2026-11-14) showed it rescues voices the text-to-speech model cannot
+        capture (one voice: 58% -> 93% of the person's own closeness) but can garble words (another: letter error
+        4% -> 23%). So it is tried only when the take is below POLISH_BELOW of the ceiling, and kept only if it gets
+        POLISH_GAIN closer AND Whisper's letter error rises by at most POLISH_CER. Returns the replacement fields or
+        a dict saying why it was not used; None when not tried."""
+        if not v.get("centroid") or not v.get("ceiling") or not self.enc:
+            return None
+        import librosa
+        import torch
+        c = torch.tensor(v["centroid"])
+        y16 = librosa.resample(np.asarray(best["y"], np.float32), orig_sr=self.sr, target_sr=SR)
+        before = float(speaker_embedding(self.enc, y16) @ c) / v["ceiling"]
+        if before >= self.POLISH_BELOW:
+            return None
+        if getattr(self, "converter", None) is None:
+            import voise_convert
+            self.converter = voise_convert.Converter()
+        out16, _ = self.converter.convert(y16, ref_dir)
+        heard = transcribe(out16, self.asr_dir)
+        after = float(speaker_embedding(self.enc, out16) @ c) / v["ceiling"]
+        err = round(cer(text, heard), 3)
+        info = dict(polish_closeness_before=round(before, 3), polish_closeness_after=round(after, 3), polish_cer=err)
+        if after >= before + self.POLISH_GAIN and err <= best["cer"] + self.POLISH_CER:
+            return dict(info, polished=True, heard=heard, cer=err,
+                        y=librosa.resample(np.asarray(out16, np.float32), orig_sr=SR, target_sr=self.sr))
+        return dict(info, polished=False)
 
     def takes(self, v, text, candidates=3, steps=32, speed=None, good_enough=0.0, spoken=None):
         """Up to `candidates` takes; stops early once Whisper hears a take with no wrong letter (normalize_ar
@@ -491,6 +546,9 @@ class Engine:
             st = 32 if steps < 32 and REACTION.search(piece) else steps   # at 16 steps a [laughter] was trimmed away
             spoken = apply_lexicon(piece, lex)
             best, cands = self.takes(v, piece, candidates, st, speed, spoken=spoken)
+            pol = self.polish(v, ref_dir, spoken, best)
+            if pol:
+                best = dict(best, **pol)                    # a kept polish replaces y, heard and cer
             y = best["y"] / max(1e-6, np.abs(best["y"]).max()) * 0.9
             if k:
                 pause = 0.45 if re.search(r"[.!?؟…]$", pieces[k - 1]) else 0.2
@@ -498,6 +556,8 @@ class Engine:
             audio.append(y)
             chosen.append(best)
             all_cands.append(dict(piece=piece, spoken=spoken, num_step=st, chosen_seed=best["seed"],
+                                  polish={k: best[k] for k in ("polished", "polish_closeness_before",
+                                                               "polish_closeness_after", "polish_cer") if k in best},
                                   candidates=[{x: c.get(x) for x in ("seed", "heard", "cer", "sim", "mos", "vowels_wrong")}
                                               for c in cands]))
         y = np.concatenate(audio)
