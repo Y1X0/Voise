@@ -180,7 +180,8 @@ class SessionStop(unittest.TestCase):
             os.makedirs(self.md)
             torch.jit.trace(TSE.Encoder("ecapa", channels=16, dim=64).eval(), torch.randn(1, 50, 80)).save(
                 os.path.join(self.md, "ecapa_a.pt"))
-            json.dump({"name": "ecapa_a", "arch": "ecapa", "role": "TRAIN"}, open(os.path.join(self.md, "ecapa_a.json"), "w"))
+            json.dump({"name": "ecapa_a", "arch": "ecapa", "role": "TRAIN", "licence_path": "commercial"},   # config path
+                      open(os.path.join(self.md, "ecapa_a.json"), "w"))
             ready = json.load(open(os.path.join(TRAINING, "readiness.json")))
             self.rp = os.path.join(d, "ready.json")
             json.dump(dict(ready, verdict="GO", conditions={k: True for k in ready["conditions"]}), open(self.rp, "w"))

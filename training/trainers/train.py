@@ -30,7 +30,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from trainers.config import load_config  # noqa: E402
 
 
-def preflight(cfg, require_gpu=True, models_dir="models_train"):
+def preflight(cfg, require_gpu=True, models_dir="models_train", licence_path=None):
     """Returns a list of missing prerequisites (empty = ready).
 
     CODE problems (trainers/requirements.internal_consistency: producer path != consumer path,
@@ -49,7 +49,7 @@ def preflight(cfg, require_gpu=True, models_dir="models_train"):
             missing.append(msg + " (see docs/STREAMING_NEURAL_TRAINING_PLAN.md §10)")
     if any(m.startswith("CODE: speaker_encoders_train entries") for m in missing):
         return missing
-    return missing + ["DATA: " + m for m in artifact_requirements(cfg, models_dir)]
+    return missing + ["DATA: " + m for m in artifact_requirements(cfg, models_dir, licence_path=licence_path)]
 
 
 def main():
@@ -84,7 +84,7 @@ def main():
     import orchestrate_training as OT
     from trainers.real_run import readiness_scope
     # readiness (verdict + external blockers of this data scope) + CODE + every missing artifact, reported together
-    missing = OT.preflight(scope=readiness_scope(cfg.data)) + preflight(cfg)
+    missing = OT.preflight(scope=readiness_scope(cfg.data)) + preflight(cfg, licence_path=a.licence_path)
     if not a.gpu_profile:
         missing.append("GPU: --gpu-profile (training/configs/gpu/<t4_16gb|a100_40gb|a100_80gb>)")
     if missing:

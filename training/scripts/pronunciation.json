@@ -1,0 +1,4 @@
+{
+ "_note": "Words the model says wrong -> the spelling it says right. The tool swaps them before speaking and Whisper checks the swapped form. Add a line per word, after testing it (experiments/natural_2026-11-13/lexicon_test.py).",
+ "ومنحكي": "وبنحكي"
+}
