@@ -43,7 +43,7 @@ case "$1" in
 setup)
   sudo apt install -y ffmpeg
   pip install -q --no-deps omnivoice==0.2.1
-  pip install -q pydub tensorboardx webdataset accelerate silero-vad soundfile librosa audioop-lts transformers \
+  pip install -q pydub tensorboardx webdataset accelerate silero-vad soundfile librosa audioop-lts pyworld onnx onnxruntime transformers \
     faster-whisper resemble-perth speechbrain "setuptools<81"   # Perth's watermarker needs pkg_resources
   export HF_HUB_DISABLE_XET=1 HF_HUB_DOWNLOAD_TIMEOUT=120
   until fetch oddadmix/lahgtna-omnivoice-v2 55c38a613e31 models/lahgtna-omnivoice-v2 '*.json' '*.safetensors' '*.jinja' \
