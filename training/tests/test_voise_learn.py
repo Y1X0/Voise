@@ -115,6 +115,22 @@ class TestIdentityGate(unittest.TestCase):
                           "y": dict(margin=0.1, identified=True, nearest_other="x")}, "spread": 0.3}
         self.assertEqual(L.identity_problems(before, after), ["y: margin 0.2 -> 0.1"])
 
+
+class TestChooseVersions(unittest.TestCase):
+    def test_bench_choice(self):
+        b = {k: dict(v) for k, v in BENCH_BASE["rows"].items()}
+        g = {k: dict(v) for k, v in BENCH_GEN2["rows"].items()}
+        c = L.choose_versions(b, g)
+        self.assertEqual(sorted(p for p, v in c.items() if v == "base"),
+                         ["fakhri", "omar", "p152", "p48", "p64", "p70", "p85"])
+        self.assertEqual(c["abood"], "adapter")
+        self.assertEqual(c["p106"], "adapter")      # exactly 0.02 lower: within tolerance
+        self.assertEqual(c["p30"], "adapter")       # unrecognised in both; the learned one is closer
+
+    def test_lost_recognition_goes_back_to_base(self):
+        c = L.choose_versions({"x": dict(margin=0.03, identified=True)}, {"x": dict(margin=0.02, identified=False)})
+        self.assertEqual(c, {"x": "base"})
+
 if __name__ == "__main__":
     unittest.main()
 

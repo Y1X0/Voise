@@ -4,6 +4,7 @@
   train   learn from the whole pool; the new version is kept ONLY if it beats the current one on held-out clips
   revoke  remove one person from the pool and drop the learned version (it contained their voice)
   status  what is in the pool and which version is in use
+  choose  per voice, keep the original model where the learned version blurs that person (from the identity bench)
 
 Design (each point fixes something we measured):
   * Learning builds on itself: each `train` continues from the current learned version and is judged against it,
@@ -433,6 +434,38 @@ def archive_previous(adapter, keep=3):
     return dst
 
 
+def choose_versions(base_rows, adapter_rows, tolerance=0.02):
+    """Per person: "base" if the learned version makes them unrecognised or shrinks their margin to the nearest
+    other person by more than `tolerance`, else "adapter" (it also learned the dialect and its pronunciation, so
+    it keeps a voice unless it measurably blurs it). Rows: {person: {"margin", "identified"}}."""
+    out = {}
+    for p, a in adapter_rows.items():
+        b = base_rows.get(p)
+        worse = b is not None and ((b["identified"] and not a["identified"]) or round(b["margin"] - a["margin"], 3) > tolerance)
+        out[p] = "base" if worse else "adapter"
+    return out
+
+
+def cmd_choose(a):
+    """Write runs/learn/voice_versions.json from a discriminability bench of the base model and the current
+    learned version (experiments/discriminability_2026-11-15)."""
+    import torch
+    r = json.load(open(a.bench, encoding="utf-8"))
+    vs = r["versions"]
+    name = os.path.basename(a.adapter)
+    if "base" not in vs or name not in vs:
+        raise SystemExit(f"the bench must measure both the base model and {name}")
+    rows = lambda v: {x["person"]: x for x in vs[v]["rows"]}
+    gen = int(torch.load(a.adapter, map_location="cpu", weights_only=True).get("generation", 0))
+    choice = choose_versions(rows("base"), rows(name))
+    path = os.path.join(os.path.dirname(os.path.abspath(a.adapter)), V.VERSIONS_FILE)
+    json.dump(dict(adapter_generation=gen, bench=os.path.relpath(a.bench), rule="base if the learned version loses "
+                   "the person or shrinks their margin by more than 0.02", voices=choice),
+              open(path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    for p, v in sorted(choice.items()):
+        print(f"{p}: {'original model' if v == 'base' else 'learned version (generation %d)' % gen}")
+
+
 def cmd_revoke(a):
     person = V.safe_slug(a.person)
     d = os.path.join(a.pool, person)
@@ -461,13 +494,15 @@ def cmd_status(a):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("command", choices=["add", "train", "revoke", "status"])
+    ap.add_argument("command", choices=["add", "train", "revoke", "status", "choose"])
     ap.add_argument("--pool", default=os.path.join(V.RUNS, "learn", "pool"))
     ap.add_argument("--adapter", default=os.path.join(V.RUNS, "learn", "adapter.pt"))
     ap.add_argument("--model-dir", default="models/lahgtna-omnivoice-v2")
     ap.add_argument("--asr-dir", default="models/whisper-turbo-dialectal-v2-ct2")
     ap.add_argument("--sv-dir", default="models/ecapa-voxceleb", help="speaker encoder for the identity check")
     ap.add_argument("--consent")
+    ap.add_argument("--bench", default=os.path.join(V.RUNS, "discriminability", "discriminability.json"),
+                    help="discriminability results to choose each voice's version from (choose)")
     ap.add_argument("--src", help="folder of the person's recordings (add)")
     ap.add_argument("--person")
     ap.add_argument("--min-snr", type=float, default=8.0)
@@ -479,7 +514,7 @@ def main(argv=None):
                     help="learn only if at least this much new voice arrived since the current version")
     ap.add_argument("--from-scratch", action="store_true", help="ignore the current learned version and start from Lahgtna")
     a = ap.parse_args(argv)
-    {"add": cmd_add, "train": cmd_train, "revoke": cmd_revoke, "status": cmd_status}[a.command](a)
+    {"add": cmd_add, "train": cmd_train, "revoke": cmd_revoke, "status": cmd_status, "choose": cmd_choose}[a.command](a)
 
 
 if __name__ == "__main__":

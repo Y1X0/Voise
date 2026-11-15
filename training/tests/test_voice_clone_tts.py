@@ -210,6 +210,40 @@ class TestTakes(unittest.TestCase):
         self.assertEqual(V.choose_best([dict(seed=0, cer=0.1, sim=None), dict(seed=1, cer=0.0, sim=None)])["seed"], 1)
 
 
+
+class TestVersionPerVoice(unittest.TestCase):
+    """Each voice uses the version that keeps it most distinct (voice_versions.json from voise_learn.py choose)."""
+
+    def test_choice_file_for_another_generation_is_ignored(self):
+        import tempfile
+        d = tempfile.mkdtemp()
+        f = os.path.join(d, V.VERSIONS_FILE)
+        json.dump({"adapter_generation": 2, "voices": {"omar": "base", "x": "adapter", "y": "junk"}}, open(f, "w"))
+        self.assertEqual(V.load_versions(f, 2), {"omar": "base", "x": "adapter"})
+        self.assertEqual(V.load_versions(f, 3), {})               # a new generation must be measured again
+        self.assertEqual(V.load_versions(os.path.join(d, "none.json"), 2), {})
+
+    def test_swaps_only_when_the_person_needs_another_version(self):
+        loaded = []
+
+        class Model:
+            def load_state_dict(self, w, strict):
+                loaded.append(w["k"])
+
+        e = V.Engine.__new__(V.Engine)
+        e.model, e.in_use = Model(), "adapter"
+        e.weights = {"base": {"k": "base"}, "adapter": {"k": "adapter"}}
+        e.versions = {"omar": "base"}
+        self.assertEqual(e.use_version_for("runs/learn/pool/omar/"), "base")
+        self.assertEqual(e.use_version_for("runs/learn/pool/omar"), "base")
+        self.assertEqual(e.use_version_for("runs/learn/pool/mafia_abood"), "adapter")   # not listed: learned one
+        self.assertEqual(loaded, ["base", "adapter"])
+
+    def test_without_learned_version_it_is_always_base(self):
+        e = V.Engine.__new__(V.Engine)
+        e.weights, e.versions, e.in_use = {}, {"omar": "adapter"}, "base"
+        self.assertEqual(e.use_version_for("pool/omar"), "base")
+
 if __name__ == "__main__":
     unittest.main()
 

@@ -365,6 +365,20 @@ def target_duration(text, speed=None):
     return round(0.6 * n + 1.0, 1)
 
 
+VERSIONS_FILE = "voice_versions.json"
+
+
+def load_versions(path, generation):
+    """{person: "base" | "adapter"} from voise_learn.py choose, or {} when there is none or it was made for a
+    different generation of the learned version (a new generation must be measured again before it is trusted)."""
+    if not os.path.exists(path):
+        return {}
+    d = json.load(open(path, encoding="utf-8"))
+    if generation is None or d.get("adapter_generation") != generation:
+        return {}
+    return {p: v for p, v in d.get("voices", {}).items() if v in ("base", "adapter")}
+
+
 class Engine:
     """Models loaded once and reused: Lahgtna (+ learned version), Whisper, and a cache of prepared voices.
 
@@ -379,13 +393,24 @@ class Engine:
             raise SystemExit(f"model directory not found: {model_dir} (nothing is downloaded here)")
         self.model = OmniVoice.from_pretrained(model_dir, device_map="cpu")
         self.adapter = None
+        # per-voice choice of version (voise_learn.py choose): a learned version can make some people's clones
+        # less distinct (experiments/discriminability_2026-11-15), so each voice uses the version that keeps it
+        # most clearly itself. Both weight sets stay in memory; only the trained layers are swapped.
+        self.versions, self.weights, self.in_use = {}, {}, "base"
         if adapter and os.path.exists(adapter):
             import torch
             st = torch.load(adapter, map_location="cpu", weights_only=True)
-            bad = self.model.load_state_dict(st["weights"], strict=False).unexpected_keys
-            if bad:
-                raise SystemExit(f"adapter does not fit this model: {bad[:3]}")
+            params = dict(self.model.named_parameters())
+            unknown = [k for k in st["weights"] if k not in params]
+            if unknown:
+                raise SystemExit(f"adapter does not fit this model: {unknown[:3]}")
+            self.weights["base"] = {k: params[k].detach().clone() for k in st["weights"]}
+            self.weights["adapter"] = st["weights"]
+            self.model.load_state_dict(st["weights"], strict=False)
+            self.in_use = "adapter"
             self.adapter = f"{os.path.basename(adapter)} (generation {st.get('generation', '?')})"
+            self.versions = load_versions(os.path.join(os.path.dirname(os.path.abspath(adapter)), VERSIONS_FILE),
+                                          st.get("generation"))
         self.sr = getattr(self.model, "sampling_rate", None) or 24000
         self.asr_dir, self.language = asr_dir, language
         self.enc = load_speaker_encoder(sv_dir)
@@ -432,6 +457,17 @@ class Engine:
         v = dict(prompt=prompt, ref=ref, emb=speaker_embedding(self.enc, ref) if self.enc else None, **meta)
         self.voices[key] = v
         return v
+
+    def use_version_for(self, ref_dir):
+        """Switch to the version chosen for this person (the learned one unless the choice file says "base").
+        Returns the name of the version now in use."""
+        want = self.versions.get(os.path.basename(os.path.normpath(ref_dir)), "adapter") if self.weights else "base"
+        if want not in self.weights:
+            want = "adapter" if self.weights else "base"
+        if self.weights and want != self.in_use:
+            self.model.load_state_dict(self.weights[want], strict=False)
+            self.in_use = want
+        return self.in_use
 
     def profile(self, files, n=30, max_s=20.0):
         """The person's voice centre (mean ECAPA embedding of up to n real clips) and their own closeness to it
@@ -540,6 +576,7 @@ class Engine:
         stamp = stamp or datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         wav_path, meta_path = output_paths(out, who or consent["voice_owner"], n, stamp)
         v = self.voice(ref_dir, ref_text)
+        version = self.use_version_for(ref_dir)
         pieces, audio, chosen, all_cands = split_text(text), [], [], []
         lex = load_lexicon()
         for k, piece in enumerate(pieces):
@@ -571,8 +608,8 @@ class Engine:
                        consent_record=consent_path, consent_sha256=consent_sha, consent_scope=consent["scope"],
                        reference=v["reference"], reference_choice=v.get("reference_choice"),
                        reference_transcript=v["reference_transcript"],
-                       model="oddadmix/lahgtna-omnivoice-v2 (no licence stated)", adapter=self.adapter,
-                       language=self.language, created_utc=stamp, watermark=wm, class_temperature=self.temperature,
+                       model="oddadmix/lahgtna-omnivoice-v2 (no licence stated)", adapter=self.adapter if version == "adapter" else None,
+                       version_used=version, language=self.language, created_utc=stamp, watermark=wm, class_temperature=self.temperature,
                        pieces=all_cands),
                   open(meta_path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
         return wav_path, summary, [c for p in all_cands for c in p["candidates"]]
