@@ -48,6 +48,44 @@ TEST_TEXTS = ["أهلين، كيفك؟ اليوم كان يوم طويل، بس 
               "مبروك يا زلمة! والله فرحتلك من كل قلبي.",
               "خلص ولا يهمك، بكرا منحكي ومنشوف شو بدنا نعمل."]
 GATE_STEPS = 16       # the acceptance test compares versions, so before and after use the same (faster) setting
+# Identity gate (experiments/discriminability_2026-11-15): shared training must not make people's clones sound
+# alike. Generation 2 kept the average "own" similarity but shrank the margin of 7 of 16 voices by more than 0.05
+# and raised the spread between clones from 0.272 to 0.311. Judged per person, not on the average.
+ID_TEXTS = ["والله يا جماعة ما توقعت إنه هيك رح تصير، بس خلص، المهم إنه كلنا مع بعض.",
+            "شوف، أنا رأيي إنه نستنى شوي، لأنه يعني لسا بكير نقرر."]
+MARGIN_DROP, SPREAD_RISE = 0.05, 0.02
+
+
+def identity_scores(clone_embs, centres):
+    """clone_embs, centres: {person: unit vector}. For each person: is their clone closest to them (identified),
+    and by how much more than to the nearest other person (margin); plus the mean similarity between clones."""
+    import itertools
+    rows = {}
+    for p, e in clone_embs.items():
+        sims = {q: float(e @ c) for q, c in centres.items()}
+        other = max((q for q in sims if q != p), key=sims.get)
+        rows[p] = dict(own=round(sims[p], 3), margin=round(sims[p] - sims[other], 3), nearest_other=other,
+                       identified=max(sims, key=sims.get) == p)
+    pairs = list(itertools.combinations(sorted(clone_embs), 2))
+    spread = round(float(np.mean([float(clone_embs[a] @ clone_embs[b]) for a, b in pairs])), 3) if pairs else 0.0
+    return dict(rows=rows, spread=spread)
+
+
+def identity_problems(before, after, margin_drop=MARGIN_DROP, spread_rise=SPREAD_RISE):
+    """Why the new version blurs identities (empty list = it does not): any person no longer recognised, any
+    person whose margin shrank by more than margin_drop, or clones that sound more alike than before."""
+    out = []
+    for p, b in sorted(before["rows"].items()):
+        a = after["rows"].get(p)
+        if a is None:
+            continue
+        if b["identified"] and not a["identified"]:
+            out.append(f"{p}: no longer recognised (closest now {a['nearest_other']})")
+        elif a["margin"] < b["margin"] - margin_drop:
+            out.append(f"{p}: margin {b['margin']} -> {a['margin']}")
+    if after["spread"] > before["spread"] + spread_rise:
+        out.append(f"clones sound more alike: spread {before['spread']} -> {after['spread']}")
+    return out
 
 
 def allows_training(rec):
@@ -253,6 +291,38 @@ def cmd_train(a):
         heard_cer.mos = round(float(np.mean(nats)), 3) if nats else None
         return round(float(np.mean(errs)), 4)
 
+    # identity check: every person's clone (from one fixed clip of theirs) placed among the real voices
+    enc = V.load_speaker_encoder(a.sv_dir) if a.sv_dir and os.path.isdir(a.sv_dir) else None
+    id_refs, centres = {}, {}
+    if enc is not None:
+        held_ids = {i["wav"] for i in held + unseen}
+        for p in people:
+            mine = [i for i in items if i["person"] == p]
+            if len(mine) < 4:
+                continue
+            id_refs[p] = sorted(mine, key=lambda i: (i["wav"] not in held_ids, i["wav"]))[0]
+            es = [V.speaker_embedding(enc, sf.read(i["wav"], dtype="float32")[0]) for i in sorted(mine, key=lambda i: i["wav"])[:30]]
+            c = sum(es) / len(es); centres[p] = c / c.norm()
+
+    def identity():
+        if len(centres) < 2:
+            return None
+        from omnivoice.models.omnivoice import OmniVoiceGenerationConfig
+        model.eval()
+        embs = {}
+        for p, r in id_refs.items():
+            es = []
+            for t in ID_TEXTS:
+                torch.manual_seed(0)
+                with torch.no_grad():
+                    y = model.generate(text=t, language="apc", ref_audio=r["wav"], ref_text=r["text"],
+                                       generation_config=OmniVoiceGenerationConfig(num_step=GATE_STEPS))
+                y16 = librosa.resample(np.asarray(y[0] if isinstance(y, list) else y, dtype=np.float32).squeeze(),
+                                       orig_sr=TSR, target_sr=SR)
+                es.append(V.speaker_embedding(enc, y16))
+            e = sum(es) / len(es); embs[p] = e / e.norm()
+        return identity_scores(embs, centres)
+
     report = dict(started_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
                   people=people, train_clips=len(train), held_clips=len(held), minutes=round(minutes, 1),
                   unseen_person=unseen_person, unseen_clips=len(unseen),
@@ -271,6 +341,7 @@ def cmd_train(a):
         report["unseen_loss_before"] = mean_loss(unseen_s)
         report["cer_before"] = heard_cer()
         report["mos_before"] = heard_cer.mos
+        report["identity_before"] = identity()
     print("before:", {k: report[k] for k in ("held_loss_before", "unseen_loss_before", "cer_before", "mos_before")}, flush=True)
 
     layers = model.llm.layers
@@ -292,7 +363,7 @@ def cmd_train(a):
         start = ckpt["step"] + 1
     def save_progress(k):
         tmp = ckpt_path + ".tmp"
-        torch.save(dict(key=run_key, step=k, report={x: report[x] for x in ("held_loss_before", "unseen_loss_before", "cer_before", "mos_before")},
+        torch.save(dict(key=run_key, step=k, report={x: report.get(x) for x in ("held_loss_before", "unseen_loss_before", "cer_before", "mos_before", "identity_before")},
                         weights={n: params[n].detach().clone() for n in names}, opt=opt.state_dict(),
                         py_rng=random.getstate(), torch_rng=torch.random.get_rng_state()), tmp)
         os.replace(tmp, ckpt_path)
@@ -315,13 +386,19 @@ def cmd_train(a):
     report["cer_after"] = heard_cer()
     report["mos_after"] = heard_cer.mos
     print("after:", {k: report[k] for k in ("held_loss_after", "unseen_loss_after", "cer_after", "mos_after")}, flush=True)
+    report["identity_after"] = identity() if report.get("identity_before") else None
+    report["identity_problems"] = (identity_problems(report["identity_before"], report["identity_after"])
+                                   if report["identity_after"] else None)
+    if report["identity_problems"]:
+        print("identity check:", "; ".join(report["identity_problems"]), flush=True)
 
     # keep the new version only if it fits the known voices better, does not get worse for a stranger,
-    # and is not heard worse
+    # is not heard worse, and keeps every person's voice as distinct from the others as before
     ub, ua = report["unseen_loss_before"], report["unseen_loss_after"]
     ok = (report["held_loss_after"] < report["held_loss_before"]
           and (ub is None or ua <= ub * 1.01)
-          and report["cer_after"] <= report["cer_before"] + 0.02)
+          and report["cer_after"] <= report["cer_before"] + 0.02
+          and not report["identity_problems"])
     report["accepted"] = ok
     os.makedirs(os.path.dirname(os.path.abspath(a.adapter)), exist_ok=True)
     if ok:
@@ -389,6 +466,7 @@ def main(argv=None):
     ap.add_argument("--adapter", default=os.path.join(V.RUNS, "learn", "adapter.pt"))
     ap.add_argument("--model-dir", default="models/lahgtna-omnivoice-v2")
     ap.add_argument("--asr-dir", default="models/whisper-turbo-dialectal-v2-ct2")
+    ap.add_argument("--sv-dir", default="models/ecapa-voxceleb", help="speaker encoder for the identity check")
     ap.add_argument("--consent")
     ap.add_argument("--src", help="folder of the person's recordings (add)")
     ap.add_argument("--person")

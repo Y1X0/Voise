@@ -75,6 +75,46 @@ class TestHistory(unittest.TestCase):
             self.assertEqual(sorted(os.listdir(os.path.join(d, "history"))), ["adapter_gen2.pt", "adapter_gen3.pt"])
 
 
+
+# measured 2026-11-15 (experiments/discriminability_2026-11-15): base model vs generation 2, names shortened
+BENCH_BASE = {"rows": {"p12": {"margin": 0.282, "identified": True, "nearest_other": "mafia_p72"}, "p140": {"margin": 0.219, "identified": True, "nearest_other": "mafia2_p48"}, "p152": {"margin": 0.403, "identified": True, "nearest_other": "mafia_p70"}, "p30": {"margin": -0.159, "identified": False, "nearest_other": "mafia2_p140"}, "p48": {"margin": 0.306, "identified": True, "nearest_other": "mafia2_p152"}, "abood": {"margin": 0.065, "identified": True, "nearest_other": "mafia_p95"}, "fakhri": {"margin": 0.367, "identified": True, "nearest_other": "mafia2_p140"}, "p106": {"margin": 0.161, "identified": True, "nearest_other": "mafia_abood"}, "p43": {"margin": 0.236, "identified": True, "nearest_other": "mafia_p70"}, "p51": {"margin": 0.357, "identified": True, "nearest_other": "mafia_abood"}, "p64": {"margin": 0.284, "identified": True, "nearest_other": "mafia_p70"}, "p70": {"margin": 0.324, "identified": True, "nearest_other": "mafia_p43"}, "p72": {"margin": 0.355, "identified": True, "nearest_other": "mafia_p64"}, "p85": {"margin": 0.265, "identified": True, "nearest_other": "mafia_p72"}, "p95": {"margin": 0.238, "identified": True, "nearest_other": "mafia_abood"}, "omar": {"margin": 0.407, "identified": True, "nearest_other": "mafia_p72"}}, "spread": 0.272}
+BENCH_GEN2 = {"rows": {"p12": {"margin": 0.271, "identified": True, "nearest_other": "mafia_p72"}, "p140": {"margin": 0.337, "identified": True, "nearest_other": "mafia2_p48"}, "p152": {"margin": 0.316, "identified": True, "nearest_other": "mafia_p64"}, "p30": {"margin": -0.122, "identified": False, "nearest_other": "mafia2_p140"}, "p48": {"margin": 0.189, "identified": True, "nearest_other": "mafia2_p152"}, "abood": {"margin": 0.112, "identified": True, "nearest_other": "mafia_p95"}, "fakhri": {"margin": 0.3, "identified": True, "nearest_other": "mafia2_p140"}, "p106": {"margin": 0.141, "identified": True, "nearest_other": "mafia_abood"}, "p43": {"margin": 0.255, "identified": True, "nearest_other": "mafia_p70"}, "p51": {"margin": 0.354, "identified": True, "nearest_other": "mafia_abood"}, "p64": {"margin": 0.173, "identified": True, "nearest_other": "mafia_p106"}, "p70": {"margin": 0.272, "identified": True, "nearest_other": "mafia_p64"}, "p72": {"margin": 0.371, "identified": True, "nearest_other": "mafia_p64"}, "p85": {"margin": 0.16, "identified": True, "nearest_other": "mafia_p72"}, "p95": {"margin": 0.261, "identified": True, "nearest_other": "mafia_abood"}, "omar": {"margin": 0.353, "identified": True, "nearest_other": "mafia_p72"}}, "spread": 0.311}
+
+
+class TestIdentityGate(unittest.TestCase):
+    def test_scores(self):
+        import torch
+        n = lambda v: torch.nn.functional.normalize(torch.tensor(v, dtype=torch.float32), dim=0)
+        centres = {"a": n([1, 0, 0]), "b": n([0, 1, 0]), "c": n([0, 0, 1])}
+        clones = {"a": n([0.9, 0.3, 0]), "b": n([0.6, 0.5, 0]), "c": n([0, 0.2, 1])}
+        s = L.identity_scores(clones, centres)
+        self.assertTrue(s["rows"]["a"]["identified"])
+        self.assertFalse(s["rows"]["b"]["identified"])           # b's clone is closer to a
+        self.assertEqual(s["rows"]["b"]["nearest_other"], "a")
+        self.assertLess(s["rows"]["b"]["margin"], 0)
+        self.assertGreater(s["spread"], 0)
+
+    def test_same_version_passes(self):
+        self.assertEqual(L.identity_problems(BENCH_BASE, BENCH_BASE), [])
+
+    def test_generation2_is_rejected_per_person(self):
+        problems = L.identity_problems(BENCH_BASE, BENCH_GEN2)
+        blurred = sorted(p.split(":")[0] for p in problems if not p.startswith("clones"))
+        self.assertEqual(blurred, ["fakhri", "omar", "p152", "p48", "p64", "p70", "p85"])
+        self.assertTrue(any(p.startswith("clones sound more alike") for p in problems))
+
+    def test_lost_recognition_is_a_problem_even_with_small_drop(self):
+        before = {"rows": {"x": dict(margin=0.02, identified=True, nearest_other="y")}, "spread": 0.3}
+        after = {"rows": {"x": dict(margin=-0.01, identified=False, nearest_other="y")}, "spread": 0.3}
+        self.assertEqual(len(L.identity_problems(before, after)), 1)
+
+    def test_a_better_person_does_not_hide_a_worse_one(self):
+        before = {"rows": {"x": dict(margin=0.2, identified=True, nearest_other="y"),
+                           "y": dict(margin=0.2, identified=True, nearest_other="x")}, "spread": 0.3}
+        after = {"rows": {"x": dict(margin=0.5, identified=True, nearest_other="y"),
+                          "y": dict(margin=0.1, identified=True, nearest_other="x")}, "spread": 0.3}
+        self.assertEqual(L.identity_problems(before, after), ["y: margin 0.2 -> 0.1"])
+
 if __name__ == "__main__":
     unittest.main()
 

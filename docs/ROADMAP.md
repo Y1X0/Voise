@@ -46,3 +46,11 @@ key includes each recording's modification time.
 - Reference of up to 19 s built from the best clips, instead of one 7-12 s clip: closer on 5 of 5 voices, with
   fewer misread words. In the tool since 2026-11-14.
 - kNN-VC polish after text-to-speech: not consistently better; not adopted for text-to-speech.
+- Step 1, speaker discriminability (2026-11-15, `experiments/discriminability_2026-11-15`): generation 2 blurs
+  identities. On average the clones are as close to their person as the base model's (own 0.716 both), and 15 of
+  16 are still recognised in both, but the clones sound more alike (spread 0.272 -> 0.311; real people 0.341) and
+  7 of 16 voices lost more than 0.05 of margin to the nearest other person (omar, fakhri, p48, p64, p70, p85,
+  p152), while p140 (+0.12) and abood (+0.05) gained. The average hid this. Decision: the learning gate now also
+  rejects a version that makes any person unrecognised, shrinks any person's margin by more than 0.05, or raises
+  the spread between clones by more than 0.02 (`identity_problems` in `voise_learn.py`). Step 5
+  (cross-utterance training) is the planned fix for the training itself.
