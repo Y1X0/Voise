@@ -54,3 +54,8 @@ key includes each recording's modification time.
   rejects a version that makes any person unrecognised, shrinks any person's margin by more than 0.05, or raises
   the spread between clones by more than 0.02 (`identity_problems` in `voise_learn.py`). Step 5
   (cross-utterance training) is the planned fix for the training itself.
+- Step 2, reference duration (2026-11-15, `experiments/ref_duration_2026-11-15`): mean closeness 81.9% at ~2 s,
+  93.5% at ~5 s, 98.4% at ~10 s, 100.7% at ~19 s; letter error 4.6% -> 2.2%. At 19 s only 1 of 16 voices is below
+  90% (12 of 16 at 2 s). Decision: keep the 19 s reference; ask for at least ~10 s of clean speech per person.
+- Per-voice version (2026-11-15): `voise_learn.py choose` keeps the original model for the 7 voices generation 2
+  blurred; the engine swaps the trained layers per voice.
