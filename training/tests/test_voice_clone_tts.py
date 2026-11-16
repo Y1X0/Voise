@@ -244,8 +244,6 @@ class TestVersionPerVoice(unittest.TestCase):
         e.weights, e.versions, e.in_use = {}, {"omar": "adapter"}, "base"
         self.assertEqual(e.use_version_for("pool/omar"), "base")
 
-if __name__ == "__main__":
-    unittest.main()
 
 
 class TestWatermarkFailsClosed(unittest.TestCase):
@@ -311,3 +309,86 @@ class TestPolish(unittest.TestCase):
         r = self.run_polish([0.40, 0.72], "والله جماعة كلام ثاني خالص")
         self.assertFalse(r["polished"])
         self.assertNotIn("y", r)
+
+
+class TestSimilarityFirst(unittest.TestCase):
+    """Experimental reference strategy (step 3b): most similar clips first, each only if Whisper hears it clearly."""
+    WORDS = "كان في صوتين وأنا قلت"
+
+    def cands(self, *rows):
+        return [dict(name=n, sim=s, dur=d) for n, s, d in rows]
+
+    def heard(self, clarity=None, text=None):
+        calls = []
+
+        def fn(c):
+            calls.append(c["name"])
+            return (text or {}).get(c["name"], self.WORDS), (clarity or {}).get(c["name"], 0.85)
+        return fn, calls
+
+    def test_most_similar_first_within_19_s(self):
+        fn, _ = self.heard()
+        chosen, rejected = V.pick_similar(self.cands(("c", 0.70, 6), ("a", 0.90, 8), ("b", 0.80, 8), ("d", 0.60, 2)), fn)
+        self.assertEqual([c["name"] for c in chosen], ["a", "b", "d"])      # c (6 s) no longer fits; d (2 s) does
+        self.assertLessEqual(sum(c["dur"] for c in chosen) + 0.3 * (len(chosen) - 1), 19.0)
+        self.assertEqual(rejected, [])
+
+    def test_similar_clip_with_unclear_text_never_goes_in(self):
+        fn, _ = self.heard(clarity={"a": 0.55})
+        chosen, rejected = V.pick_similar(self.cands(("a", 0.95, 5), ("b", 0.80, 5)), fn)
+        self.assertEqual([c["name"] for c in chosen], ["b"])
+        self.assertEqual([(r["name"], r["reason"]) for r in rejected], [("a", "unclear")])
+
+    def test_unknown_clarity_and_empty_text_rejected(self):
+        fn, _ = self.heard(clarity={"a": None}, text={"b": "اه"})
+        chosen, rejected = V.pick_similar(self.cands(("a", 0.95, 5), ("b", 0.90, 5), ("c", 0.80, 5)), fn)
+        self.assertEqual([c["name"] for c in chosen], ["c"])
+        self.assertEqual({r["name"]: r["reason"] for r in rejected}, {"a": "unclear", "b": "no words"})
+
+    def test_threshold_is_inclusive_and_configurable(self):
+        fn, _ = self.heard(clarity={"a": V.MIN_CLARITY})
+        self.assertEqual(len(V.pick_similar(self.cands(("a", 0.9, 5)), fn)[0]), 1)
+        self.assertEqual(len(V.pick_similar(self.cands(("a", 0.9, 5)), fn, min_clarity=0.9)[0]), 0)
+
+    def test_whisper_runs_only_on_clips_that_fit_and_stops_when_full(self):
+        fn, calls = self.heard()
+        V.pick_similar(self.cands(("a", 0.9, 18.5), ("big", 0.8, 5), ("b", 0.7, 0.5), ("c", 0.6, 0.4)), fn)
+        self.assertEqual(calls, ["a"])                           # full after a: < 1 s left
+
+    def test_nothing_clear_gives_nothing(self):
+        fn, _ = self.heard(clarity={"a": 0.2, "b": 0.3})
+        chosen, rejected = V.pick_similar(self.cands(("a", 0.9, 5), ("b", 0.8, 5)), fn)
+        self.assertEqual(chosen, [])
+        self.assertEqual(len(rejected), 2)
+
+    def test_similarity_is_cosine_to_centre_of_first_30_clips(self):
+        import torch
+        n = torch.nn.functional.normalize
+        own = [n(torch.tensor([1.0, 0.1 * i, 0.0]), dim=0) for i in range(30)]
+        later = n(torch.tensor([0.0, 0.0, 1.0]), dim=0)            # 31st clip: not part of the centre
+        sims = V.similarity_to_person(own + [later])
+        centre = n(sum(own), dim=0)
+        self.assertAlmostEqual(sims[0], float(own[0] @ centre), places=5)
+        self.assertAlmostEqual(sims[-1], 0.0, places=5)
+
+    def test_strategy_names_and_default(self):
+        import inspect
+        self.assertEqual(V.REFERENCE_STRATEGIES, ("quality", "similarity_first"))
+        self.assertEqual(inspect.signature(V.select_reference).parameters["strategy"].default, "quality")
+        self.assertEqual(inspect.signature(V.Engine.__init__).parameters["reference_strategy"].default, "quality")
+        with self.assertRaises(SystemExit):
+            V.select_reference(tempfile.mkdtemp(), "nowhere", strategy="diverse")
+
+    def test_without_speaker_encoder_falls_back_to_quality(self):
+        seen = {}
+        orig = V.select_reference
+        try:
+            V.select_reference = lambda d, asr, enc, long_s=19.0, **k: seen.setdefault("args", (d, enc, long_s)) and ("p", None, "t", {})
+            V.select_reference_similarity_first("dir", "asr", None)
+        finally:
+            V.select_reference = orig
+        self.assertEqual(seen["args"], ("dir", None, 19.0))
+
+
+if __name__ == "__main__":
+    unittest.main()

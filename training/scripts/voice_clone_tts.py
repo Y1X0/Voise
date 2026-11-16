@@ -103,7 +103,76 @@ def pick_reference(ref_dir, min_s=8.0, max_s=12.0):
     return p, t / max(1e-6, np.abs(t).max()) * 0.9
 
 
-def select_reference(ref_dir, asr_dir, enc=None, min_s=7.0, max_s=12.0, max_candidates=12, long_s=19.0):
+REFERENCE_STRATEGIES = ("quality", "similarity_first")
+# similarity_first: a clip enters the reference only if Whisper is at least this sure of its words (mean token
+# probability). Chosen before the step-3b bench from the pool: clean clips measure 0.79-0.91; p106's mumbled ones
+# 0.25-0.66 (experiments/ref_select_2026-11-16).
+MIN_CLARITY = 0.7
+MIN_LETTERS = 4                                      # same floor as voise_learn.py add: shorter transcripts are not speech
+
+
+def similarity_to_person(embs, centre_n=30):
+    """Each clip's similarity to the person: cosine (ECAPA, unit vectors) to the centre of their first `centre_n`
+    clips in file order - the measure behind step 3's "typical" reference (experiments/ref_mix_2026-11-15)."""
+    centre = sum(embs[:centre_n])
+    centre = centre / centre.norm()
+    return [float(e @ centre) for e in embs]
+
+
+def pick_similar(cands, transcribe_fn, long_s=19.0, min_clarity=MIN_CLARITY, gap_s=0.3):
+    """Most similar whole clips first, up to long_s seconds (0.3 s apart), each one only if Whisper hears it clearly.
+
+    cands: dicts with "sim" and "dur" (s); transcribe_fn(cand) -> (text, clarity or None). A clip is transcribed only
+    if it still fits, so a long pool costs a few Whisper calls. Returns (chosen, rejected), each chosen dict with
+    "text" and "clarity" added; rejected entries say why (no clarity counts as not clear: nothing unchecked goes in)."""
+    chosen, rejected, used = [], [], 0.0
+    for c in sorted(cands, key=lambda c: -c["sim"]):
+        add = c["dur"] + (gap_s if chosen else 0.0)
+        if used + add > long_s:
+            continue
+        text, clarity = transcribe_fn(c)
+        if len(normalize_ar(text)) < MIN_LETTERS:
+            rejected.append(dict(c, text=text, clarity=clarity, reason="no words"))
+        elif clarity is None or clarity < min_clarity:
+            rejected.append(dict(c, text=text, clarity=clarity, reason="unclear"))
+        else:
+            chosen.append(dict(c, text=text, clarity=clarity))
+            used += add
+        if long_s - used < 1.0:
+            break
+    return chosen, rejected
+
+
+def select_reference_similarity_first(ref_dir, asr_dir, enc, long_s=19.0, min_clarity=MIN_CLARITY):
+    """similarity_first strategy: whole recordings ranked by similarity to the person, filtered by Whisper clarity,
+    joined up to long_s. Falls back to the quality strategy without a speaker encoder or when no clip qualifies."""
+    sys.path.insert(0, HERE)
+    from unit_vocoder_pilot import load_audio_16k
+    if enc is None or not long_s:
+        return select_reference(ref_dir, asr_dir, enc, long_s=long_s)
+    clips = sorted(glob.glob(os.path.join(ref_dir, "*.wav")) + glob.glob(os.path.join(ref_dir, "*.flac")))
+    audio = [load_audio_16k(p, min_sr=8000)[0] for p in clips]
+    keep = [i for i, y in enumerate(audio) if len(y) >= SR]
+    if not keep:
+        return select_reference(ref_dir, asr_dir, enc, long_s=long_s)
+    sims = similarity_to_person([speaker_embedding(enc, audio[i]) for i in keep])
+    cands = [dict(path=clips[i], audio=audio[i], dur=len(audio[i]) / SR, sim=s) for i, s in zip(keep, sims)]
+    chosen, rejected = pick_similar(cands, lambda c: transcribe_with_confidence(c["audio"], asr_dir), long_s, min_clarity)
+    if not chosen:
+        path, ref, text, report = select_reference(ref_dir, asr_dir, enc, long_s=long_s)
+        return path, ref, text, dict(report, strategy="quality", fallback_from="similarity_first",
+                                     rejected=len(rejected))
+    gap = np.zeros(int(0.3 * SR), np.float32)
+    ref = np.concatenate(sum([[c["audio"], gap] for c in chosen], [])[:-1]).astype(np.float32)
+    report = dict(strategy="similarity_first", parts=len(chosen), seconds=round(len(ref) / SR, 1),
+                  similarity=[round(c["sim"], 3) for c in chosen], clarity=[round(c["clarity"], 3) for c in chosen],
+                  rejected=[dict(clip=os.path.basename(c["path"]), similarity=round(c["sim"], 3), reason=c["reason"],
+                                 clarity=None if c["clarity"] is None else round(c["clarity"], 3)) for c in rejected])
+    return chosen[0]["path"], ref, " ".join(c["text"] for c in chosen), report
+
+
+def select_reference(ref_dir, asr_dir, enc=None, min_s=7.0, max_s=12.0, max_candidates=12, long_s=19.0,
+                     strategy="quality"):
     """Choose the reference by quality instead of taking the first clip of the right length.
 
     Every 7-12 s stretch of speech in the person's recordings is a candidate, scored on
@@ -116,7 +185,13 @@ def select_reference(ref_dir, asr_dir, enc=None, min_s=7.0, max_s=12.0, max_cand
     The best candidates are then joined (0.3 s apart) into one reference of up to `long_s` seconds: more of the
     person to copy from. On the cloning bench (experiments/clone_bench_2026-11-14) a ~19 s reference was closer to
     the person than the single 7-12 s clip on every voice tested, with fewer misread words; OmniVoice warns that past
-    20 s cloning degrades. long_s=0 keeps the single clip. Returns (path, audio, transcript, report)."""
+    20 s cloning degrades. long_s=0 keeps the single clip. Returns (path, audio, transcript, report).
+
+    strategy="similarity_first" (experimental, not the default) uses select_reference_similarity_first instead."""
+    if strategy not in REFERENCE_STRATEGIES:
+        raise SystemExit(f"unknown reference strategy {strategy!r}: choose from {REFERENCE_STRATEGIES}")
+    if strategy == "similarity_first":
+        return select_reference_similarity_first(ref_dir, asr_dir, enc, long_s=long_s)
     sys.path.insert(0, HERE)
     import audio_preprocess as A
     from unit_vocoder_pilot import load_audio_16k
@@ -387,7 +462,7 @@ class Engine:
     so a person's voice is prepared once and reused by every later sentence and every later run."""
 
     def __init__(self, model_dir, asr_dir, adapter=None, sv_dir=None, language="apc", mos_path=None,
-                 temperature=0.5):
+                 temperature=0.5, reference_strategy="quality"):
         from omnivoice.models.omnivoice import OmniVoice
         if not os.path.isdir(model_dir):
             raise SystemExit(f"model directory not found: {model_dir} (nothing is downloaded here)")
@@ -413,6 +488,9 @@ class Engine:
                                           st.get("generation"))
         self.sr = getattr(self.model, "sampling_rate", None) or 24000
         self.asr_dir, self.language = asr_dir, language
+        if reference_strategy not in REFERENCE_STRATEGIES:
+            raise SystemExit(f"unknown reference strategy {reference_strategy!r}: choose from {REFERENCE_STRATEGIES}")
+        self.reference_strategy = reference_strategy
         self.enc = load_speaker_encoder(sv_dir)
         self.mos = load_mos(mos_path)
         # OmniVoice's default (0.0) always takes the most likely audio token, which sounds flat and machine-made;
@@ -434,7 +512,8 @@ class Engine:
         # modification times (a recording replaced by one of the same size still changes the key)
         files = sorted(glob.glob(os.path.join(ref_dir, "*.wav")) + glob.glob(os.path.join(ref_dir, "*.flac")))
         key = hashlib.sha256(json.dumps([[os.path.basename(f), os.path.getsize(f), os.stat(f).st_mtime_ns] for f in files] +
-                                        [ref_text or "", bool(self.enc), "long19-profile"]).encode()).hexdigest()[:16]
+                                        [ref_text or "", bool(self.enc), "long19-profile"] +
+                                        ([self.reference_strategy] if self.reference_strategy != "quality" else [])).encode()).hexdigest()[:16]
         if key in self.voices:
             return self.voices[key]
         cache = os.path.join(ref_dir, ".voise_cache")
@@ -447,7 +526,8 @@ class Engine:
         else:
             # a hand-typed reference text matches one clip only, so it keeps the single-clip reference
             ref_path, ref, heard, report = select_reference(ref_dir, self.asr_dir, self.enc,
-                                                            long_s=0 if ref_text else 19.0)
+                                                            long_s=0 if ref_text else 19.0,
+                                                            strategy=self.reference_strategy)
             sf.write(wav_p, ref, SR, subtype="PCM_16")
             meta = dict(reference=os.path.basename(ref_path), reference_transcript=ref_text or heard,
                         reference_choice=report, **self.profile(files))
@@ -634,6 +714,8 @@ def main(argv=None):
     ap.add_argument("--sv-dir", help="local speechbrain/spkrec-ecapa-voxceleb directory, to rank takes by voice")
     ap.add_argument("--adapter", help="learned version from voise_learn.py train (used only if the file exists)")
     ap.add_argument("--mos", help="UTMOS22-strong checkpoint, to record each take's predicted naturalness")
+    ap.add_argument("--reference-strategy", choices=REFERENCE_STRATEGIES, default="quality",
+                    help="how the reference is chosen: quality (default) or similarity_first (experimental, step 3b)")
     ap.add_argument("--person", help="name for the output files when one consent record covers several people")
     ap.add_argument("--temperature", type=float, default=0.5,
                     help="sampling temperature (0 = always the most likely token: flatter, more machine-like)")
@@ -644,7 +726,8 @@ def main(argv=None):
     if not texts:
         raise SystemExit("nothing to say: give --text or --text-file")
     check_out_dir(a.out)
-    eng = Engine(a.model_dir, a.asr_dir, a.adapter, a.sv_dir, a.language, a.mos, a.temperature)
+    eng = Engine(a.model_dir, a.asr_dir, a.adapter, a.sv_dir, a.language, a.mos, a.temperature,
+                 a.reference_strategy)
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     for n, text in enumerate(texts):
         wav_path, best, cands = eng.say(a.consent, a.ref_dir, text, a.out, a.ref_text, a.candidates,
