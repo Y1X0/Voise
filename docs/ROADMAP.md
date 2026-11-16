@@ -59,3 +59,7 @@ key includes each recording's modification time.
   90% (12 of 16 at 2 s). Decision: keep the 19 s reference; ask for at least ~10 s of clean speech per person.
 - Per-voice version (2026-11-15): `voise_learn.py choose` keeps the original model for the 7 voices generation 2
   blurred; the engine swaps the trained layers per voice.
+- Step 3, diverse vs typical references (2026-11-16, `experiments/ref_mix_2026-11-15`, Kaggle T4): the person's most
+  typical whole clips (102.2%) beat the tool's current reference (92.8%) on 14 of 16 voices and fix p30 (52% -> 107%);
+  a deliberately diverse mix (99.4%) is not better. Letter error 3.7% vs 3.4% and a slightly flatter pitch (0.88 vs
+  1.01), so typical goes into `select_reference` only together with a per-clip clarity check, then re-benched.
