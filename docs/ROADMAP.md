@@ -63,3 +63,9 @@ key includes each recording's modification time.
   typical whole clips (102.2%) beat the tool's current reference (92.8%) on 14 of 16 voices and fix p30 (52% -> 107%);
   a deliberately diverse mix (99.4%) is not better. Letter error 3.7% vs 3.4% and a slightly flatter pitch (0.88 vs
   1.01), so typical goes into `select_reference` only together with a per-clip clarity check, then re-benched.
+- Step 3b, similarity-first reference with a Whisper filter (2026-11-16, `experiments/ref_select_2026-11-16`, 16
+  voices x 9 takes, Kaggle T4): **not adopted**; default stays `quality`, `--reference-strategy similarity_first` kept
+  for comparison. Averages improved (closeness 92.1% -> 99.3%, letter error 4.06% -> 3.55%, 13 of 16 voices better,
+  p30 fixed 46% -> 107%), but the pre-registered per-voice criteria failed: p152 -10.5 points, p106 no longer
+  identified (9 unclear clips rejected, reference only 11.7 s), p64 letter error +3.3 points. Clones also got flatter
+  (pitch range 0.96 -> 0.89). Limits: one Kaggle run, 3 seeds; threshold 0.7 untuned on purpose.
