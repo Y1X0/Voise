@@ -168,6 +168,77 @@ class TestTakeSelection(unittest.TestCase):
         self.assertEqual([c["speed"] for c in calls], [None, None, 0.85])
 
 
+class TestTakeTarget(unittest.TestCase):
+    """take_target "person": takes are ranked by closeness to the person's voice centre, every take is made, and
+    takes from extra references compete with the main reference's (experiments/take_select_2026-11-17)."""
+
+    def engine(self, take_target, embs):
+        import numpy as np
+        import torch
+
+        class Model:
+            def generate(self, **kw):
+                return np.zeros(2400, np.float32)
+
+        e = V.Engine.__new__(V.Engine)
+        e.model, e.language, e.temperature, e.sr, e.asr_dir, e.mos = Model(), "apc", 0.5, 24000, None, None
+        e.enc, e.take_target = object(), take_target
+        it = iter([torch.tensor(x, dtype=torch.float32) for x in embs])
+        self.old = V.speaker_embedding, V.transcribe
+        V.speaker_embedding = lambda enc, y: next(it)
+        V.transcribe = lambda y, d: "بكرا منحكي"
+        return e
+
+    def tearDown(self):
+        if hasattr(self, "old"):
+            V.speaker_embedding, V.transcribe = self.old
+
+    def voice(self, ref_emb, strategy="quality", centroid=(1.0, 0.0)):
+        import torch
+        return dict(prompt=strategy, emb=torch.tensor(ref_emb, dtype=torch.float32), centroid=list(centroid),
+                    strategy=strategy)
+
+    def test_default_measures_against_reference_and_stops_at_first_clean_take(self):
+        e = self.engine("reference", [(0.0, 1.0)])
+        best, cands = e.takes(self.voice((0.0, 1.0)), "بكرا منحكي", candidates=3)
+        self.assertEqual(len(cands), 1)                     # unchanged behaviour: a clean first take ends it
+        self.assertEqual(best["sim"], 1.0)                  # similarity to the reference clip, not the centre
+
+    def test_person_target_makes_every_take_and_picks_closest_to_centre(self):
+        e = self.engine("person", [(0.0, 1.0), (0.8, 0.6), (0.6, 0.8)])
+        best, cands = e.takes(self.voice((0.0, 1.0)), "بكرا منحكي", candidates=3)
+        self.assertEqual(len(cands), 3)
+        self.assertEqual(best["seed"], 1)                   # 0.8 to the centre (1, 0); seed 0 matched the reference
+        self.assertEqual([c["sim"] for c in cands], [0.0, 0.8, 0.6])
+
+    def test_extra_reference_takes_compete_with_same_seeds(self):
+        e = self.engine("person", [(0.6, 0.8), (0.7, 0.71), (0.9, 0.44), (0.5, 0.87)])
+        best, cands = e.takes(self.voice((0.0, 1.0)), "بكرا منحكي", candidates=2,
+                              extra=[self.voice((1.0, 0.0), "similarity_first")])
+        self.assertEqual([(c["reference"], c["seed"]) for c in cands],
+                         [("quality", 0), ("quality", 1), ("similarity_first", 0), ("similarity_first", 1)])
+        self.assertEqual((best["reference"], best["seed"]), ("similarity_first", 0))
+
+    def test_words_still_come_first(self):
+        e = self.engine("person", [(1.0, 0.0), (0.5, 0.87)])
+        said = iter(["خطأ كبير", "بكرا منحكي"])
+        V.transcribe = lambda y, d: next(said)
+        best, _ = e.takes(self.voice((0.0, 1.0)), "بكرا منحكي", candidates=2)
+        self.assertEqual(best["seed"], 1)                   # the take closest to the person misread the words
+
+    def test_without_centre_falls_back_to_reference(self):
+        e = self.engine("person", [(0.0, 1.0)])
+        v = self.voice((0.0, 1.0))
+        v["centroid"] = None
+        best, cands = e.takes(v, "بكرا منحكي", candidates=3)
+        self.assertEqual((len(cands), best["sim"]), (1, 1.0))
+
+    def test_unknown_target_or_pool_refused(self):
+        with self.assertRaises(SystemExit):
+            V.take_target_vector({}, "nearest")
+        self.assertEqual(V.TAKE_TARGETS[0], "reference")    # the default stays the old behaviour
+
+
 class TestSplitText(unittest.TestCase):
     def test_short_text_is_one_piece(self):
         self.assertEqual(V.split_text("شو أخبارك؟ إن شاء الله منيح."), ["شو أخبارك؟ إن شاء الله منيح."])

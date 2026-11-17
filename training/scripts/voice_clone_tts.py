@@ -104,6 +104,11 @@ def pick_reference(ref_dir, min_s=8.0, max_s=12.0):
 
 
 REFERENCE_STRATEGIES = ("quality", "similarity_first")
+# What a take's voice similarity is measured against when choosing among takes (experiments/take_select_2026-11-17):
+#   reference  the reference clip's own embedding (default, unchanged)
+#   person     the person's voice centre (mean of their real clips, Engine.profile), so the chosen take is the one
+#              most like the person rather than like one recording of them; every take is made (no early stop)
+TAKE_TARGETS = ("reference", "person")
 # similarity_first: a clip enters the reference only if Whisper is at least this sure of its words (mean token
 # probability). Chosen before the step-3b bench from the pool: clean clips measure 0.79-0.91; p106's mumbled ones
 # 0.25-0.66 (experiments/ref_select_2026-11-16).
@@ -339,6 +344,18 @@ def choose_best(cands):
     return max(near, key=lambda c: (c["sim"] if c["sim"] is not None else 0.0, -c["cer"]))
 
 
+def take_target_vector(v, take_target):
+    """The embedding a take's similarity is measured against: the person's voice centre for "person" (when the
+    voice has one), else None, meaning each take is compared with its own reference's embedding (the default)."""
+    if take_target not in TAKE_TARGETS:
+        raise SystemExit(f"unknown take target {take_target!r}: choose from {TAKE_TARGETS}")
+    if take_target == "person" and v.get("centroid"):
+        import torch
+        c = torch.tensor(v["centroid"], dtype=torch.float32)
+        return c / c.norm()
+    return None
+
+
 def load_speaker_encoder(sv_dir):
     if not sv_dir:
         return None
@@ -462,7 +479,7 @@ class Engine:
     so a person's voice is prepared once and reused by every later sentence and every later run."""
 
     def __init__(self, model_dir, asr_dir, adapter=None, sv_dir=None, language="apc", mos_path=None,
-                 temperature=0.5, reference_strategy="quality"):
+                 temperature=0.5, reference_strategy="quality", take_target="reference", reference_pool=()):
         from omnivoice.models.omnivoice import OmniVoice
         if not os.path.isdir(model_dir):
             raise SystemExit(f"model directory not found: {model_dir} (nothing is downloaded here)")
@@ -491,6 +508,14 @@ class Engine:
         if reference_strategy not in REFERENCE_STRATEGIES:
             raise SystemExit(f"unknown reference strategy {reference_strategy!r}: choose from {REFERENCE_STRATEGIES}")
         self.reference_strategy = reference_strategy
+        if take_target not in TAKE_TARGETS:
+            raise SystemExit(f"unknown take target {take_target!r}: choose from {TAKE_TARGETS}")
+        bad = [s for s in reference_pool if s not in REFERENCE_STRATEGIES]
+        if bad:
+            raise SystemExit(f"unknown reference strategy in pool {bad}: choose from {REFERENCE_STRATEGIES}")
+        # extra references (by strategy) whose takes compete with the main reference's takes, sentence by sentence
+        self.take_target = take_target
+        self.reference_pool = tuple(s for s in dict.fromkeys(reference_pool) if s != reference_strategy)
         self.enc = load_speaker_encoder(sv_dir)
         self.mos = load_mos(mos_path)
         # OmniVoice's default (0.0) always takes the most likely audio token, which sounds flat and machine-made;
@@ -504,16 +529,17 @@ class Engine:
         self.pronlex_mod = pronlex
         self.check_vowels = os.path.isdir(pronlex.PHONE_DIR)
 
-    def voice(self, ref_dir, ref_text=None):
+    def voice(self, ref_dir, ref_text=None, strategy=None):
         import soundfile as sf
         import torch
         from omnivoice.models.omnivoice import VoiceClonePrompt
+        strategy = strategy or self.reference_strategy
         # the choice depends only on the recordings, so it is cached under a key made from their names, sizes and
         # modification times (a recording replaced by one of the same size still changes the key)
         files = sorted(glob.glob(os.path.join(ref_dir, "*.wav")) + glob.glob(os.path.join(ref_dir, "*.flac")))
         key = hashlib.sha256(json.dumps([[os.path.basename(f), os.path.getsize(f), os.stat(f).st_mtime_ns] for f in files] +
                                         [ref_text or "", bool(self.enc), "long19-profile"] +
-                                        ([self.reference_strategy] if self.reference_strategy != "quality" else [])).encode()).hexdigest()[:16]
+                                        ([strategy] if strategy != "quality" else [])).encode()).hexdigest()[:16]
         if key in self.voices:
             return self.voices[key]
         cache = os.path.join(ref_dir, ".voise_cache")
@@ -527,14 +553,15 @@ class Engine:
             # a hand-typed reference text matches one clip only, so it keeps the single-clip reference
             ref_path, ref, heard, report = select_reference(ref_dir, self.asr_dir, self.enc,
                                                             long_s=0 if ref_text else 19.0,
-                                                            strategy=self.reference_strategy)
+                                                            strategy=strategy)
             sf.write(wav_p, ref, SR, subtype="PCM_16")
             meta = dict(reference=os.path.basename(ref_path), reference_transcript=ref_text or heard,
                         reference_choice=report, **self.profile(files))
             prompt = self.model.create_voice_clone_prompt(ref_audio=wav_p, ref_text=meta["reference_transcript"])
             prompt.save(prompt_p)
             json.dump(meta, open(meta_p, "w", encoding="utf-8"), ensure_ascii=False)
-        v = dict(prompt=prompt, ref=ref, emb=speaker_embedding(self.enc, ref) if self.enc else None, **meta)
+        v = dict(prompt=prompt, ref=ref, emb=speaker_embedding(self.enc, ref) if self.enc else None, strategy=strategy,
+                 **meta)
         self.voices[key] = v
         return v
 
@@ -604,7 +631,7 @@ class Engine:
                         y=librosa.resample(np.asarray(out16, np.float32), orig_sr=SR, target_sr=self.sr))
         return dict(info, polished=False)
 
-    def takes(self, v, text, candidates=3, steps=32, speed=None, good_enough=0.0, spoken=None):
+    def takes(self, v, text, candidates=3, steps=32, speed=None, good_enough=0.0, spoken=None, extra=()):
         """Up to `candidates` takes; stops early once Whisper hears a take with no wrong letter (normalize_ar
         already folds the spellings Whisper writes either way, such as بكرا/بكرة). A looser bar let one wrong word
         through: «ومنحكي» spoken as «وما نحكي» is only 3% of a sentence's letters but flips its meaning.
@@ -616,32 +643,40 @@ class Engine:
 
         `spoken` is the text as the model reads it (after the pronunciation dictionary), and Whisper's transcript is
         checked against it: a dictionary entry may swap a word for an equivalent one (ومنحكي -> وبنحكي, same
-        meaning in Jordanian), and diacritics are ignored by the comparison anyway."""
+        meaning in Jordanian), and diacritics are ignored by the comparison anyway.
+
+        `extra` are other prepared voices of the same person (other reference strategies, Engine.reference_pool):
+        their takes compete with the main reference's, with the same seeds. With take_target "person" every take is
+        made and similarity is measured against the person's voice centre (experimental, take_select_2026-11-17)."""
         import librosa
         import torch
         from omnivoice.models.omnivoice import OmniVoiceGenerationConfig
         cands = []
         n = max(1, candidates)
-        for seed in range(n):
-            torch.manual_seed(seed)
-            sp = speed
-            if sp is None and n > 1 and seed == n - 1 and len(text.split()) <= 10:
-                sp = 0.85
-            y = self.model.generate(text=spoken or text, language=self.language, voice_clone_prompt=v["prompt"], speed=sp,
-                                    generation_config=OmniVoiceGenerationConfig(num_step=steps,
-                                                                                class_temperature=self.temperature))
-            y = np.asarray(y[0] if isinstance(y, list) else y, dtype=np.float32).squeeze()
-            y16 = librosa.resample(y, orig_sr=self.sr, target_sr=SR)
-            heard = transcribe(y16, self.asr_dir)
-            sim = float(speaker_embedding(self.enc, y16) @ v["emb"]) if self.enc else None
-            nat = naturalness(self.mos, y16)
-            lex = self.pronlex_mod.load() if getattr(self, "check_vowels", False) else {}
-            wrong = self.pronlex_mod.check(y16, spoken or text, lex, self.asr_dir) if lex else []
-            cands.append(dict(seed=seed, y=y, heard=heard, cer=round(cer(spoken or text, heard), 3),
-                              sim=None if sim is None else round(sim, 3), mos=None if nat is None else round(nat, 2),
-                              vowels_wrong=wrong))
-            if cands[-1]["cer"] <= good_enough and not wrong:
-                break
+        target = take_target_vector(v, getattr(self, "take_target", "reference"))
+        early_stop = target is None or getattr(self, "take_target", "reference") == "reference"
+        for vv in [v] + list(extra):
+            for seed in range(n):
+                torch.manual_seed(seed)
+                sp = speed
+                if sp is None and n > 1 and seed == n - 1 and len(text.split()) <= 10:
+                    sp = 0.85
+                y = self.model.generate(text=spoken or text, language=self.language, voice_clone_prompt=vv["prompt"],
+                                        speed=sp, generation_config=OmniVoiceGenerationConfig(
+                                            num_step=steps, class_temperature=self.temperature))
+                y = np.asarray(y[0] if isinstance(y, list) else y, dtype=np.float32).squeeze()
+                y16 = librosa.resample(y, orig_sr=self.sr, target_sr=SR)
+                heard = transcribe(y16, self.asr_dir)
+                to = target if target is not None else vv.get("emb")
+                sim = float(speaker_embedding(self.enc, y16) @ to) if self.enc and to is not None else None
+                nat = naturalness(self.mos, y16)
+                lex = self.pronlex_mod.load() if getattr(self, "check_vowels", False) else {}
+                wrong = self.pronlex_mod.check(y16, spoken or text, lex, self.asr_dir) if lex else []
+                cands.append(dict(seed=seed, y=y, heard=heard, cer=round(cer(spoken or text, heard), 3),
+                                  sim=None if sim is None else round(sim, 3), mos=None if nat is None else round(nat, 2),
+                                  vowels_wrong=wrong, reference=vv.get("strategy")))
+                if early_stop and cands[-1]["cer"] <= good_enough and not wrong:
+                    return choose_best(cands), cands
         return choose_best(cands), cands
 
     def say(self, consent_path, ref_dir, text, out, ref_text=None, candidates=3, steps=32, speed=None,
@@ -656,13 +691,15 @@ class Engine:
         stamp = stamp or datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         wav_path, meta_path = output_paths(out, who or consent["voice_owner"], n, stamp)
         v = self.voice(ref_dir, ref_text)
+        # a hand-typed reference text belongs to one clip, so other references are not added to it
+        extra = [] if ref_text else [self.voice(ref_dir, None, strategy=s) for s in getattr(self, "reference_pool", ())]
         version = self.use_version_for(ref_dir)
         pieces, audio, chosen, all_cands = split_text(text), [], [], []
         lex = load_lexicon()
         for k, piece in enumerate(pieces):
             st = 32 if steps < 32 and REACTION.search(piece) else steps   # at 16 steps a [laughter] was trimmed away
             spoken = apply_lexicon(piece, lex)
-            best, cands = self.takes(v, piece, candidates, st, speed, spoken=spoken)
+            best, cands = self.takes(v, piece, candidates, st, speed, spoken=spoken, extra=extra)
             pol = self.polish(v, ref_dir, spoken, best)
             if pol:
                 best = dict(best, **pol)                    # a kept polish replaces y, heard and cer
@@ -673,9 +710,11 @@ class Engine:
             audio.append(y)
             chosen.append(best)
             all_cands.append(dict(piece=piece, spoken=spoken, num_step=st, chosen_seed=best["seed"],
+                                  chosen_reference=best.get("reference"),
                                   polish={k: best[k] for k in ("polished", "polish_closeness_before",
                                                                "polish_closeness_after", "polish_cer") if k in best},
-                                  candidates=[{x: c.get(x) for x in ("seed", "heard", "cer", "sim", "mos", "vowels_wrong")}
+                                  candidates=[{x: c.get(x) for x in ("seed", "reference", "heard", "cer", "sim", "mos",
+                                                                     "vowels_wrong")}
                                               for c in cands]))
         y = np.concatenate(audio)
         y, wm = watermark(y, self.sr)                     # always: there is no unmarked output
@@ -690,6 +729,8 @@ class Engine:
                        reference_transcript=v["reference_transcript"],
                        model="oddadmix/lahgtna-omnivoice-v2 (no licence stated)", adapter=self.adapter if version == "adapter" else None,
                        version_used=version, language=self.language, created_utc=stamp, watermark=wm, class_temperature=self.temperature,
+                       take_target=getattr(self, "take_target", "reference"),
+                       reference_pool=[v.get("strategy")] + [x["strategy"] for x in extra],
                        pieces=all_cands),
                   open(meta_path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
         return wav_path, summary, [c for p in all_cands for c in p["candidates"]]
@@ -716,6 +757,11 @@ def main(argv=None):
     ap.add_argument("--mos", help="UTMOS22-strong checkpoint, to record each take's predicted naturalness")
     ap.add_argument("--reference-strategy", choices=REFERENCE_STRATEGIES, default="quality",
                     help="how the reference is chosen: quality (default) or similarity_first (experimental, step 3b)")
+    ap.add_argument("--take-target", choices=TAKE_TARGETS, default="reference",
+                    help="rank takes by similarity to the reference clip (default) or to the person's voice centre "
+                         "(experimental, take_select_2026-11-17; makes every take)")
+    ap.add_argument("--reference-pool", nargs="*", choices=REFERENCE_STRATEGIES, default=[],
+                    help="extra reference strategies whose takes compete with the main reference's (experimental)")
     ap.add_argument("--person", help="name for the output files when one consent record covers several people")
     ap.add_argument("--temperature", type=float, default=0.5,
                     help="sampling temperature (0 = always the most likely token: flatter, more machine-like)")
@@ -727,7 +773,7 @@ def main(argv=None):
         raise SystemExit("nothing to say: give --text or --text-file")
     check_out_dir(a.out)
     eng = Engine(a.model_dir, a.asr_dir, a.adapter, a.sv_dir, a.language, a.mos, a.temperature,
-                 a.reference_strategy)
+                 a.reference_strategy, a.take_target, tuple(a.reference_pool))
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     for n, text in enumerate(texts):
         wav_path, best, cands = eng.say(a.consent, a.ref_dir, text, a.out, a.ref_text, a.candidates,

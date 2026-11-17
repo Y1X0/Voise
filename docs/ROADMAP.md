@@ -69,3 +69,12 @@ key includes each recording's modification time.
   p30 fixed 46% -> 107%), but the pre-registered per-voice criteria failed: p152 -10.5 points, p106 no longer
   identified (9 unclear clips rejected, reference only 11.7 s), p64 letter error +3.3 points. Clones also got flatter
   (pitch range 0.96 -> 0.89). Limits: one Kaggle run, 3 seeds; threshold 0.7 untuned on purpose.
+- Take selection over a two-reference pool (2026-11-17, `experiments/take_select_2026-11-17`, 16 voices x 3
+  sentences x 2 replicates, Kaggle T4): **not adopted, still experimental** (`--take-target person`,
+  `--reference-pool similarity_first`; defaults unchanged). Ranking one reference's takes against the person's
+  centre instead of the reference clip does almost nothing (+0.2/+0.5 points): seed-to-seed differences are mostly
+  encoder noise (choosing with WavLM-SV lowers ECAPA). Letting the similarity_first reference's takes compete raised
+  closeness +5.6 points in both replicates, margin +0.05/+0.07, EER 4-6% -> 2%, letter error -0.6/-1.1 points, clones
+  not more alike; but in the second replicate the held-out-clip and cross-encoder gains have CIs touching 0, and the
+  mean is driven by p30 (+2.7 points without it). Cost: 6 takes per sentence instead of ~3. Next: an equal-budget
+  control (quality x 6 seeds) and a per-person reference choice confirmed by both encoders.
