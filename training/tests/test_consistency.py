@@ -155,9 +155,11 @@ class EndToEndArtifacts(unittest.TestCase):
         FC.build(train_rows, os.path.dirname(rel(dd["train_index"])), rel(dd["teacher"]["units_dir"]))
         FC.build([r for r in rows if r["split"] == "valid"], os.path.dirname(rel(dd["valid_index"])), None)
         cls.models_dir = rel("models_train")
+        # trained on the config's own licence path (commercial; the fixture corpus is admitted on it),
+        # because GpuAssets / preflight refuse encoders whose licence_path the run may not use
         for spec in dd["speaker_encoders_train"]:
             TSE.train(rel(dd["train_index"]), spec["name"], "TRAIN", 2, rel(f"runs/spk/{spec['name']}"), cls.models_dir,
-                      channels=16 if spec["arch"] == "ecapa" else 32, dim=16, batch=2, seg=1.0, licence_path="smoke",
+                      channels=16 if spec["arch"] == "ecapa" else 32, dim=16, batch=2, seg=1.0, licence_path="commercial",
                       device="cpu", arch=spec["arch"], ckpt_every=2)
         for key in ("train_manifest", "valid_manifest", "train_index", "valid_index"):
             dd[key] = rel(dd[key])

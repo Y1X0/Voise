@@ -456,3 +456,16 @@ No check in this report is marked passing unless it was run and its output recor
 - **1 round-3 mutation no longer applies,** because the round-4 hardening replaced the code it targeted. The round-4 mutations of the new code are caught.
 
 **Status:** implemented and tested. Closing C9 needs owner review.
+
+## R15 owner decision: Kaggle for the 16 pool voices (2026-11-16)
+
+- **Decision (project owner):** the 16 people in `runs/learn/pool` agreed that their recordings may be used to train and
+  test the model on any compute the owner chooses, Kaggle included. The consent is asserted by the owner (as for the
+  rest of the pool); for a minor it must be a parent's. This covers only these 16 voices, not future collection.
+- **Conditions:**
+  - Kaggle datasets and notebooks holding their audio or weights are **private**, never public, and are deleted when
+    the run is finished. Outputs keep only numbers (closeness, letter error), no audio.
+  - Kaggle is added to the deletion list: on withdrawal, the person's clips are also removed from any Kaggle dataset
+    and notebook output that still holds them.
+  - Watermark, SYNTHETIC_ naming and the no-publishing rule are unchanged.
+- **First use:** roadmap step 3 bench (`experiments/ref_mix_2026-11-15`), on a Kaggle GPU instead of 13 h on CPU.

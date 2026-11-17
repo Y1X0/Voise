@@ -278,7 +278,7 @@ class Validator:
             test = E_in if name == "original" else E_an
             t, n = trials(enroll, test, cross)
             if t and n:
-                _, eer = PM.roc_auc_eer(t, n)
+                _, eer = PM.roc_auc_eer_ties(t, n)          # tie-aware (privacy_metrics); not the legacy target-first EER
                 out[f"{s.name}/eer_{name}"] = eer
                 d = PM.score_distributions(t, n)
                 out[f"{s.name}/cos_{name}"] = d

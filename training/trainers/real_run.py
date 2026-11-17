@@ -111,7 +111,7 @@ def run(config, out_dir, gpu_profile, licence_path="commercial", resume=False, s
                                     licence_path=licence_path)
     tr = Trainer(cfg, out_dir, train, valid, None, seed=cfg.raw.get("seed", 0), device=device,
                  batch_size=kw["batch_size"], precision=kw["precision"], keep_checkpoints=keep_checkpoints)
-    tr.assets = GpuAssets(cfg, device=device, models_dir=models_dir)
+    tr.assets = GpuAssets(cfg, device=device, models_dir=models_dir, licence_path=licence_path)
     from datasets.paths import resolve
     manifests = [resolve(p) for p in (d.get("train_manifest"), d.get("valid_manifest")) if p and os.path.exists(resolve(p))]
     info = write_run_info(out_dir, ROOT, cfg.raw, manifests, cfg.raw.get("seed", 0), smoke=False)

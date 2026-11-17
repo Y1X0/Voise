@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voise</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --ink: #1d2330; --muted: #5d6677; --line: #dfe3ea;
+    --accent: #2f6fde; --accent-ink: #ffffff; --ok: #1f8a4c; --warn: #b4521a; --chip: #eef2f8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12151b; --card: #1b2029; --ink: #e8ebf1; --muted: #9aa3b4; --line: #2c3340;
+      --accent: #6c9bff; --accent-ink: #0d1220; --ok: #4cc283; --warn: #f0a15f; --chip: #242b37;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12151b; --card: #1b2029; --ink: #e8ebf1; --muted: #9aa3b4; --line: #2c3340;
+    --accent: #6c9bff; --accent-ink: #0d1220; --ok: #4cc283; --warn: #f0a15f; --chip: #242b37;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 16px/1.6 "Segoe UI", Tahoma, "Noto Naskh Arabic", system-ui, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; }
+  header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 20px; }
+  h1 { margin: 0; font-size: 28px; letter-spacing: .5px; }
+  .sub { color: var(--muted); font-size: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+  label { display: block; font-weight: 600; margin: 0 0 6px; }
+  select, textarea { width: 100%; font: inherit; color: var(--ink); background: var(--bg);
+                     border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  textarea { min-height: 96px; resize: vertical; }
+  .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 12px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip { background: var(--chip); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px;
+          font-size: 13px; cursor: pointer; color: var(--ink); }
+  button.go { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 10px;
+              padding: 10px 22px; font: inherit; font-weight: 700; cursor: pointer; }
+  button.go:disabled { opacity: .55; cursor: progress; }
+  .toggle { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 14px; }
+  .status { color: var(--muted); font-size: 14px; min-height: 1.6em; }
+  .err { color: var(--warn); }
+  audio { width: 100%; margin-top: 10px; }
+  .meta { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; font-size: 14px; margin-top: 10px; }
+  .meta dt { color: var(--muted); }
+  .meta dd { margin: 0; }
+  .badge { display: inline-block; font-size: 12px; border-radius: 6px; padding: 1px 8px; background: var(--chip);
+           border: 1px solid var(--line); color: var(--ok); }
+  .hist { list-style: none; padding: 0; margin: 0; }
+  .hist li { border-top: 1px solid var(--line); padding: 10px 0; }
+  .hist li:first-child { border-top: 0; }
+  .hist .t { font-size: 14px; }
+  footer { color: var(--muted); font-size: 13px; text-align: center; margin-top: 24px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Voise</h1>
+    <span class="sub">نسخ صوت باللهجة الأردنية والشامية، بموافقة صاحب الصوت</span>
+  </header>
+
+  <section class="card">
+    <label for="person">صوت مين؟</label>
+    <select id="person"></select>
+    <div class="status" id="consent"></div>
+
+    <label for="text" style="margin-top:12px">شو بدك يحكي؟</label>
+    <textarea id="text" placeholder="اكتب الجملة باللهجة زي ما بتنحكى…"></textarea>
+    <div class="status">اكتب زي ما بتحكي مش زي ما بتكتب: «يعني»، «هيك»، «اه والله»… بتخلّي الصوت أطبع.</div>
+    <div class="chips" id="tags">
+      <span class="chip" data-t="[laughter] ">ضحكة</span>
+      <span class="chip" data-t="[sigh] ">تنهيدة</span>
+      <span class="chip" data-t="[surprise-wa] ">استغراب</span>
+      <span class="chip" data-t="[question-ah] ">نبرة سؤال</span>
+    </div>
+
+    <div class="row">
+      <button class="go" id="go">احكِ</button>
+      <span class="toggle"><input type="checkbox" id="fast"><label for="fast" style="margin:0;font-weight:400">سريع (أسرع بمرتين، جودة أقل شوي)</label></span>
+    </div>
+    <div class="status" id="status"></div>
+  </section>
+
+  <section class="card" id="result" hidden>
+    <span class="badge">صوت مصنوع · فيه علامة مائية مخفية</span>
+    <audio id="player" controls></audio>
+    <dl class="meta" id="meta"></dl>
+  </section>
+
+  <section class="card">
+    <label>آخر الأصوات لهالشخص</label>
+    <ul class="hist" id="hist"><li class="status">ما في لسا.</li></ul>
+  </section>
+
+  <footer>كل صوت بيطلع من هون مصنوع، اسمه بيبلّش بـ SYNTHETIC، وفيه علامة مائية مخفية. للتجربة ومشروع التخرج بس، وبموافقة صاحب الصوت.</footer>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+let people = [];
+
+async function api(path, body) {
+  const r = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {});
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+}
+
+function audioUrl(wav, person) { return `/audio/${person}/${wav.split("/").pop()}`; }
+
+async function loadPeople() {
+  try {
+    people = (await api("/people")).people;
+  } catch (e) { $("status").innerHTML = `<span class="err">${esc(e.message)}</span>`; return; }
+  $("person").innerHTML = people.length
+    ? people.map(p => `<option value="${esc(p.person)}">${esc(p.owner)}</option>`).join("")
+    : `<option value="">ما في أشخاص جاهزين: شغّل ./voise.sh prepare</option>`;
+  showConsent(); loadHistory();
+}
+
+function showConsent() {
+  const p = people.find(x => x.person === $("person").value);
+  $("consent").textContent = p ? `الموافقة: ${p.scope}${p.training ? " · موافق على التدريب" : ""}` : "";
+}
+
+async function loadHistory() {
+  const person = $("person").value;
+  if (!person) return;
+  const h = (await api(`/history/${person}`)).items;
+  $("hist").innerHTML = h.length ? h.map(i =>
+    `<li><div class="t">${esc(i.text)}</div><audio controls preload="none" src="${esc(audioUrl(i.wav, person))}"></audio></li>`).join("")
+    : `<li class="status">ما في لسا.</li>`;
+}
+
+$("person").addEventListener("change", () => { showConsent(); loadHistory(); });
+document.querySelectorAll("#tags .chip").forEach(c => c.addEventListener("click", () => {
+  const t = $("text"); const pos = t.selectionStart ?? t.value.length;
+  t.value = t.value.slice(0, pos) + c.dataset.t + t.value.slice(pos); t.focus();
+}));
+
+$("go").addEventListener("click", async () => {
+  const person = $("person").value, text = $("text").value.trim();
+  if (!person || !text) { $("status").innerHTML = `<span class="err">اختار الشخص واكتب الجملة.</span>`; return; }
+  $("go").disabled = true;
+  const t0 = Date.now();
+  const tick = setInterval(() => { $("status").textContent = `عم يعمل الصوت… ${Math.round((Date.now() - t0) / 1000)} ثانية`; }, 1000);
+  try {
+    const r = await api("/speak", { person, text, fast: $("fast").checked });
+    $("player").src = audioUrl(r.wav, person); $("result").hidden = false; $("player").play().catch(() => {});
+    $("meta").innerHTML = `<dt>الوقت</dt><dd>${r.seconds} ثانية</dd>
+      <dt>المحاولات</dt><dd>${r.takes}</dd>
+      <dt>الطبيعية (1-5)</dt><dd>${r.naturalness ?? "—"}</dd>
+      <dt>Whisper سمع</dt><dd>${esc(r.heard)}</dd>
+      <dt>الملف</dt><dd style="direction:ltr;text-align:right">${esc(r.wav.split("/").pop())}</dd>`;
+    $("status").textContent = "خلص ✓";
+    loadHistory();
+  } catch (e) {
+    $("status").innerHTML = `<span class="err">ما زبط: ${esc(e.message)}</span>`;
+  } finally { clearInterval(tick); $("go").disabled = false; }
+});
+
+loadPeople();
+</script>
+</body>
+</html>
