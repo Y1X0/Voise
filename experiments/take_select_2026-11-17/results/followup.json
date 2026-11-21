@@ -1,0 +1,760 @@
+{
+ "equal_budget": {
+  "pool0_minus_quality6": {
+   "closeness": {
+    "all": [
+     5.44,
+     [
+      -0.46,
+      14.7
+     ]
+    ],
+    "without_p30": [
+     1.36,
+     [
+      -1.02,
+      3.93
+     ]
+    ]
+   },
+   "heldout": {
+    "all": [
+     3.76,
+     [
+      -0.38,
+      9.98
+     ]
+    ],
+    "without_p30": [
+     1.18,
+     [
+      -0.83,
+      3.59
+     ]
+    ]
+   },
+   "heldout_wavlm": {
+    "all": [
+     0.64,
+     [
+      -0.63,
+      2.65
+     ]
+    ],
+    "without_p30": [
+     -0.24,
+     [
+      -0.78,
+      0.32
+     ]
+    ]
+   },
+   "cer": {
+    "all": [
+     -0.31,
+     [
+      -0.82,
+      0.23
+     ]
+    ],
+    "without_p30": [
+     -0.28,
+     [
+      -0.83,
+      0.3
+     ]
+    ]
+   }
+  },
+  "pool100_minus_quality6": {
+   "closeness": {
+    "all": [
+     3.96,
+     [
+      -0.42,
+      10.5
+     ]
+    ],
+    "without_p30": [
+     1.13,
+     [
+      -1.0,
+      3.04
+     ]
+    ]
+   },
+   "heldout": {
+    "all": [
+     1.94,
+     [
+      -1.62,
+      6.42
+     ]
+    ],
+    "without_p30": [
+     0.19,
+     [
+      -2.25,
+      2.5
+     ]
+    ]
+   },
+   "heldout_wavlm": {
+    "all": [
+     0.69,
+     [
+      -0.43,
+      2.23
+     ]
+    ],
+    "without_p30": [
+     0.04,
+     [
+      -0.6,
+      0.7
+     ]
+    ]
+   },
+   "cer": {
+    "all": [
+     -0.67,
+     [
+      -1.19,
+      -0.14
+     ]
+    ],
+    "without_p30": [
+     -0.6,
+     [
+      -1.14,
+      -0.06
+     ]
+    ]
+   }
+  }
+ },
+ "per_person_reference": {
+  "calibrate_0_test_100": {
+   "per_person": {
+    "mafia2_p12": {
+     "reference": "similarity_first",
+     "closeness": [
+      83.7,
+      101.0
+     ],
+     "heldout": [
+      51.9,
+      67.4
+     ],
+     "cer": [
+      4.6,
+      1.5
+     ]
+    },
+    "mafia2_p140": {
+     "reference": "similarity_first",
+     "closeness": [
+      85.1,
+      89.2
+     ],
+     "heldout": [
+      59.9,
+      67.5
+     ],
+     "cer": [
+      5.7,
+      1.53
+     ]
+    },
+    "mafia2_p152": {
+     "reference": "quality",
+     "closeness": [
+      105.3,
+      105.3
+     ],
+     "heldout": [
+      63.9,
+      63.9
+     ],
+     "cer": [
+      1.1,
+      1.1
+     ]
+    },
+    "mafia2_p30": {
+     "reference": "similarity_first",
+     "closeness": [
+      38.8,
+      107.9
+     ],
+     "heldout": [
+      30.5,
+      72.5
+     ],
+     "cer": [
+      2.47,
+      1.2
+     ]
+    },
+    "mafia2_p48": {
+     "reference": "similarity_first",
+     "closeness": [
+      105.1,
+      111.6
+     ],
+     "heldout": [
+      68.1,
+      72.7
+     ],
+     "cer": [
+      0.83,
+      0.3
+     ]
+    },
+    "mafia_abood": {
+     "reference": "similarity_first",
+     "closeness": [
+      92.9,
+      99.8
+     ],
+     "heldout": [
+      61.8,
+      70.4
+     ],
+     "cer": [
+      1.73,
+      3.3
+     ]
+    },
+    "mafia_fakhri": {
+     "reference": "quality",
+     "closeness": [
+      112.1,
+      112.1
+     ],
+     "heldout": [
+      70.3,
+      70.3
+     ],
+     "cer": [
+      6.2,
+      6.2
+     ]
+    },
+    "mafia_p106": {
+     "reference": "quality",
+     "closeness": [
+      90.7,
+      90.7
+     ],
+     "heldout": [
+      57.0,
+      57.0
+     ],
+     "cer": [
+      5.8,
+      5.8
+     ]
+    },
+    "mafia_p43": {
+     "reference": "similarity_first",
+     "closeness": [
+      96.6,
+      100.0
+     ],
+     "heldout": [
+      80.7,
+      80.7
+     ],
+     "cer": [
+      1.6,
+      0.93
+     ]
+    },
+    "mafia_p51": {
+     "reference": "similarity_first",
+     "closeness": [
+      114.7,
+      110.1
+     ],
+     "heldout": [
+      82.3,
+      73.1
+     ],
+     "cer": [
+      2.57,
+      0.93
+     ]
+    },
+    "mafia_p64": {
+     "reference": "quality",
+     "closeness": [
+      97.6,
+      99.1
+     ],
+     "heldout": [
+      64.2,
+      64.7
+     ],
+     "cer": [
+      7.4,
+      7.4
+     ]
+    },
+    "mafia_p70": {
+     "reference": "similarity_first",
+     "closeness": [
+      85.5,
+      96.9
+     ],
+     "heldout": [
+      70.0,
+      82.1
+     ],
+     "cer": [
+      0.87,
+      3.2
+     ]
+    },
+    "mafia_p72": {
+     "reference": "quality",
+     "closeness": [
+      105.0,
+      105.0
+     ],
+     "heldout": [
+      84.6,
+      84.6
+     ],
+     "cer": [
+      1.53,
+      1.53
+     ]
+    },
+    "mafia_p85": {
+     "reference": "similarity_first",
+     "closeness": [
+      87.6,
+      98.8
+     ],
+     "heldout": [
+      66.4,
+      74.5
+     ],
+     "cer": [
+      0.0,
+      0.83
+     ]
+    },
+    "mafia_p95": {
+     "reference": "similarity_first",
+     "closeness": [
+      90.3,
+      98.0
+     ],
+     "heldout": [
+      70.0,
+      74.7
+     ],
+     "cer": [
+      0.77,
+      0.0
+     ]
+    },
+    "omar": {
+     "reference": "quality",
+     "closeness": [
+      93.2,
+      93.2
+     ],
+     "heldout": [
+      79.9,
+      79.9
+     ],
+     "cer": [
+      0.57,
+      0.57
+     ]
+    }
+   },
+   "paired": {
+    "closeness": {
+     "all": [
+      8.4,
+      [
+       2.33,
+       17.82
+      ]
+     ],
+     "without_p30": [
+      4.36,
+      [
+       1.65,
+       7.34
+      ]
+     ]
+    },
+    "heldout": {
+     "all": [
+      5.9,
+      [
+       1.32,
+       12.03
+      ]
+     ],
+     "without_p30": [
+      3.49,
+      [
+       0.47,
+       6.55
+      ]
+     ]
+    },
+    "heldout_wavlm": {
+     "all": [
+      0.82,
+      [
+       -0.24,
+       2.69
+      ]
+     ],
+     "without_p30": [
+      -0.07,
+      [
+       -0.29,
+       0.16
+      ]
+     ]
+    },
+    "cer": {
+     "all": [
+      -0.46,
+      [
+       -1.24,
+       0.25
+      ]
+     ],
+     "without_p30": [
+      -0.41,
+      [
+       -1.24,
+       0.36
+      ]
+     ]
+    }
+   },
+   "closeness_drops_over_5": []
+  },
+  "calibrate_100_test_0": {
+   "per_person": {
+    "mafia2_p12": {
+     "reference": "similarity_first",
+     "closeness": [
+      91.2,
+      99.9
+     ],
+     "heldout": [
+      56.9,
+      66.8
+     ],
+     "cer": [
+      3.53,
+      3.57
+     ]
+    },
+    "mafia2_p140": {
+     "reference": "similarity_first",
+     "closeness": [
+      87.1,
+      94.6
+     ],
+     "heldout": [
+      62.2,
+      70.4
+     ],
+     "cer": [
+      1.17,
+      2.07
+     ]
+    },
+    "mafia2_p152": {
+     "reference": "quality",
+     "closeness": [
+      108.0,
+      108.0
+     ],
+     "heldout": [
+      68.9,
+      68.9
+     ],
+     "cer": [
+      1.1,
+      1.1
+     ]
+    },
+    "mafia2_p30": {
+     "reference": "similarity_first",
+     "closeness": [
+      56.2,
+      105.5
+     ],
+     "heldout": [
+      37.7,
+      72.8
+     ],
+     "cer": [
+      1.27,
+      1.67
+     ]
+    },
+    "mafia2_p48": {
+     "reference": "similarity_first",
+     "closeness": [
+      109.2,
+      111.0
+     ],
+     "heldout": [
+      69.3,
+      73.6
+     ],
+     "cer": [
+      0.93,
+      1.17
+     ]
+    },
+    "mafia_abood": {
+     "reference": "similarity_first",
+     "closeness": [
+      91.6,
+      98.8
+     ],
+     "heldout": [
+      61.6,
+      67.9
+     ],
+     "cer": [
+      1.87,
+      1.17
+     ]
+    },
+    "mafia_fakhri": {
+     "reference": "similarity_first",
+     "closeness": [
+      111.7,
+      109.9
+     ],
+     "heldout": [
+      66.3,
+      67.4
+     ],
+     "cer": [
+      5.7,
+      2.77
+     ]
+    },
+    "mafia_p106": {
+     "reference": "quality",
+     "closeness": [
+      84.6,
+      84.6
+     ],
+     "heldout": [
+      54.2,
+      54.2
+     ],
+     "cer": [
+      7.13,
+      7.13
+     ]
+    },
+    "mafia_p43": {
+     "reference": "quality",
+     "closeness": [
+      96.2,
+      95.9
+     ],
+     "heldout": [
+      79.1,
+      78.8
+     ],
+     "cer": [
+      3.43,
+      3.0
+     ]
+    },
+    "mafia_p51": {
+     "reference": "similarity_first",
+     "closeness": [
+      111.8,
+      110.6
+     ],
+     "heldout": [
+      81.3,
+      72.2
+     ],
+     "cer": [
+      4.43,
+      4.87
+     ]
+    },
+    "mafia_p64": {
+     "reference": "quality",
+     "closeness": [
+      102.5,
+      102.5
+     ],
+     "heldout": [
+      71.8,
+      71.8
+     ],
+     "cer": [
+      4.03,
+      4.03
+     ]
+    },
+    "mafia_p70": {
+     "reference": "similarity_first",
+     "closeness": [
+      81.2,
+      96.4
+     ],
+     "heldout": [
+      66.9,
+      80.7
+     ],
+     "cer": [
+      2.23,
+      3.67
+     ]
+    },
+    "mafia_p72": {
+     "reference": "quality",
+     "closeness": [
+      104.3,
+      105.1
+     ],
+     "heldout": [
+      83.4,
+      82.2
+     ],
+     "cer": [
+      2.33,
+      2.33
+     ]
+    },
+    "mafia_p85": {
+     "reference": "similarity_first",
+     "closeness": [
+      88.6,
+      93.3
+     ],
+     "heldout": [
+      66.8,
+      71.7
+     ],
+     "cer": [
+      1.67,
+      2.23
+     ]
+    },
+    "mafia_p95": {
+     "reference": "similarity_first",
+     "closeness": [
+      89.7,
+      95.3
+     ],
+     "heldout": [
+      67.7,
+      75.2
+     ],
+     "cer": [
+      0.0,
+      0.0
+     ]
+    },
+    "omar": {
+     "reference": "quality",
+     "closeness": [
+      94.5,
+      94.7
+     ],
+     "heldout": [
+      80.3,
+      80.6
+     ],
+     "cer": [
+      0.3,
+      0.3
+     ]
+    }
+   },
+   "paired": {
+    "closeness": {
+     "all": [
+      6.11,
+      [
+       1.58,
+       12.94
+      ]
+     ],
+     "without_p30": [
+      3.23,
+      [
+       1.09,
+       5.75
+      ]
+     ]
+    },
+    "heldout": {
+     "all": [
+      5.06,
+      [
+       1.0,
+       10.28
+      ]
+     ],
+     "without_p30": [
+      3.05,
+      [
+       0.26,
+       5.8
+      ]
+     ]
+    },
+    "heldout_wavlm": {
+     "all": [
+      0.91,
+      [
+       -0.35,
+       2.75
+      ]
+     ],
+     "without_p30": [
+      0.15,
+      [
+       -0.52,
+       0.9
+      ]
+     ]
+    },
+    "cer": {
+     "all": [
+      -0.0,
+      [
+       -0.48,
+       0.38
+      ]
+     ],
+     "without_p30": [
+      -0.03,
+      [
+       -0.55,
+       0.38
+      ]
+     ]
+    }
+   },
+   "closeness_drops_over_5": []
+  }
+ }
+}

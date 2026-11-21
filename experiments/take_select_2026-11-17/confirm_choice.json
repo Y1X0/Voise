@@ -1,0 +1,181 @@
+{
+ "rule": "similarity_first only if both ECAPA and WavLM-SV (selection centre) favour it, over both take_select replicates; fixed before the confirmatory run",
+ "choice": {
+  "mafia2_p12": {
+   "reference": "similarity_first",
+   "ecapa": [
+    0.6599,
+    0.7302
+   ],
+   "wavlm": [
+    0.9607,
+    0.967
+   ]
+  },
+  "mafia2_p140": {
+   "reference": "similarity_first",
+   "ecapa": [
+    0.6748,
+    0.7195
+   ],
+   "wavlm": [
+    0.9684,
+    0.9784
+   ]
+  },
+  "mafia2_p152": {
+   "reference": "quality",
+   "ecapa": [
+    0.7388,
+    0.6763
+   ],
+   "wavlm": [
+    0.9706,
+    0.9486
+   ]
+  },
+  "mafia2_p30": {
+   "reference": "similarity_first",
+   "ecapa": [
+    0.3124,
+    0.8016
+   ],
+   "wavlm": [
+    0.8531,
+    0.9798
+   ]
+  },
+  "mafia2_p48": {
+   "reference": "similarity_first",
+   "ecapa": [
+    0.7231,
+    0.7563
+   ],
+   "wavlm": [
+    0.9617,
+    0.9666
+   ]
+  },
+  "mafia_abood": {
+   "reference": "similarity_first",
+   "ecapa": [
+    0.6558,
+    0.7151
+   ],
+   "wavlm": [
+    0.9669,
+    0.9704
+   ]
+  },
+  "mafia_fakhri": {
+   "reference": "similarity_first",
+   "ecapa": [
+    0.7419,
+    0.7607
+   ],
+   "wavlm": [
+    0.9645,
+    0.9658
+   ]
+  },
+  "mafia_p106": {
+   "reference": "quality",
+   "ecapa": [
+    0.5535,
+    0.4345
+   ],
+   "wavlm": [
+    0.9287,
+    0.8223
+   ]
+  },
+  "mafia_p43": {
+   "reference": "quality",
+   "ecapa": [
+    0.8114,
+    0.8378
+   ],
+   "wavlm": [
+    0.9829,
+    0.9818
+   ]
+  },
+  "mafia_p51": {
+   "reference": "similarity_first",
+   "ecapa": [
+    0.8059,
+    0.8269
+   ],
+   "wavlm": [
+    0.9786,
+    0.9803
+   ]
+  },
+  "mafia_p64": {
+   "reference": "quality",
+   "ecapa": [
+    0.7015,
+    0.7067
+   ],
+   "wavlm": [
+    0.9575,
+    0.9551
+   ]
+  },
+  "mafia_p70": {
+   "reference": "similarity_first",
+   "ecapa": [
+    0.6807,
+    0.7952
+   ],
+   "wavlm": [
+    0.9646,
+    0.9769
+   ]
+  },
+  "mafia_p72": {
+   "reference": "similarity_first",
+   "ecapa": [
+    0.8404,
+    0.8422
+   ],
+   "wavlm": [
+    0.9763,
+    0.9796
+   ]
+  },
+  "mafia_p85": {
+   "reference": "similarity_first",
+   "ecapa": [
+    0.6842,
+    0.7428
+   ],
+   "wavlm": [
+    0.971,
+    0.9738
+   ]
+  },
+  "mafia_p95": {
+   "reference": "similarity_first",
+   "ecapa": [
+    0.6803,
+    0.7468
+   ],
+   "wavlm": [
+    0.9652,
+    0.9705
+   ]
+  },
+  "omar": {
+   "reference": "quality",
+   "ecapa": [
+    0.8157,
+    0.8063
+   ],
+   "wavlm": [
+    0.9819,
+    0.9716
+   ]
+  }
+ }
+}

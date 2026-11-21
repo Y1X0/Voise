@@ -61,3 +61,12 @@ second encoder (WavLM-SV).
 
 Usage: `python take_select.py generate runs/take_select` then `python take_select.py analyze runs/take_select
 experiments/take_select_2026-11-17/results`.
+
+## Confirmatory run (fixed 2026-11-21, before generation)
+
+The follow-up `per_person_ref.py` (exploratory, same sentences) suggested a per-person reference choice. It is tested
+on 3 NEW held-out sentences per person (`take_confirm.py`), seeds 0-2, with each person's reference fixed beforehand in
+`confirm_choice.json` (similarity_first only when both ECAPA and WavLM-SV favour it). Accepted only if, against the
+tool today: ECAPA closeness and similarity to the new held-out clips both gain (95% CI above 0); WavLM-SV against the
+held-out clips not lower (CI upper above 0); spread up at most 0.02; no margin down more than 0.05; nobody stops being
+identified; mean letter error up at most 0.5 points, no person more than 2; no person loses more than 5 points.
