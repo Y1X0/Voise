@@ -78,3 +78,8 @@ key includes each recording's modification time.
   not more alike; but in the second replicate the held-out-clip and cross-encoder gains have CIs touching 0, and the
   mean is driven by p30 (+2.7 points without it). Cost: 6 takes per sentence instead of ~3. Next: an equal-budget
   control (quality x 6 seeds) and a per-person reference choice confirmed by both encoders.
+- Confirmatory run, per-person reference (2026-11-22, `experiments/take_select_2026-11-17/results/confirm_summary.md`,
+  new sentences, choice fixed beforehand): **not adopted**. Identity gains held on new sentences (closeness +8.7,
+  held-out clips +5.0, WavLM-SV +1.6, all CIs above 0; 15 vs 14 identified), but letter error rose by more than 2
+  points for abood, p140 and p12. The two-reference pool kept the identity gain with lower letter error (2.6% vs
+  3.2%) and fixed p152, but hurt p106. Next: pool with a per-person guard, on further new sentences.
