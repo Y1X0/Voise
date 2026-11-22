@@ -83,3 +83,8 @@ key includes each recording's modification time.
   held-out clips +5.0, WavLM-SV +1.6, all CIs above 0; 15 vs 14 identified), but letter error rose by more than 2
   points for abood, p140 and p12. The two-reference pool kept the identity gain with lower letter error (2.6% vs
   3.2%) and fixed p152, but hurt p106. Next: pool with a per-person guard, on further new sentences.
+- Step 5, cross-utterance training (2026-11-22, `experiments/xutt_2026-11-22`, 8 people never heard in training):
+  **not adopted**. Training on 12 people (current recipe or cross-utterance) does not clone unseen people better than
+  the base model (held-out similarity 69.9 base, 68.7 current, 68.8 cross; letter error 3.7 / 3.5 / 3.3%). Fine-tuning on
+  16 voices improves words, not voice transfer; better zero-shot cloning needs many more training speakers.
+
