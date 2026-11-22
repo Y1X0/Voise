@@ -105,8 +105,9 @@ def pick_reference(ref_dir, min_s=8.0, max_s=12.0):
 
 REFERENCE_STRATEGIES = ("quality", "similarity_first")
 # What a take's voice similarity is measured against when choosing among takes (experiments/take_select_2026-11-17):
-#   reference  the reference clip's own embedding (default, unchanged)
-#   person     the person's voice centre (mean of their real clips, Engine.profile), so the chosen take is the one
+#   reference  the reference clip's own embedding (the old default)
+#   person     (default since 2026-11-22: with the similarity_first reference competing, closer clones on new sentences,
+#              experiments/take_select_2026-11-17/results/confirm_summary.md) the person's voice centre (mean of their real clips, Engine.profile), so the chosen take is the one
 #              most like the person rather than like one recording of them; every take is made (no early stop)
 TAKE_TARGETS = ("reference", "person")
 # similarity_first: a clip enters the reference only if Whisper is at least this sure of its words (mean token
@@ -479,7 +480,7 @@ class Engine:
     so a person's voice is prepared once and reused by every later sentence and every later run."""
 
     def __init__(self, model_dir, asr_dir, adapter=None, sv_dir=None, language="apc", mos_path=None,
-                 temperature=0.5, reference_strategy="quality", take_target="reference", reference_pool=()):
+                 temperature=0.5, reference_strategy="quality", take_target="person", reference_pool=("similarity_first",)):
         from omnivoice.models.omnivoice import OmniVoice
         if not os.path.isdir(model_dir):
             raise SystemExit(f"model directory not found: {model_dir} (nothing is downloaded here)")
@@ -757,11 +758,11 @@ def main(argv=None):
     ap.add_argument("--mos", help="UTMOS22-strong checkpoint, to record each take's predicted naturalness")
     ap.add_argument("--reference-strategy", choices=REFERENCE_STRATEGIES, default="quality",
                     help="how the reference is chosen: quality (default) or similarity_first (experimental, step 3b)")
-    ap.add_argument("--take-target", choices=TAKE_TARGETS, default="reference",
-                    help="rank takes by similarity to the reference clip (default) or to the person's voice centre "
-                         "(experimental, take_select_2026-11-17; makes every take)")
-    ap.add_argument("--reference-pool", nargs="*", choices=REFERENCE_STRATEGIES, default=[],
-                    help="extra reference strategies whose takes compete with the main reference's (experimental)")
+    ap.add_argument("--take-target", choices=TAKE_TARGETS, default="person",
+                    help="rank takes by similarity to the person's voice centre (default) or to the reference clip")
+    ap.add_argument("--reference-pool", nargs="*", choices=REFERENCE_STRATEGIES, default=["similarity_first"],
+                    help="extra reference strategies whose takes compete with the main reference's (default: "
+                         "similarity_first; give the flag with no value for one reference, about 2x faster)")
     ap.add_argument("--person", help="name for the output files when one consent record covers several people")
     ap.add_argument("--temperature", type=float, default=0.5,
                     help="sampling temperature (0 = always the most likely token: flatter, more machine-like)")

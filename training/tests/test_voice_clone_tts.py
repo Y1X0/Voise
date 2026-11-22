@@ -236,7 +236,9 @@ class TestTakeTarget(unittest.TestCase):
     def test_unknown_target_or_pool_refused(self):
         with self.assertRaises(SystemExit):
             V.take_target_vector({}, "nearest")
-        self.assertEqual(V.TAKE_TARGETS[0], "reference")    # the default stays the old behaviour
+        import inspect
+        d = inspect.signature(V.Engine.__init__).parameters
+        self.assertEqual((d["take_target"].default, d["reference_pool"].default), ("person", ("similarity_first",)))
 
 
 class TestSplitText(unittest.TestCase):
