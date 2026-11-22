@@ -1,0 +1,1584 @@
+{
+ "protocol": "Two inference-only hypotheses for speaker identity (2026-11-22), no training.\n\nA. Sampling calibration. OmniVoice's guidance is classifier-free guidance between the full condition (style + text +\n   reference prompt) and an unconditional pass that sees only the target region (checked in\n   OmniVoice._generate_iterative / _predict_tokens_with_scoring), so a higher guidance_scale pushes towards the text AND\n   the reference together; class_temperature is the token sampling temperature. Grid: guidance {1.5, 2.0, 2.5, 3.0} x\n   class_temperature {0.35, 0.50, 0.65}; baseline 2.0 / 0.50. Reference fixed: the person's most ECAPA-typical whole\n   clips up to 19 s (step 2/3 rule). To avoid picking the winner and testing it on the same takes, the best setting is\n   chosen on seed 0 and accepted or rejected on seed 1 only.\n\nB. Codec-token reference selection. Each reference-pool clip is tokenised with the model's own prompt path\n   (create_voice_clone_prompt -> ref_audio_tokens, 8 codebooks); a clip's score is the mean over codebooks of the\n   Jensen-Shannon divergence between its token histogram and the person's pooled histogram (lower = more\n   representative of how the person looks to the model). References up to 19 s:\n     typical  ECAPA-typical (control, same as A's baseline cell)\n     codec    codec-representative only\n     combined mean of the two ranks\n   Reported: how many clips each shares with `typical` (so a \"gain\" that is just the same clips reordered is visible).\n   Secondary comparison: the tool's default (quality + similarity_first references compete, takes ranked by the\n   person's centre, 2 seeds here instead of 3).\n\n16 consented voices, 3 held-out sentences each (same split as steps 2-5, no held-out text in any reference), seeds 0\nand 1, 32 steps. Criteria in README.md, fixed before the run.\n\nUsage: python sampling_codec.py run OUT_DIR [person ...] ; python sampling_codec.py analyze OUT_DIR RESULTS_DIR\n",
+ "people": [
+  "mafia2_p12",
+  "mafia2_p140",
+  "mafia2_p152",
+  "mafia2_p30",
+  "mafia2_p48",
+  "mafia_abood",
+  "mafia_fakhri",
+  "mafia_p106",
+  "mafia_p43",
+  "mafia_p51",
+  "mafia_p64",
+  "mafia_p70",
+  "mafia_p72",
+  "mafia_p85",
+  "mafia_p95",
+  "omar"
+ ],
+ "A": {
+  "grid": {
+   "1.5/0.35": {
+    "0": {
+     "mean": {
+      "closeness": 100.908,
+      "heldout": 71.077,
+      "heldout_wavlm": 96.205,
+      "cer": 3.359,
+      "margin": 0.327,
+      "wavlm_margin": 0.024
+     },
+     "spread": 0.342,
+     "eer": 0.0021,
+     "identified": 16,
+     "wavlm_identified": 15
+    },
+    "1": {
+     "mean": {
+      "closeness": 99.449,
+      "heldout": 70.181,
+      "heldout_wavlm": 96.058,
+      "cer": 2.986,
+      "margin": 0.331,
+      "wavlm_margin": 0.028
+     },
+     "spread": 0.3525,
+     "eer": 0.0208,
+     "identified": 16,
+     "wavlm_identified": 15
+    }
+   },
+   "1.5/0.5": {
+    "0": {
+     "mean": {
+      "closeness": 100.045,
+      "heldout": 70.352,
+      "heldout_wavlm": 96.25,
+      "cer": 3.857,
+      "margin": 0.344,
+      "wavlm_margin": 0.026
+     },
+     "spread": 0.3348,
+     "eer": 0.0208,
+     "identified": 16,
+     "wavlm_identified": 15
+    },
+    "1": {
+     "mean": {
+      "closeness": 99.981,
+      "heldout": 70.589,
+      "heldout_wavlm": 95.964,
+      "cer": 3.564,
+      "margin": 0.342,
+      "wavlm_margin": 0.026
+     },
+     "spread": 0.3314,
+     "eer": 0.0208,
+     "identified": 16,
+     "wavlm_identified": 15
+    }
+   },
+   "1.5/0.65": {
+    "0": {
+     "mean": {
+      "closeness": 99.685,
+      "heldout": 70.707,
+      "heldout_wavlm": 96.017,
+      "cer": 3.958,
+      "margin": 0.324,
+      "wavlm_margin": 0.026
+     },
+     "spread": 0.3432,
+     "eer": 0.0181,
+     "identified": 16,
+     "wavlm_identified": 15
+    },
+    "1": {
+     "mean": {
+      "closeness": 99.604,
+      "heldout": 70.12,
+      "heldout_wavlm": 96.062,
+      "cer": 3.121,
+      "margin": 0.333,
+      "wavlm_margin": 0.026
+     },
+     "spread": 0.3555,
+     "eer": 0.0021,
+     "identified": 16,
+     "wavlm_identified": 15
+    }
+   },
+   "2.0/0.35": {
+    "0": {
+     "mean": {
+      "closeness": 100.239,
+      "heldout": 71.086,
+      "heldout_wavlm": 96.303,
+      "cer": 3.0,
+      "margin": 0.344,
+      "wavlm_margin": 0.027
+     },
+     "spread": 0.3289,
+     "eer": 0.0208,
+     "identified": 16,
+     "wavlm_identified": 15
+    },
+    "1": {
+     "mean": {
+      "closeness": 100.024,
+      "heldout": 70.491,
+      "heldout_wavlm": 95.865,
+      "cer": 3.024,
+      "margin": 0.342,
+      "wavlm_margin": 0.032
+     },
+     "spread": 0.3371,
+     "eer": 0.0021,
+     "identified": 16,
+     "wavlm_identified": 15
+    }
+   },
+   "2.0/0.5": {
+    "0": {
+     "mean": {
+      "closeness": 102.198,
+      "heldout": 71.849,
+      "heldout_wavlm": 96.274,
+      "cer": 3.808,
+      "margin": 0.342,
+      "wavlm_margin": 0.024
+     },
+     "spread": 0.3458,
+     "eer": 0.0007,
+     "identified": 16,
+     "wavlm_identified": 15
+    },
+    "1": {
+     "mean": {
+      "closeness": 100.249,
+      "heldout": 70.725,
+      "heldout_wavlm": 95.734,
+      "cer": 2.992,
+      "margin": 0.342,
+      "wavlm_margin": 0.029
+     },
+     "spread": 0.3362,
+     "eer": 0.0208,
+     "identified": 16,
+     "wavlm_identified": 15
+    }
+   },
+   "2.0/0.65": {
+    "0": {
+     "mean": {
+      "closeness": 101.26,
+      "heldout": 71.65,
+      "heldout_wavlm": 96.363,
+      "cer": 3.317,
+      "margin": 0.333,
+      "wavlm_margin": 0.027
+     },
+     "spread": 0.3478,
+     "eer": 0.0049,
+     "identified": 16,
+     "wavlm_identified": 15
+    },
+    "1": {
+     "mean": {
+      "closeness": 99.474,
+      "heldout": 70.992,
+      "heldout_wavlm": 95.621,
+      "cer": 3.803,
+      "margin": 0.327,
+      "wavlm_margin": 0.025
+     },
+     "spread": 0.341,
+     "eer": 0.0208,
+     "identified": 16,
+     "wavlm_identified": 15
+    }
+   },
+   "2.5/0.35": {
+    "0": {
+     "mean": {
+      "closeness": 102.082,
+      "heldout": 72.007,
+      "heldout_wavlm": 96.002,
+      "cer": 2.985,
+      "margin": 0.349,
+      "wavlm_margin": 0.025
+     },
+     "spread": 0.3317,
+     "eer": 0.0028,
+     "identified": 16,
+     "wavlm_identified": 15
+    },
+    "1": {
+     "mean": {
+      "closeness": 99.988,
+      "heldout": 70.479,
+      "heldout_wavlm": 95.973,
+      "cer": 2.608,
+      "margin": 0.336,
+      "wavlm_margin": 0.029
+     },
+     "spread": 0.3315,
+     "eer": 0.0187,
+     "identified": 16,
+     "wavlm_identified": 14
+    }
+   },
+   "2.5/0.5": {
+    "0": {
+     "mean": {
+      "closeness": 102.241,
+      "heldout": 72.199,
+      "heldout_wavlm": 96.377,
+      "cer": 2.548,
+      "margin": 0.338,
+      "wavlm_margin": 0.027
+     },
+     "spread": 0.3292,
+     "eer": 0.0014,
+     "identified": 16,
+     "wavlm_identified": 15
+    },
+    "1": {
+     "mean": {
+      "closeness": 101.766,
+      "heldout": 72.02,
+      "heldout_wavlm": 96.268,
+      "cer": 2.994,
+      "margin": 0.338,
+      "wavlm_margin": 0.031
+     },
+     "spread": 0.3483,
+     "eer": 0.0014,
+     "identified": 16,
+     "wavlm_identified": 15
+    }
+   },
+   "2.5/0.65": {
+    "0": {
+     "mean": {
+      "closeness": 101.51,
+      "heldout": 71.658,
+      "heldout_wavlm": 96.168,
+      "cer": 3.632,
+      "margin": 0.34,
+      "wavlm_margin": 0.026
+     },
+     "spread": 0.3334,
+     "eer": 0.0194,
+     "identified": 16,
+     "wavlm_identified": 15
+    },
+    "1": {
+     "mean": {
+      "closeness": 101.546,
+      "heldout": 71.642,
+      "heldout_wavlm": 95.88,
+      "cer": 3.294,
+      "margin": 0.337,
+      "wavlm_margin": 0.023
+     },
+     "spread": 0.3462,
+     "eer": 0.0014,
+     "identified": 16,
+     "wavlm_identified": 15
+    }
+   },
+   "3.0/0.35": {
+    "0": {
+     "mean": {
+      "closeness": 101.42,
+      "heldout": 71.381,
+      "heldout_wavlm": 96.09,
+      "cer": 2.512,
+      "margin": 0.342,
+      "wavlm_margin": 0.027
+     },
+     "spread": 0.3413,
+     "eer": 0.0014,
+     "identified": 16,
+     "wavlm_identified": 15
+    },
+    "1": {
+     "mean": {
+      "closeness": 101.616,
+      "heldout": 71.432,
+      "heldout_wavlm": 96.313,
+      "cer": 3.289,
+      "margin": 0.336,
+      "wavlm_margin": 0.028
+     },
+     "spread": 0.3378,
+     "eer": 0.0167,
+     "identified": 16,
+     "wavlm_identified": 14
+    }
+   },
+   "3.0/0.5": {
+    "0": {
+     "mean": {
+      "closeness": 101.483,
+      "heldout": 71.437,
+      "heldout_wavlm": 95.931,
+      "cer": 3.242,
+      "margin": 0.334,
+      "wavlm_margin": 0.027
+     },
+     "spread": 0.3287,
+     "eer": 0.0,
+     "identified": 16,
+     "wavlm_identified": 15
+    },
+    "1": {
+     "mean": {
+      "closeness": 101.506,
+      "heldout": 71.198,
+      "heldout_wavlm": 95.985,
+      "cer": 3.993,
+      "margin": 0.337,
+      "wavlm_margin": 0.031
+     },
+     "spread": 0.3207,
+     "eer": 0.0014,
+     "identified": 16,
+     "wavlm_identified": 15
+    }
+   },
+   "3.0/0.65": {
+    "0": {
+     "mean": {
+      "closeness": 100.722,
+      "heldout": 71.359,
+      "heldout_wavlm": 95.995,
+      "cer": 3.273,
+      "margin": 0.342,
+      "wavlm_margin": 0.025
+     },
+     "spread": 0.3358,
+     "eer": 0.0049,
+     "identified": 16,
+     "wavlm_identified": 14
+    },
+    "1": {
+     "mean": {
+      "closeness": 101.632,
+      "heldout": 71.221,
+      "heldout_wavlm": 96.277,
+      "cer": 2.869,
+      "margin": 0.341,
+      "wavlm_margin": 0.033
+     },
+     "spread": 0.3424,
+     "eer": 0.0014,
+     "identified": 16,
+     "wavlm_identified": 15
+    }
+   }
+  },
+  "chosen_on_seed0": "2.5/0.5",
+  "decision_on_seed1": {
+   "paired": {
+    "closeness": {
+     "mean": 1.518,
+     "ci95": [
+      -0.4285,
+      3.7715
+     ]
+    },
+    "heldout": {
+     "mean": 1.295,
+     "ci95": [
+      -0.3358,
+      3.0732
+     ]
+    },
+    "heldout_wavlm": {
+     "mean": 0.534,
+     "ci95": [
+      -0.0127,
+      1.1815
+     ]
+    },
+    "cer": {
+     "mean": 0.002,
+     "ci95": [
+      -0.8802,
+      0.9386
+     ]
+    },
+    "margin": {
+     "mean": -0.004,
+     "ci95": [
+      -0.0159,
+      0.0081
+     ]
+    }
+   },
+   "accepted": false,
+   "failed": [
+    "closeness gain not established {'mean': 1.518, 'ci95': [-0.4285, 3.7715]}",
+    "mafia2_p48: letter error +2.8 points",
+    "mafia_abood: letter error +3.8 points",
+    "mafia_p51: letter error +3.1 points",
+    "mafia_p64: margin -0.058"
+   ]
+  },
+  "per_person_seed1": {
+   "mafia2_p12": {
+    "baseline": {
+     "closeness": 95.743,
+     "heldout": 64.941,
+     "heldout_wavlm": 96.197,
+     "cer": 3.037,
+     "margin": 0.374,
+     "identified": true,
+     "wavlm_margin": 0.007,
+     "wavlm_identified": true
+    },
+    "chosen": {
+     "closeness": 97.306,
+     "heldout": 64.553,
+     "heldout_wavlm": 95.951,
+     "cer": 3.037,
+     "margin": 0.403,
+     "identified": true,
+     "wavlm_margin": 0.008,
+     "wavlm_identified": true
+    }
+   },
+   "mafia2_p140": {
+    "baseline": {
+     "closeness": 92.197,
+     "heldout": 71.393,
+     "heldout_wavlm": 97.244,
+     "cer": 1.38,
+     "margin": 0.459,
+     "identified": true,
+     "wavlm_margin": 0.071,
+     "wavlm_identified": true
+    },
+    "chosen": {
+     "closeness": 93.716,
+     "heldout": 70.513,
+     "heldout_wavlm": 98.23,
+     "cer": 0.34,
+     "margin": 0.455,
+     "identified": true,
+     "wavlm_margin": 0.069,
+     "wavlm_identified": true
+    }
+   },
+   "mafia2_p152": {
+    "baseline": {
+     "closeness": 96.395,
+     "heldout": 57.596,
+     "heldout_wavlm": 89.078,
+     "cer": 3.28,
+     "margin": 0.372,
+     "identified": true,
+     "wavlm_margin": 0.05,
+     "wavlm_identified": true
+    },
+    "chosen": {
+     "closeness": 98.082,
+     "heldout": 61.041,
+     "heldout_wavlm": 91.982,
+     "cer": 0.547,
+     "margin": 0.372,
+     "identified": true,
+     "wavlm_margin": 0.044,
+     "wavlm_identified": true
+    }
+   },
+   "mafia2_p30": {
+    "baseline": {
+     "closeness": 105.583,
+     "heldout": 72.636,
+     "heldout_wavlm": 97.146,
+     "cer": 0.407,
+     "margin": 0.455,
+     "identified": true,
+     "wavlm_margin": 0.06,
+     "wavlm_identified": true
+    },
+    "chosen": {
+     "closeness": 107.01,
+     "heldout": 74.234,
+     "heldout_wavlm": 97.292,
+     "cer": 0.0,
+     "margin": 0.479,
+     "identified": true,
+     "wavlm_margin": 0.054,
+     "wavlm_identified": true
+    }
+   },
+   "mafia2_p48": {
+    "baseline": {
+     "closeness": 109.605,
+     "heldout": 74.734,
+     "heldout_wavlm": 96.789,
+     "cer": 2.71,
+     "margin": 0.285,
+     "identified": true,
+     "wavlm_margin": 0.042,
+     "wavlm_identified": true
+    },
+    "chosen": {
+     "closeness": 110.362,
+     "heldout": 74.443,
+     "heldout_wavlm": 96.542,
+     "cer": 5.557,
+     "margin": 0.279,
+     "identified": true,
+     "wavlm_margin": 0.042,
+     "wavlm_identified": true
+    }
+   },
+   "mafia_abood": {
+    "baseline": {
+     "closeness": 100.618,
+     "heldout": 67.984,
+     "heldout_wavlm": 95.452,
+     "cer": 3.077,
+     "margin": 0.161,
+     "identified": true,
+     "wavlm_margin": 0.023,
+     "wavlm_identified": true
+    },
+    "chosen": {
+     "closeness": 103.334,
+     "heldout": 70.067,
+     "heldout_wavlm": 95.143,
+     "cer": 6.91,
+     "margin": 0.182,
+     "identified": true,
+     "wavlm_margin": 0.024,
+     "wavlm_identified": true
+    }
+   },
+   "mafia_fakhri": {
+    "baseline": {
+     "closeness": 113.27,
+     "heldout": 66.509,
+     "heldout_wavlm": 96.641,
+     "cer": 2.34,
+     "margin": 0.5,
+     "identified": true,
+     "wavlm_margin": 0.074,
+     "wavlm_identified": true
+    },
+    "chosen": {
+     "closeness": 111.079,
+     "heldout": 66.673,
+     "heldout_wavlm": 96.469,
+     "cer": 2.593,
+     "margin": 0.471,
+     "identified": true,
+     "wavlm_margin": 0.083,
+     "wavlm_identified": true
+    }
+   },
+   "mafia_p106": {
+    "baseline": {
+     "closeness": 94.709,
+     "heldout": 53.535,
+     "heldout_wavlm": 88.73,
+     "cer": 6.637,
+     "margin": 0.142,
+     "identified": true,
+     "wavlm_margin": -0.078,
+     "wavlm_identified": false
+    },
+    "chosen": {
+     "closeness": 103.888,
+     "heldout": 62.5,
+     "heldout_wavlm": 92.581,
+     "cer": 4.107,
+     "margin": 0.15,
+     "identified": true,
+     "wavlm_margin": -0.057,
+     "wavlm_identified": false
+    }
+   },
+   "mafia_p43": {
+    "baseline": {
+     "closeness": 101.414,
+     "heldout": 80.946,
+     "heldout_wavlm": 97.758,
+     "cer": 0.823,
+     "margin": 0.341,
+     "identified": true,
+     "wavlm_margin": 0.051,
+     "wavlm_identified": true
+    },
+    "chosen": {
+     "closeness": 98.935,
+     "heldout": 79.43,
+     "heldout_wavlm": 97.878,
+     "cer": 0.907,
+     "margin": 0.337,
+     "identified": true,
+     "wavlm_margin": 0.054,
+     "wavlm_identified": true
+    }
+   },
+   "mafia_p51": {
+    "baseline": {
+     "closeness": 112.646,
+     "heldout": 68.743,
+     "heldout_wavlm": 96.928,
+     "cer": 4.323,
+     "margin": 0.308,
+     "identified": true,
+     "wavlm_margin": 0.038,
+     "wavlm_identified": true
+    },
+    "chosen": {
+     "closeness": 111.023,
+     "heldout": 69.081,
+     "heldout_wavlm": 97.611,
+     "cer": 7.44,
+     "margin": 0.281,
+     "identified": true,
+     "wavlm_margin": 0.033,
+     "wavlm_identified": true
+    }
+   },
+   "mafia_p64": {
+    "baseline": {
+     "closeness": 102.18,
+     "heldout": 70.016,
+     "heldout_wavlm": 94.328,
+     "cer": 8.503,
+     "margin": 0.295,
+     "identified": true,
+     "wavlm_margin": 0.013,
+     "wavlm_identified": true
+    },
+    "chosen": {
+     "closeness": 108.633,
+     "heldout": 74.797,
+     "heldout_wavlm": 95.14,
+     "cer": 6.89,
+     "margin": 0.237,
+     "identified": true,
+     "wavlm_margin": 0.024,
+     "wavlm_identified": true
+    }
+   },
+   "mafia_p70": {
+    "baseline": {
+     "closeness": 94.28,
+     "heldout": 79.211,
+     "heldout_wavlm": 98.152,
+     "cer": 3.517,
+     "margin": 0.359,
+     "identified": true,
+     "wavlm_margin": 0.032,
+     "wavlm_identified": true
+    },
+    "chosen": {
+     "closeness": 89.13,
+     "heldout": 74.018,
+     "heldout_wavlm": 96.876,
+     "cer": 2.43,
+     "margin": 0.321,
+     "identified": true,
+     "wavlm_margin": 0.025,
+     "wavlm_identified": true
+    }
+   },
+   "mafia_p72": {
+    "baseline": {
+     "closeness": 104.825,
+     "heldout": 81.22,
+     "heldout_wavlm": 98.28,
+     "cer": 3.333,
+     "margin": 0.392,
+     "identified": true,
+     "wavlm_margin": 0.018,
+     "wavlm_identified": true
+    },
+    "chosen": {
+     "closeness": 105.744,
+     "heldout": 82.672,
+     "heldout_wavlm": 97.821,
+     "cer": 1.707,
+     "margin": 0.417,
+     "identified": true,
+     "wavlm_margin": 0.021,
+     "wavlm_identified": true
+    }
+   },
+   "mafia_p85": {
+    "baseline": {
+     "closeness": 89.137,
+     "heldout": 68.671,
+     "heldout_wavlm": 94.239,
+     "cer": 3.057,
+     "margin": 0.342,
+     "identified": true,
+     "wavlm_margin": 0.016,
+     "wavlm_identified": true
+    },
+    "chosen": {
+     "closeness": 100.923,
+     "heldout": 76.51,
+     "heldout_wavlm": 95.341,
+     "cer": 4.443,
+     "margin": 0.366,
+     "identified": true,
+     "wavlm_margin": 0.032,
+     "wavlm_identified": true
+    }
+   },
+   "mafia_p95": {
+    "baseline": {
+     "closeness": 98.562,
+     "heldout": 75.612,
+     "heldout_wavlm": 97.622,
+     "cer": 0.0,
+     "margin": 0.241,
+     "identified": true,
+     "wavlm_margin": 0.012,
+     "wavlm_identified": true
+    },
+    "chosen": {
+     "closeness": 96.35,
+     "heldout": 74.077,
+     "heldout_wavlm": 98.0,
+     "cer": 0.71,
+     "margin": 0.222,
+     "identified": true,
+     "wavlm_margin": 0.012,
+     "wavlm_identified": true
+    }
+   },
+   "omar": {
+    "baseline": {
+     "closeness": 92.814,
+     "heldout": 77.854,
+     "heldout_wavlm": 97.165,
+     "cer": 1.45,
+     "margin": 0.446,
+     "identified": true,
+     "wavlm_margin": 0.029,
+     "wavlm_identified": true
+    },
+    "chosen": {
+     "closeness": 92.746,
+     "heldout": 77.719,
+     "heldout_wavlm": 97.435,
+     "cer": 0.29,
+     "margin": 0.441,
+     "identified": true,
+     "wavlm_margin": 0.035,
+     "wavlm_identified": true
+    }
+   }
+  }
+ },
+ "B": {
+  "refs": {
+   "typical": {
+    "mean": {
+     "closeness": 101.223,
+     "heldout": 71.287,
+     "heldout_wavlm": 96.004,
+     "cer": 3.4,
+     "margin": 0.35,
+     "wavlm_margin": 0.028
+    },
+    "spread": 0.3517,
+    "eer": 0.0104,
+    "identified": 16,
+    "wavlm_identified": 15
+   },
+   "codec": {
+    "mean": {
+     "closeness": 96.781,
+     "heldout": 69.152,
+     "heldout_wavlm": 95.885,
+     "cer": 3.383,
+     "margin": 0.31,
+     "wavlm_margin": 0.03
+    },
+    "spread": 0.3615,
+    "eer": 0.0312,
+    "identified": 16,
+    "wavlm_identified": 14
+   },
+   "combined": {
+    "mean": {
+     "closeness": 100.634,
+     "heldout": 71.614,
+     "heldout_wavlm": 96.396,
+     "cer": 3.338,
+     "margin": 0.336,
+     "wavlm_margin": 0.029
+    },
+    "spread": 0.3447,
+    "eer": 0.0104,
+    "identified": 16,
+    "wavlm_identified": 14
+   }
+  },
+  "tool_default": {
+   "mean": {
+    "closeness": 100.338,
+    "heldout": 71.181,
+    "heldout_wavlm": 96.118,
+    "cer": 2.252,
+    "margin": 0.329,
+    "wavlm_margin": 0.029
+   },
+   "spread": 0.3547,
+   "eer": 0.0208,
+   "identified": 16,
+   "wavlm_identified": 15
+  },
+  "decisions": {
+   "codec": {
+    "paired": {
+     "closeness": {
+      "mean": -4.442,
+      "ci95": [
+       -8.7384,
+       -0.9076
+      ]
+     },
+     "heldout": {
+      "mean": -2.136,
+      "ci95": [
+       -6.1688,
+       1.6061
+      ]
+     },
+     "heldout_wavlm": {
+      "mean": -0.12,
+      "ci95": [
+       -1.1306,
+       0.709
+      ]
+     },
+     "cer": {
+      "mean": -0.017,
+      "ci95": [
+       -0.76,
+       0.8267
+      ]
+     },
+     "margin": {
+      "mean": -0.039,
+      "ci95": [
+       -0.0828,
+       -0.0034
+      ]
+     }
+    },
+    "accepted": false,
+    "failed": [
+     "closeness gain not established {'mean': -4.442, 'ci95': [-8.7384, -0.9076]}",
+     "mafia2_p140: margin -0.264",
+     "mafia_fakhri: margin -0.145",
+     "mafia_p106: letter error +4.9 points",
+     "mafia_p64: margin -0.186",
+     "mafia_p64: no longer identified (wavlm_)",
+     "mafia_p72: margin -0.066"
+    ]
+   },
+   "combined": {
+    "paired": {
+     "closeness": {
+      "mean": -0.589,
+      "ci95": [
+       -2.5177,
+       1.381
+      ]
+     },
+     "heldout": {
+      "mean": 0.327,
+      "ci95": [
+       -2.241,
+       3.0053
+      ]
+     },
+     "heldout_wavlm": {
+      "mean": 0.392,
+      "ci95": [
+       -0.443,
+       1.2651
+      ]
+     },
+     "cer": {
+      "mean": -0.062,
+      "ci95": [
+       -0.5319,
+       0.3721
+      ]
+     },
+     "margin": {
+      "mean": -0.014,
+      "ci95": [
+       -0.0601,
+       0.0223
+      ]
+     }
+    },
+    "accepted": false,
+    "failed": [
+     "closeness gain not established {'mean': -0.589, 'ci95': [-2.5177, 1.381]}",
+     "mafia2_p140: margin -0.285",
+     "mafia_fakhri: margin -0.065",
+     "mafia_p85: margin -0.121",
+     "mafia_p85: no longer identified (wavlm_)"
+    ]
+   }
+  },
+  "clips_shared_with_typical": {
+   "codec": {
+    "mafia2_p12": 0,
+    "mafia2_p140": 0,
+    "mafia2_p152": 1,
+    "mafia2_p30": 0,
+    "mafia2_p48": 1,
+    "mafia_abood": 0,
+    "mafia_fakhri": 1,
+    "mafia_p106": 1,
+    "mafia_p43": 1,
+    "mafia_p51": 1,
+    "mafia_p64": 1,
+    "mafia_p70": 1,
+    "mafia_p72": 2,
+    "mafia_p85": 1,
+    "mafia_p95": 3,
+    "omar": 0
+   },
+   "combined": {
+    "mafia2_p12": 2,
+    "mafia2_p140": 2,
+    "mafia2_p152": 2,
+    "mafia2_p30": 2,
+    "mafia2_p48": 2,
+    "mafia_abood": 0,
+    "mafia_fakhri": 3,
+    "mafia_p106": 3,
+    "mafia_p43": 3,
+    "mafia_p51": 2,
+    "mafia_p64": 3,
+    "mafia_p70": 3,
+    "mafia_p72": 3,
+    "mafia_p85": 2,
+    "mafia_p95": 5,
+    "omar": 0
+   }
+  },
+  "paired_vs_tool_default": {
+   "typical": {
+    "closeness": {
+     "mean": 0.885,
+     "ci95": [
+      -1.0151,
+      2.7786
+     ]
+    },
+    "heldout": {
+     "mean": 0.106,
+     "ci95": [
+      -2.4741,
+      2.5812
+     ]
+    },
+    "heldout_wavlm": {
+     "mean": -0.114,
+     "ci95": [
+      -0.7924,
+      0.522
+     ]
+    },
+    "cer": {
+     "mean": 1.148,
+     "ci95": [
+      0.5284,
+      1.8951
+     ]
+    },
+    "margin": {
+     "mean": 0.021,
+     "ci95": [
+      0.0052,
+      0.0399
+     ]
+    }
+   },
+   "codec": {
+    "closeness": {
+     "mean": -3.556,
+     "ci95": [
+      -7.6676,
+      -0.1876
+     ]
+    },
+    "heldout": {
+     "mean": -2.03,
+     "ci95": [
+      -5.6186,
+      1.1238
+     ]
+    },
+    "heldout_wavlm": {
+     "mean": -0.234,
+     "ci95": [
+      -0.8425,
+      0.2981
+     ]
+    },
+    "cer": {
+     "mean": 1.131,
+     "ci95": [
+      0.1898,
+      2.4658
+     ]
+    },
+    "margin": {
+     "mean": -0.018,
+     "ci95": [
+      -0.0589,
+      0.0191
+     ]
+    }
+   },
+   "combined": {
+    "closeness": {
+     "mean": 0.296,
+     "ci95": [
+      -2.0247,
+      2.479
+     ]
+    },
+    "heldout": {
+     "mean": 0.433,
+     "ci95": [
+      -2.7875,
+      3.8562
+     ]
+    },
+    "heldout_wavlm": {
+     "mean": 0.278,
+     "ci95": [
+      -0.499,
+      1.025
+     ]
+    },
+    "cer": {
+     "mean": 1.086,
+     "ci95": [
+      0.2841,
+      2.0041
+     ]
+    },
+    "margin": {
+     "mean": 0.007,
+     "ci95": [
+      -0.0365,
+      0.0439
+     ]
+    }
+   }
+  },
+  "per_person": {
+   "typical": {
+    "mafia2_p12": {
+     "closeness": 96.099,
+     "heldout": 63.599,
+     "heldout_wavlm": 96.338,
+     "cer": 3.212,
+     "margin": 0.378,
+     "identified": true,
+     "wavlm_margin": 0.006,
+     "wavlm_identified": true
+    },
+    "mafia2_p140": {
+     "closeness": 93.244,
+     "heldout": 71.476,
+     "heldout_wavlm": 97.725,
+     "cer": 1.807,
+     "margin": 0.494,
+     "identified": true,
+     "wavlm_margin": 0.066,
+     "wavlm_identified": true
+    },
+    "mafia2_p152": {
+     "closeness": 97.816,
+     "heldout": 58.978,
+     "heldout_wavlm": 91.022,
+     "cer": 2.133,
+     "margin": 0.365,
+     "identified": true,
+     "wavlm_margin": 0.047,
+     "wavlm_identified": true
+    },
+    "mafia2_p30": {
+     "closeness": 106.254,
+     "heldout": 74.16,
+     "heldout_wavlm": 97.253,
+     "cer": 1.625,
+     "margin": 0.471,
+     "identified": true,
+     "wavlm_margin": 0.06,
+     "wavlm_identified": true
+    },
+    "mafia2_p48": {
+     "closeness": 111.235,
+     "heldout": 75.128,
+     "heldout_wavlm": 97.21,
+     "cer": 2.137,
+     "margin": 0.28,
+     "identified": true,
+     "wavlm_margin": 0.035,
+     "wavlm_identified": true
+    },
+    "mafia_abood": {
+     "closeness": 105.361,
+     "heldout": 69.775,
+     "heldout_wavlm": 96.068,
+     "cer": 3.342,
+     "margin": 0.198,
+     "identified": true,
+     "wavlm_margin": 0.025,
+     "wavlm_identified": true
+    },
+    "mafia_fakhri": {
+     "closeness": 114.075,
+     "heldout": 68.349,
+     "heldout_wavlm": 95.989,
+     "cer": 3.053,
+     "margin": 0.501,
+     "identified": true,
+     "wavlm_margin": 0.081,
+     "wavlm_identified": true
+    },
+    "mafia_p106": {
+     "closeness": 95.183,
+     "heldout": 54.401,
+     "heldout_wavlm": 89.504,
+     "cer": 7.643,
+     "margin": 0.132,
+     "identified": true,
+     "wavlm_margin": -0.078,
+     "wavlm_identified": false
+    },
+    "mafia_p43": {
+     "closeness": 100.99,
+     "heldout": 80.318,
+     "heldout_wavlm": 97.717,
+     "cer": 2.297,
+     "margin": 0.358,
+     "identified": true,
+     "wavlm_margin": 0.044,
+     "wavlm_identified": true
+    },
+    "mafia_p51": {
+     "closeness": 113.738,
+     "heldout": 70.002,
+     "heldout_wavlm": 97.267,
+     "cer": 6.308,
+     "margin": 0.33,
+     "identified": true,
+     "wavlm_margin": 0.035,
+     "wavlm_identified": true
+    },
+    "mafia_p64": {
+     "closeness": 104.598,
+     "heldout": 72.689,
+     "heldout_wavlm": 95.252,
+     "cer": 8.052,
+     "margin": 0.289,
+     "identified": true,
+     "wavlm_margin": 0.018,
+     "wavlm_identified": true
+    },
+    "mafia_p70": {
+     "closeness": 95.577,
+     "heldout": 80.625,
+     "heldout_wavlm": 97.96,
+     "cer": 3.51,
+     "margin": 0.376,
+     "identified": true,
+     "wavlm_margin": 0.031,
+     "wavlm_identified": true
+    },
+    "mafia_p72": {
+     "closeness": 104.74,
+     "heldout": 81.087,
+     "heldout_wavlm": 97.908,
+     "cer": 2.925,
+     "margin": 0.409,
+     "identified": true,
+     "wavlm_margin": 0.022,
+     "wavlm_identified": true
+    },
+    "mafia_p85": {
+     "closeness": 90.248,
+     "heldout": 68.869,
+     "heldout_wavlm": 94.344,
+     "cer": 3.722,
+     "margin": 0.324,
+     "identified": true,
+     "wavlm_margin": 0.009,
+     "wavlm_identified": true
+    },
+    "mafia_p95": {
+     "closeness": 98.591,
+     "heldout": 74.746,
+     "heldout_wavlm": 97.396,
+     "cer": 1.063,
+     "margin": 0.259,
+     "identified": true,
+     "wavlm_margin": 0.015,
+     "wavlm_identified": true
+    },
+    "omar": {
+     "closeness": 91.819,
+     "heldout": 76.394,
+     "heldout_wavlm": 97.115,
+     "cer": 1.57,
+     "margin": 0.43,
+     "identified": true,
+     "wavlm_margin": 0.026,
+     "wavlm_identified": true
+    }
+   },
+   "codec": {
+    "mafia2_p12": {
+     "closeness": 84.589,
+     "heldout": 51.066,
+     "heldout_wavlm": 94.529,
+     "cer": 3.245,
+     "margin": 0.382,
+     "identified": true,
+     "wavlm_margin": 0.028,
+     "wavlm_identified": true
+    },
+    "mafia2_p140": {
+     "closeness": 84.101,
+     "heldout": 60.329,
+     "heldout_wavlm": 96.782,
+     "cer": 1.893,
+     "margin": 0.231,
+     "identified": true,
+     "wavlm_margin": 0.067,
+     "wavlm_identified": true
+    },
+    "mafia2_p152": {
+     "closeness": 104.152,
+     "heldout": 66.942,
+     "heldout_wavlm": 94.25,
+     "cer": 1.367,
+     "margin": 0.368,
+     "identified": true,
+     "wavlm_margin": 0.035,
+     "wavlm_identified": true
+    },
+    "mafia2_p30": {
+     "closeness": 104.281,
+     "heldout": 79.146,
+     "heldout_wavlm": 98.211,
+     "cer": 1.033,
+     "margin": 0.468,
+     "identified": true,
+     "wavlm_margin": 0.056,
+     "wavlm_identified": true
+    },
+    "mafia2_p48": {
+     "closeness": 106.336,
+     "heldout": 71.393,
+     "heldout_wavlm": 97.375,
+     "cer": 3.517,
+     "margin": 0.321,
+     "identified": true,
+     "wavlm_margin": 0.039,
+     "wavlm_identified": true
+    },
+    "mafia_abood": {
+     "closeness": 102.762,
+     "heldout": 66.238,
+     "heldout_wavlm": 96.704,
+     "cer": 2.757,
+     "margin": 0.189,
+     "identified": true,
+     "wavlm_margin": 0.013,
+     "wavlm_identified": true
+    },
+    "mafia_fakhri": {
+     "closeness": 105.276,
+     "heldout": 61.208,
+     "heldout_wavlm": 96.449,
+     "cer": 3.262,
+     "margin": 0.355,
+     "identified": true,
+     "wavlm_margin": 0.069,
+     "wavlm_identified": true
+    },
+    "mafia_p106": {
+     "closeness": 86.498,
+     "heldout": 49.854,
+     "heldout_wavlm": 89.222,
+     "cer": 12.5,
+     "margin": 0.138,
+     "identified": true,
+     "wavlm_margin": -0.039,
+     "wavlm_identified": false
+    },
+    "mafia_p43": {
+     "closeness": 101.193,
+     "heldout": 80.584,
+     "heldout_wavlm": 98.244,
+     "cer": 1.772,
+     "margin": 0.347,
+     "identified": true,
+     "wavlm_margin": 0.05,
+     "wavlm_identified": true
+    },
+    "mafia_p51": {
+     "closeness": 113.168,
+     "heldout": 78.677,
+     "heldout_wavlm": 97.452,
+     "cer": 4.083,
+     "margin": 0.366,
+     "identified": true,
+     "wavlm_margin": 0.035,
+     "wavlm_identified": true
+    },
+    "mafia_p64": {
+     "closeness": 75.32,
+     "heldout": 51.13,
+     "heldout_wavlm": 88.998,
+     "cer": 5.543,
+     "margin": 0.103,
+     "identified": true,
+     "wavlm_margin": -0.009,
+     "wavlm_identified": false
+    },
+    "mafia_p70": {
+     "closeness": 94.728,
+     "heldout": 79.018,
+     "heldout_wavlm": 98.036,
+     "cer": 4.86,
+     "margin": 0.377,
+     "identified": true,
+     "wavlm_margin": 0.035,
+     "wavlm_identified": true
+    },
+    "mafia_p72": {
+     "closeness": 99.798,
+     "heldout": 78.769,
+     "heldout_wavlm": 97.617,
+     "cer": 2.892,
+     "margin": 0.342,
+     "identified": true,
+     "wavlm_margin": 0.013,
+     "wavlm_identified": true
+    },
+    "mafia_p85": {
+     "closeness": 97.594,
+     "heldout": 77.701,
+     "heldout_wavlm": 96.13,
+     "cer": 2.153,
+     "margin": 0.311,
+     "identified": true,
+     "wavlm_margin": 0.02,
+     "wavlm_identified": true
+    },
+    "mafia_p95": {
+     "closeness": 96.456,
+     "heldout": 75.331,
+     "heldout_wavlm": 97.684,
+     "cer": 1.78,
+     "margin": 0.266,
+     "identified": true,
+     "wavlm_margin": 0.025,
+     "wavlm_identified": true
+    },
+    "omar": {
+     "closeness": 92.252,
+     "heldout": 79.041,
+     "heldout_wavlm": 96.473,
+     "cer": 1.467,
+     "margin": 0.403,
+     "identified": true,
+     "wavlm_margin": 0.039,
+     "wavlm_identified": true
+    }
+   },
+   "combined": {
+    "mafia2_p12": {
+     "closeness": 97.987,
+     "heldout": 64.562,
+     "heldout_wavlm": 95.764,
+     "cer": 4.525,
+     "margin": 0.373,
+     "identified": true,
+     "wavlm_margin": 0.01,
+     "wavlm_identified": true
+    },
+    "mafia2_p140": {
+     "closeness": 84.086,
+     "heldout": 60.573,
+     "heldout_wavlm": 97.636,
+     "cer": 1.893,
+     "margin": 0.209,
+     "identified": true,
+     "wavlm_margin": 0.061,
+     "wavlm_identified": true
+    },
+    "mafia2_p152": {
+     "closeness": 107.983,
+     "heldout": 71.598,
+     "heldout_wavlm": 95.607,
+     "cer": 1.533,
+     "margin": 0.4,
+     "identified": true,
+     "wavlm_margin": 0.027,
+     "wavlm_identified": true
+    },
+    "mafia2_p30": {
+     "closeness": 106.641,
+     "heldout": 76.304,
+     "heldout_wavlm": 97.33,
+     "cer": 2.368,
+     "margin": 0.561,
+     "identified": true,
+     "wavlm_margin": 0.058,
+     "wavlm_identified": true
+    },
+    "mafia2_p48": {
+     "closeness": 109.785,
+     "heldout": 72.323,
+     "heldout_wavlm": 97.181,
+     "cer": 3.185,
+     "margin": 0.344,
+     "identified": true,
+     "wavlm_margin": 0.044,
+     "wavlm_identified": true
+    },
+    "mafia_abood": {
+     "closeness": 98.908,
+     "heldout": 63.477,
+     "heldout_wavlm": 92.268,
+     "cer": 2.212,
+     "margin": 0.274,
+     "identified": true,
+     "wavlm_margin": 0.024,
+     "wavlm_identified": true
+    },
+    "mafia_fakhri": {
+     "closeness": 110.615,
+     "heldout": 64.832,
+     "heldout_wavlm": 96.642,
+     "cer": 3.687,
+     "margin": 0.436,
+     "identified": true,
+     "wavlm_margin": 0.068,
+     "wavlm_identified": true
+    },
+    "mafia_p106": {
+     "closeness": 98.09,
+     "heldout": 63.067,
+     "heldout_wavlm": 93.21,
+     "cer": 8.558,
+     "margin": 0.128,
+     "identified": true,
+     "wavlm_margin": -0.025,
+     "wavlm_identified": false
+    },
+    "mafia_p43": {
+     "closeness": 100.99,
+     "heldout": 80.318,
+     "heldout_wavlm": 97.717,
+     "cer": 2.297,
+     "margin": 0.358,
+     "identified": true,
+     "wavlm_margin": 0.044,
+     "wavlm_identified": true
+    },
+    "mafia_p51": {
+     "closeness": 111.195,
+     "heldout": 68.188,
+     "heldout_wavlm": 97.737,
+     "cer": 4.102,
+     "margin": 0.313,
+     "identified": true,
+     "wavlm_margin": 0.027,
+     "wavlm_identified": true
+    },
+    "mafia_p64": {
+     "closeness": 104.598,
+     "heldout": 72.689,
+     "heldout_wavlm": 95.252,
+     "cer": 8.052,
+     "margin": 0.289,
+     "identified": true,
+     "wavlm_margin": 0.018,
+     "wavlm_identified": true
+    },
+    "mafia_p70": {
+     "closeness": 92.303,
+     "heldout": 77.392,
+     "heldout_wavlm": 98.124,
+     "cer": 2.053,
+     "margin": 0.365,
+     "identified": true,
+     "wavlm_margin": 0.039,
+     "wavlm_identified": true
+    },
+    "mafia_p72": {
+     "closeness": 104.74,
+     "heldout": 81.087,
+     "heldout_wavlm": 97.908,
+     "cer": 2.925,
+     "margin": 0.409,
+     "identified": true,
+     "wavlm_margin": 0.022,
+     "wavlm_identified": true
+    },
+    "mafia_p85": {
+     "closeness": 90.246,
+     "heldout": 75.22,
+     "heldout_wavlm": 95.928,
+     "cer": 3.217,
+     "margin": 0.202,
+     "identified": true,
+     "wavlm_margin": -0.009,
+     "wavlm_identified": false
+    },
+    "mafia_p95": {
+     "closeness": 98.591,
+     "heldout": 74.746,
+     "heldout_wavlm": 97.396,
+     "cer": 1.063,
+     "margin": 0.259,
+     "identified": true,
+     "wavlm_margin": 0.015,
+     "wavlm_identified": true
+    },
+    "omar": {
+     "closeness": 93.391,
+     "heldout": 79.443,
+     "heldout_wavlm": 96.644,
+     "cer": 1.743,
+     "margin": 0.455,
+     "identified": true,
+     "wavlm_margin": 0.036,
+     "wavlm_identified": true
+    }
+   }
+  }
+ }
+}

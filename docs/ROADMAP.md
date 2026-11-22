@@ -87,4 +87,8 @@ key includes each recording's modification time.
   **not adopted**. Training on 12 people (current recipe or cross-utterance) does not clone unseen people better than
   the base model (held-out similarity 69.9 base, 68.7 current, 68.8 cross; letter error 3.7 / 3.5 / 3.3%). Fine-tuning on
   16 voices improves words, not voice transfer; better zero-shot cloning needs many more training speakers.
+- Sampling calibration and codec-token references (2026-11-22, `experiments/sampling_codec_2026-11-22`): **neither
+  adopted**. Guidance x temperature (12 settings) moves identity by at most ~2 points; the best (2.5/0.5) is not
+  significant on the held-out seed and raises letter error for 3 people. Codec-statistics reference selection is worse
+  than ECAPA typicality (−4.4 points); combined is no better. Defaults unchanged.
 
