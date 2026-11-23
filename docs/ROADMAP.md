@@ -92,3 +92,8 @@ key includes each recording's modification time.
   significant on the held-out seed and raises letter error for 3 people. Codec-statistics reference selection is worse
   than ECAPA typicality (−4.4 points); combined is no better. Defaults unchanged.
 
+- Base-model bake-off (2026-11-23, `experiments/model_bakeoff_2026-11-23`, 16 people speaker-disjoint from our training,
+  no training): **no model is stronger** than Lahgtna base on the fair protocol (same ~10 s reference). OmniVoice original
+  +1.0 held-out ECAPA (CI crosses 0), WavLM level; VoxCPM2 WavLM significantly lower; Audar Flash much weaker on identity
+  (−16.4 held-out ECAPA, 15 of 16 margins down) though fewer letter errors. Decision agreed before the run: stop
+  swapping base models; the next lever is many more consented, diverse speakers.
