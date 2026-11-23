@@ -1,106 +1,147 @@
-# Multi-session prosody validation: data-collection protocol and sample size (plan only, 2026-11-24)
+# Multi-session prosody pilot: protocol (version 2, 2026-11-24; nothing recorded yet)
 
-Nothing is recorded under this document yet. It defines what to record, from how many people, and how it will be
-analysed, so that "a person's speaking style" can be separated from the microphone, the session and the situation.
+Status: **prepared for review, not started.** No one is recorded and no data is collected until the user approves
+this version. No generation, no training, no synthetic analysis and no change to Lahgtna are part of this study.
 
-## Why (from stages 1-2)
+Companion files: `consent/` (participant and guardian forms, withdrawal procedure), `session_log/` (log template
+and guide), `materials/` (read sentences and free-talk prompts), `power.py` and `results/power.md` (sample-size
+simulation).
 
-- One clip says almost nothing about style (stage 1: 1 of 13 features passed).
-- Sets of 5-10 clips help (stage 2), but every person came from one session, so person, microphone, room and
-  situation cannot be told apart. Median pitch looked promising (ICC 0.90 at 10 clips) with a CI of [0.18, 0.98]
-  from 7 people; peak strength passed at 5 clips but may track microphone distance or level.
-- Current decisions: no prosody feature is adopted; median pitch is kept as a candidate; no combined score; no
-  clone analysis; no training; Lahgtna unchanged.
+## 1. What the pilot is, and what it is not
 
-## Variance in the current data (REML, 15 people, content covariates as fixed effects)
+- **A pilot of 10 people x 3 sessions.** Its purpose is to **estimate the session variance**: how much a person's
+  prosody features move between sessions recorded on different days and set-ups. It also checks that the protocol
+  works (feasibility).
+- **It is not a confirmatory study.** No feature is adopted or rejected on pilot results. The paired-distance and ICC
+  figures are reported against the thresholds below as indications only; with 10 people their CIs are wide.
+- The pilot's session-variance estimate sets the size of the main study (section 9). Features are adopted only from
+  the main study, under criteria written before its data are seen.
 
-| feature | person | turn (situation inside a session) | clip |
-|---|---|---|---|
-| median pitch | 45% | 10% | 45% |
-| pitch range | 20% | 17% | 63% |
-| speaking rate | 32% | 3% | 65% |
-| peak strength | 54% | 19% | 27% |
+Background (stages 1-2): single clips carry almost no style information; sets of 5-10 clips help; but each current
+person was recorded in one session, so person, session and set-up are confounded. Decisions in force: no prosody
+feature adopted; median pitch kept as a candidate; peak strength not used as a style measure; no combined score.
 
-The session component (day, device, room) is unknown: with one session per person it is folded into "person".
-That unknown decides everything below.
+## 2. Participants
 
-## Participants and consent
+- 10 adults (18+) for the pilot; target 5 women and 5 men, Jordanian dialect, a spread of ages. Minors are not
+  recruited for the pilot (section 10).
+- Exclusions: public figures; anyone who cannot attend 3 sessions; anyone not giving every required consent item.
+- Each participant gets a code (`P01`...`P10`). The key linking codes to names is kept in a separate encrypted file
+  (section 10); recordings, logs and analysis files carry the code only.
 
-- A new written consent per person for this study (purpose: measuring speaking style for the Voise graduation
-  project; local storage only; no publishing, no impersonation; withdrawal at any time with deletion of clips,
-  features and any derived data). A parent or guardian consents for anyone under 18. No public figures.
-- Jordanian dialect speakers; a mix of sexes and ages is wanted but each group is analysed separately where pitch
-  differs by sex.
+## 3. Balanced session design
 
-## Sessions
+Three factors could change a person's measured prosody between sessions: **day**, **device** and **room**. With
+3 sessions per person they cannot all be fully crossed within a person, and day always differs. The design therefore
+gives every person one **day-only pair** and one contrast:
 
-- At least **3 sessions per person**, on **different days** (at least 2 days apart).
-- At least 2 different recording set-ups across the 3 sessions (e.g. phone and laptop, or two rooms), each logged.
-  This is deliberate: it lets us measure the device effect instead of hiding it.
-- About 12-15 minutes of speech per session, in four parts:
-  1. **Free talk** (~5 min): a story or opinion, with a listener prompting; natural turns.
-  2. **Questions and answers** (~3 min): the person asks and answers questions (questions are a known content effect).
-  3. **Fixed read sentences** (~2 min): the same 20 sentences (statements and questions) for everyone in every
-     session. These allow comparisons where the words are identical, which removes content from the comparison.
-  4. **Retelling with feeling** (~3 min): an event that was exciting and one that was annoying, told naturally.
-- Target per session: at least **15 usable clips spread over at least 5 separate turns**, for free talk and for
-  read speech each.
+| pattern (odd session shown 3rd; its position is rotated) | session 1 | session 2 | session 3 | contrasts within the person |
+|---|---|---|---|---|
+| D (device) | device A, room 1 | device A, room 1 | device B, room 1 | 1 day-only pair; 2 pairs differing in day + device |
+| R (room) | device A, room 1 | device A, room 1 | device A, room 2 | 1 day-only pair; 2 pairs differing in day + room |
 
-## Recording settings and log
+- Device A = the participant's own phone (as people really record). Device B = one standard recorder, the same unit
+  for everyone, carried by the researcher. Room 1 = the participant's usual room; room 2 = a different room or place.
+- 5 participants per pattern, balanced by sex (assignment list fixed before the first session, by random draw with
+  seed 0 within each sex).
+- The position of the odd session (1st, 2nd or 3rd) is rotated across participants so it is not always the last
+  (counterbalancing order and fatigue). Sessions are 2-14 days apart.
+- **What can be claimed.** The primary quantity is the **Session Effect**: the variance between a person's sessions,
+  whatever its cause. Device and room effects are estimated only as the excess of device or room pairs over day-only
+  pairs, from 5 people each. They are **exploratory and descriptive**, will not be claimed as measured effects of a
+  single factor, and decide nothing. If logs show a session broke its pattern (another phone, another room), it is
+  analysed under its actual conditions and only within the Session Effect.
 
-- Lossless WAV, 16-bit, 48 kHz preferred (16 kHz minimum), one speaker per recording, no music, no overlap.
-- Turn off automatic gain, noise suppression and "voice enhancement" where the device allows; log it when it cannot.
-- At the start of every session: 10 s of room silence and one fixed sentence at ~30 cm, as a level and noise
-  reference.
-- Logged per session: date and time, device and microphone model, app, mouth-to-microphone distance, room, noise
-  description, sample rate, processing on or off, who the listener was, and the task for each part.
+## 4. Session content (each session ~15 minutes of speech)
 
-## How it will be analysed (to be fixed in a README before any data is looked at)
+1. **Calibration** (not analysed for prosody): 10 s room silence; the fixed sentence "هاد تسجيل تجربة الصوت" at
+   ~30 cm.
+2. **Fixed read sentences:** the 20 sentences in `materials/read_sentences.md` (12 statements, 8 questions), read
+   once each, in the same order in every session.
+3. **Free talk** (~5 min) on one prompt from `materials/free_talk_prompts.md` (a different prompt each session,
+   rotation fixed in advance), with the researcher prompting naturally. Then questions and answers (~3 min) and a
+   retelling of an exciting and an annoying event (~3 min). All three are "free speech".
+- Target: all 20 read sentences usable, and at least 15 usable free-speech clips over at least 5 separate turns.
 
-- **Unit of independence = session.** A whole session builds the profile; the other sessions validate it, and every
-  session takes a turn as the build session. A clip, a turn or a session is never on both sides.
-- Variance components: person, session, device, turn and clip, for each feature, with content covariates. Reported
-  for free talk and read speech separately.
-- **Reliability:** ICC(1,1) of the session-set means (k clips per session), with an exact F-based 95% CI.
-  Criterion: point >= 0.75 and CI lower bound >= 0.50 (as in stage 2).
-- **Separating power:** for a single feature, identifying one person among N gets harder as N grows (people crowd on
-  one number), so the simulation below shows low power for identification even when reliability is good.
-  Proposal, to be decided before data: replace identification with a **pairwise test**: is a person's
-  cross-session difference smaller than the difference between two people? (AUC, chance 0.5, independent of N).
-- On the statistics (the user's point, which applies to stage 2 as well): repeated splits of the same people and
-  recordings are not independent samples. Stage 2's confidence intervals resampled **people**, the independent unit;
-  its "5-95% of splits" bands only show how much the split moves the result and are not confidence intervals. The
-  same rule holds here: CIs over people (and sessions), never over repetitions.
+Recording settings: lossless WAV, 16-bit, 48 kHz (16 kHz minimum); automatic gain, noise suppression and "voice
+enhancement" off where the device allows (logged when not); one speaker, no music, no overlapping speech.
 
-## Sample size
+## 5. Units and leakage rules (fixed now)
 
-Simulation (`power.py`, 1000 simulated studies per cell; 3 sessions, 5 turns per session): power for the
-reliability criterion. Full table: `results/power.md`.
+- **The session is the unit of independence.** A session's clips are summarised into one session mean per feature
+  and material: read = mean over the 20 sentences; free = mean over 15 clips drawn at random from at least 5 turns
+  (the draw is repeated 100 times and the session mean averaged over draws; the draws are a way to use all clips,
+  not extra samples).
+- A clip belongs to exactly one session; calibration clips are never analysed; no clip, turn or session ever appears
+  on two sides of a comparison.
+- Read and free speech are analysed **separately** (section 7). Read speech keeps the words identical across
+  sessions and people, which removes content from the comparison; free speech is the natural case.
 
-| session variance (share of person variance) | median pitch, 15 clips per session | peak strength, 15 clips |
-|---|---|---|
-| 10% | N=20: 83%, N=30: 90%, N=40: 94% | N=20: 87%, N=30: 91% |
-| 25% | 37-44% at any N (true ICC 0.74 is below 0.75) | 35-44% at any N |
-| 50% | at most 11% | at most 13% |
+## 6. Primary measure: paired distance comparison P(d_same < d_different)
 
-What this means:
-1. If day and device change a person's pitch little (10%), **about 30 people x 3 sessions x 15 clips per session**
-   give 90% power for median pitch.
-2. If they change it more (25% or more), **no number of people helps**: the feature would truly not be reliable
-   across sessions, and the study would show that.
-3. Pitch range does not reach the criterion in any scenario (best 21%); speaking rate needs 10% session variance
-   and 15 clips per session (N=40: 79%). A failure of these two would not be a surprise.
+For each feature and material, with session means m(p, s):
 
-## Order of work
+- **Same-person pairs:** for each person p, the 3 pairs of their own sessions:
+  d_same = |m(p, s) - m(p, s')|, s != s'.
+- **Different-person pairs:** for each ordered pair of different people (p, q) and every session s of p and s' of q
+  (9 combinations): d_diff = |m(p, s) - m(q, s')|. For pitch features, only **same-sex** different-person pairs
+  are used, so the measure is not inflated by the obvious female/male difference (all-pairs value also reported).
+- **Statistic:** A = P(d_same < d_diff), ties counted 1/2, computed person-anchored: for person p, A_p compares each
+  of p's 3 same-person distances with every different-person distance involving p; **A = mean of A_p over people**,
+  so every person counts once whatever the number of pairs.
+- **Dependence and CIs:** pairs share people and sessions, so they are not independent. The 95% CI is a **cluster
+  bootstrap over people**: draw N people with replacement, recompute A using only the drawn people (a person drawn
+  twice is one person, never paired with themselves), 4000 resamples, percentile interval. A leave-one-person-out
+  jackknife standard error is reported as a check. Pairs are never the resampling unit.
+- **Chance = 0.50** (a feature unrelated to the person).
 
-1. **Pilot:** 10 people x 3 sessions x at least 15 clips per session per part. Purpose: estimate the session and
-   device variance. No pass or fail on the features in the pilot.
-2. Decide N from the pilot's session-variance estimate with this simulation; write the full criteria into a README.
-3. Main collection, then the validation analysis on real recordings only.
-4. Only after a feature passes: compare Lahgtna clones with real speech on that feature, using set-level
-   comparisons.
+**Practical threshold, fixed now:** A >= **0.70** and 95% CI lower bound >= **0.60**.
+Derivation: for one normally distributed feature, A = (2/pi) * arctan(1/sqrt(1 - ICC)). ICC 0.75 (the reliability
+level already used in stage 2) gives A = 0.705; ICC 0.50 gives 0.608. The threshold is therefore the paired-distance
+equivalent of the stage-2 reliability criterion (point 0.75, lower bound 0.50). In the pilot it is an indication
+only; in the main study it is the criterion. It is not changed after any result.
 
-## Storage
+## 7. Analyses of the pilot (all per feature, read and free separately)
 
-Audio, consent records and features stay on this machine (or encrypted, AES-256) and out of git. Only aggregate
-numbers are committed. Withdrawal deletes that person's clips, features and anything derived from them.
+Features: median pitch, pitch range, speaking rate, peak strength (stage-1 definitions, unchanged); pause features
+only on free speech and only if at least 80% of sessions have pauses.
+
+1. **Session Effect (primary):** REML mixed model with person, session within person, turn within session (free
+   speech) and clip, with content covariates as fixed effects (free speech) and sex as a fixed effect for pitch.
+   Report the session variance as a share of the person variance, with a 95% CI from the cluster bootstrap over
+   people.
+2. Paired distance A with CI (section 6), against the threshold, labelled "indicative (pilot)".
+3. ICC(1,1) of session means with an exact F-based CI, labelled "indicative (pilot)".
+4. Exploratory: excess variance of device pairs and of room pairs over day-only pairs (section 3), no claims.
+5. Feasibility: share of sessions meeting the content targets; logging completeness; drop-out.
+
+## 8. Pilot feasibility criteria (fixed now)
+
+- At least 9 of 10 people complete 3 sessions.
+- At least 80% of sessions have all 20 read sentences and >= 15 free clips over >= 5 turns usable.
+- Every session log has all required fields.
+If one fails, the protocol is revised before the main study and the change is written down.
+
+## 9. Size of the main study
+
+From the pilot, the session share's **upper 80% bound** (conservative) is entered into `power.py`; the main study
+uses the N that gives at least 80% power for the main criteria. Simulation so far (3 sessions, 15 clips per session):
+with a 10% session share, about 30 people give 90% power for median pitch; with a 25% share or more, no N reaches the
+criterion, which would mean the feature is not stable across sessions. `power.py` will be updated to the paired
+distance criterion before the main study is sized.
+
+## 10. Consent, privacy and storage
+
+- **Consent** (`consent/participant_consent_ar.md`, English version alongside): explicit and specific consent to be
+  recorded and to have the recordings used in voice-cloning research for the Voise graduation project, with
+  separate tick boxes for each use. Nothing is used beyond what the person ticked.
+- **Minors:** not recruited for the pilot. If ever included later: a guardian's written consent plus the minor's own
+  assent (`consent/guardian_consent_ar.md`), and only after the university's research-ethics approval and a check of
+  the applicable law; the documents here are drafts for that review, not legal advice.
+- **Withdrawal** (`consent/withdrawal.md`): at any time, without a reason; recordings, extracted features, any
+  derived synthetic clips and the person's entries in aggregate files are deleted, and confirmed to them in writing.
+- **Storage:** AES-256 encrypted, on the project machine only; never in git, never uploaded to any cloud service,
+  Kaggle or third party; never shared or published. Only aggregate numbers (variance shares, A, ICC) are committed.
+- **Scope:** participants' voices are used only within what they agreed to. The existing rules hold for any later
+  synthetic use: watermark, SYNTHETIC_ names, offline only, no impersonation.
+- Recommended before recruiting: approval from the university's research-ethics committee.
