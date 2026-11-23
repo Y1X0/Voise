@@ -15,9 +15,26 @@ for d in ("training", "experiments"):
 os.chdir(W)
 sys.path.insert(0, "training/scripts"); sys.path.insert(0, "experiments/model_bakeoff_2026-11-23")
 
+# Fix (2026-11-23, first run): neucodec imports torchtune, whose import of torchao.dtypes.nf4tensor fails with the
+# torchao on Kaggle (ModuleNotFoundError). That class is only used by torchtune's quantisation helpers, never by
+# NeuCodec decoding, so an empty placeholder lets the import through. Generation settings are unchanged.
+import types
+try:
+    import torchao.dtypes.nf4tensor  # noqa: F401
+except Exception:
+    _m = types.ModuleType("torchao.dtypes.nf4tensor")
+    _m.NF4Tensor = type("NF4Tensor", (), {})
+    _m.to_nf4 = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("nf4 not available"))
+    sys.modules["torchao.dtypes.nf4tensor"] = _m
+# Fix 2: the weekly GPU quota ran out, so Audar runs on Kaggle CPU; bf16 is slow/unsupported on CPU, so the
+# weights are loaded in float32 there. Sampling settings are unchanged.
+import torch, transformers
+if not torch.cuda.is_available():
+    _fp2 = transformers.AutoModelForCausalLM.from_pretrained
+    transformers.AutoModelForCausalLM.from_pretrained = lambda *a, **k: _fp2(*a, **{**k, "torch_dtype": torch.float32})
 import bakeoff
 OUT = "/kaggle/working/bakeoff"; os.makedirs(OUT, exist_ok=True)
-bakeoff.run(OUT, ["voxcpm2", "audar"])
+bakeoff.run(OUT, ["audar"])            # VoxCPM2 already finished in the first run
 for f in glob.glob(OUT + "/*"):                      # numbers + watermarked SYNTHETIC_ listening clips leave; references stay
     if not (f.endswith("raw.json") or f.endswith("/audio")):
         shutil.rmtree(f) if os.path.isdir(f) else os.remove(f)
