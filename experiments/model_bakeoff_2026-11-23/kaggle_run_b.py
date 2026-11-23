@@ -36,6 +36,12 @@ import torch, transformers
 if not torch.cuda.is_available():
     _fp2 = transformers.AutoModelForCausalLM.from_pretrained
     transformers.AutoModelForCausalLM.from_pretrained = lambda *a, **k: _fp2(*a, **{**k, "torch_dtype": torch.float32})
+# Fix 3: the official NeuCodec repo is gated and the account owner could not open the site; its Apache-2.0 weights
+# come from the dataset (models/neucodec: public mirror, SHA-256 checked against a second mirror, tensors only).
+import neucodec.model as _ncm
+_hfdl = _ncm.hf_hub_download
+_ncm.hf_hub_download = lambda repo_id, filename, **k: (os.path.join(W, "models", "neucodec", filename)
+                                                      if repo_id == "neuphonic/neucodec" else _hfdl(repo_id=repo_id, filename=filename, **k))
 import bakeoff
 OUT = "/kaggle/working/bakeoff"; os.makedirs(OUT, exist_ok=True)
 bakeoff.run(OUT, ["audar"])            # VoxCPM2 already finished in the first run
