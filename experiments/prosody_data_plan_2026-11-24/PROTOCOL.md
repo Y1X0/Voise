@@ -42,6 +42,10 @@ gives every person one **day-only pair** and one contrast:
 
 - Device A = the participant's own phone (as people really record). Device B = one standard recorder, the same unit
   for everyone, carried by the researcher. Room 1 = the participant's usual room; room 2 = a different room or place.
+- **The researcher's presence is held constant.** The same researcher attends every session of every participant in
+  person and is always the listener in the free talk. Otherwise device B (brought by the researcher) would also mean
+  "the researcher is in the room", and the device contrast would mix two causes. If a session has to run without
+  the researcher, or with another listener, it is logged as a deviation and analysed only within the Session Effect.
 - 5 participants per pattern, balanced by sex (assignment list fixed before the first session, by random draw with
   seed 0 within each sex).
 - The position of the odd session (1st, 2nd or 3rd) is rotated across participants so it is not always the last
@@ -110,7 +114,9 @@ only on free speech and only if at least 80% of sessions have pauses.
    speech) and clip, with content covariates as fixed effects (free speech) and sex as a fixed effect for pitch.
    Report the session variance as a share of the person variance, with a 95% CI from the cluster bootstrap over
    people.
-2. Paired distance A with CI (section 6), against the threshold, labelled "indicative (pilot)".
+2. Paired distance A with CI (section 6), against the threshold, labelled "indicative (pilot)". For pitch
+   features the pilot has 5 people per sex, so each person is compared with only 4 others of the same sex: the
+   pitch A in the pilot is very imprecise and is reported for completeness only.
 3. ICC(1,1) of session means with an exact F-based CI, labelled "indicative (pilot)".
 4. Exploratory: excess variance of device pairs and of room pairs over day-only pairs (section 3), no claims.
 5. Feasibility: share of sessions meeting the content targets; logging completeness; drop-out.
@@ -124,11 +130,21 @@ If one fails, the protocol is revised before the main study and the change is wr
 
 ## 9. Size of the main study
 
-From the pilot, the session share's **upper 80% bound** (conservative) is entered into `power.py`; the main study
-uses the N that gives at least 80% power for the main criteria. Simulation so far (3 sessions, 15 clips per session):
-with a 10% session share, about 30 people give 90% power for median pitch; with a 25% share or more, no N reaches the
-criterion, which would mean the feature is not stable across sessions. `power.py` will be updated to the paired
-distance criterion before the main study is sized.
+From the pilot, the session share's **upper 80% bound** (conservative) is entered into `power_paired.py`, which
+simulates the pre-registered paired-distance statistic and its people-bootstrap CI exactly; the main study uses the N
+that gives at least 80% power. Current simulation (`results/power_paired.md`; 3 sessions, 15 clips per session):
+
+| session share | median pitch | speaking rate | peak strength | pitch range |
+|---|---|---|---|---|
+| 10% | N=20: 84%, N=30: 92% | N=20: 72%, N=30: 83% | N=20: 85%, N=30: 92% | at most 24% |
+| 25% | at most 53% at any N | at most 41% | at most 55% | at most 14% |
+| 50% | at most 15% | at most 12% | at most 14% | at most 5% |
+
+- For pitch features, N means people **per sex** (same-sex pairs only): with a 10% session share the main study
+  needs about 20-30 women and 20-30 men. Speaking rate and peak strength use all pairs.
+- With a session share of 25% or more, no N reaches the criterion: the feature would not be stable across sessions,
+  and the main study would not be run for it.
+- The older `power.py` (ICC and identification) is kept for reference only.
 
 ## 10. Consent, privacy and storage
 
@@ -140,6 +156,10 @@ distance criterion before the main study is sized.
   the applicable law; the documents here are drafts for that review, not legal advice.
 - **Withdrawal** (`consent/withdrawal.md`): at any time, without a reason; recordings, extracted features, any
   derived synthetic clips and the person's entries in aggregate files are deleted, and confirmed to them in writing.
+- **Retention:** every form states a fixed deletion date (no later than 6 months after the graduation-project
+  defence). **Training:** no training on study recordings until data collection has ended; after a withdrawal, a
+  model trained with that person's recordings is taken out of use the same day and deleted or retrained within 30
+  days (recordings, features and synthetic clips within 7 days).
 - **Storage:** AES-256 encrypted, on the project machine only; never in git, never uploaded to any cloud service,
   Kaggle or third party; never shared or published. Only aggregate numbers (variance shares, A, ICC) are committed.
 - **Scope:** participants' voices are used only within what they agreed to. The existing rules hold for any later
