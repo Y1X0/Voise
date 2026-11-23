@@ -40,7 +40,10 @@ if not torch.cuda.is_available():
 # come from the dataset (models/neucodec: public mirror, SHA-256 checked against a second mirror, tensors only).
 import neucodec.model as _ncm
 _hfdl = _ncm.hf_hub_download
-_ncm.hf_hub_download = lambda repo_id, filename, **k: (os.path.join(W, "models", "neucodec", filename)
+_NC = sorted(set(glob.glob(f"{W}/**/neucodec/pytorch_model.bin", recursive=True)
+                 + glob.glob("/kaggle/input/**/neucodec/pytorch_model.bin", recursive=True)))
+print("neucodec weights found at", _NC, flush=True)              # fix 4: the dataset version may lay it out elsewhere
+_ncm.hf_hub_download = lambda repo_id, filename, **k: (os.path.join(os.path.dirname(_NC[0]), filename)
                                                       if repo_id == "neuphonic/neucodec" else _hfdl(repo_id=repo_id, filename=filename, **k))
 import bakeoff
 OUT = "/kaggle/working/bakeoff"; os.makedirs(OUT, exist_ok=True)
