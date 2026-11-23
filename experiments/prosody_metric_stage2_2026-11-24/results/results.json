@@ -1,0 +1,1546 @@
+{
+ "clips": 669,
+ "clips_per_person": {
+  "mafia2_p12": 27,
+  "mafia2_p140": 20,
+  "mafia2_p152": 21,
+  "mafia2_p30": 31,
+  "mafia2_p48": 16,
+  "mafia_abood": 135,
+  "mafia_fakhri": 16,
+  "mafia_p106": 15,
+  "mafia_p43": 47,
+  "mafia_p51": 57,
+  "mafia_p64": 24,
+  "mafia_p70": 33,
+  "mafia_p72": 40,
+  "mafia_p85": 15,
+  "mafia_p95": 11,
+  "omar": 161
+ },
+ "turns_per_person": {
+  "mafia2_p12": 8,
+  "mafia2_p140": 5,
+  "mafia2_p152": 6,
+  "mafia2_p30": 9,
+  "mafia2_p48": 7,
+  "mafia_abood": 14,
+  "mafia_fakhri": 3,
+  "mafia_p106": 5,
+  "mafia_p43": 8,
+  "mafia_p51": 7,
+  "mafia_p64": 6,
+  "mafia_p70": 7,
+  "mafia_p72": 3,
+  "mafia_p85": 3,
+  "mafia_p95": 1,
+  "omar": 161
+ },
+ "main": {
+  "2": {
+   "n_people": 14,
+   "people": [
+    "mafia2_p12",
+    "mafia2_p140",
+    "mafia2_p152",
+    "mafia2_p30",
+    "mafia2_p48",
+    "mafia_abood",
+    "mafia_fakhri",
+    "mafia_p106",
+    "mafia_p43",
+    "mafia_p51",
+    "mafia_p64",
+    "mafia_p70",
+    "mafia_p72",
+    "mafia_p85"
+   ],
+   "excluded": {
+    "mafia_p95": {
+     "clips": 11,
+     "turns": 1,
+     "feasible": 0.0
+    }
+   },
+   "chance": 0.07142857142857142,
+   "features": {
+    "f0_median": {
+     "repetitions": 200,
+     "icc_median": 0.58,
+     "icc_split_p5_p95": [
+      0.207,
+      0.811
+     ],
+     "icc_ci95": [
+      -0.265,
+      0.889
+     ],
+     "spearman_brown_from_stage1": 0.65,
+     "ident_mean": 0.1536,
+     "ident_split_p5_p95": [
+      0.0,
+      0.2857
+     ],
+     "ident_ci95": [
+      0.0954,
+      0.2304
+     ],
+     "ident_per_person": {
+      "mafia2_p12": 0.1,
+      "mafia2_p140": 0.13,
+      "mafia2_p152": 0.08,
+      "mafia2_p30": 0.435,
+      "mafia2_p48": 0.06,
+      "mafia_abood": 0.105,
+      "mafia_fakhri": 0.09,
+      "mafia_p106": 0.51,
+      "mafia_p43": 0.115,
+      "mafia_p51": 0.095,
+      "mafia_p64": 0.1,
+      "mafia_p70": 0.135,
+      "mafia_p72": 0.115,
+      "mafia_p85": 0.08
+     },
+     "mean_abs_gap_over_spread": 0.769,
+     "gap_over_spread_per_person": {
+      "mafia2_p12": 0.622,
+      "mafia2_p140": 0.563,
+      "mafia2_p152": 1.293,
+      "mafia2_p30": 0.722,
+      "mafia2_p48": 1.079,
+      "mafia_abood": 0.868,
+      "mafia_fakhri": 0.627,
+      "mafia_p106": 1.164,
+      "mafia_p43": 0.73,
+      "mafia_p51": 0.712,
+      "mafia_p64": 0.719,
+      "mafia_p70": 0.539,
+      "mafia_p72": 0.506,
+      "mafia_p85": 0.618
+     },
+     "passed": false,
+     "failed": [
+      "ICC median 0.58 < 0.75",
+      "ICC CI lower -0.27 < 0.50"
+     ]
+    },
+    "f0_range": {
+     "repetitions": 200,
+     "icc_median": 0.368,
+     "icc_split_p5_p95": [
+      -0.074,
+      0.685
+     ],
+     "icc_ci95": [
+      -0.362,
+      0.82
+     ],
+     "spearman_brown_from_stage1": 0.444,
+     "ident_mean": 0.1014,
+     "ident_split_p5_p95": [
+      0.0,
+      0.2143
+     ],
+     "ident_ci95": [
+      0.0825,
+      0.1193
+     ],
+     "ident_per_person": {
+      "mafia2_p12": 0.06,
+      "mafia2_p140": 0.04,
+      "mafia2_p152": 0.125,
+      "mafia2_p30": 0.1,
+      "mafia2_p48": 0.125,
+      "mafia_abood": 0.065,
+      "mafia_fakhri": 0.12,
+      "mafia_p106": 0.14,
+      "mafia_p43": 0.105,
+      "mafia_p51": 0.085,
+      "mafia_p64": 0.055,
+      "mafia_p70": 0.16,
+      "mafia_p72": 0.155,
+      "mafia_p85": 0.085
+     },
+     "mean_abs_gap_over_spread": 0.94,
+     "gap_over_spread_per_person": {
+      "mafia2_p12": 1.051,
+      "mafia2_p140": 0.928,
+      "mafia2_p152": 1.279,
+      "mafia2_p30": 0.74,
+      "mafia2_p48": 1.144,
+      "mafia_abood": 1.234,
+      "mafia_fakhri": 0.563,
+      "mafia_p106": 1.24,
+      "mafia_p43": 0.84,
+      "mafia_p51": 0.798,
+      "mafia_p64": 1.168,
+      "mafia_p70": 0.712,
+      "mafia_p72": 0.639,
+      "mafia_p85": 0.816
+     },
+     "passed": false,
+     "failed": [
+      "ICC median 0.37 < 0.75",
+      "ICC CI lower -0.36 < 0.50"
+     ]
+    },
+    "art_rate": {
+     "repetitions": 200,
+     "icc_median": 0.258,
+     "icc_split_p5_p95": [
+      -0.217,
+      0.671
+     ],
+     "icc_ci95": [
+      -0.454,
+      0.783
+     ],
+     "spearman_brown_from_stage1": 0.347,
+     "ident_mean": 0.0957,
+     "ident_split_p5_p95": [
+      0.0,
+      0.2143
+     ],
+     "ident_ci95": [
+      0.0814,
+      0.1139
+     ],
+     "ident_per_person": {
+      "mafia2_p12": 0.125,
+      "mafia2_p140": 0.08,
+      "mafia2_p152": 0.075,
+      "mafia2_p30": 0.075,
+      "mafia2_p48": 0.045,
+      "mafia_abood": 0.085,
+      "mafia_fakhri": 0.085,
+      "mafia_p106": 0.11,
+      "mafia_p43": 0.1,
+      "mafia_p51": 0.185,
+      "mafia_p64": 0.09,
+      "mafia_p70": 0.085,
+      "mafia_p72": 0.105,
+      "mafia_p85": 0.095
+     },
+     "mean_abs_gap_over_spread": 1.06,
+     "gap_over_spread_per_person": {
+      "mafia2_p12": 0.92,
+      "mafia2_p140": 1.122,
+      "mafia2_p152": 1.323,
+      "mafia2_p30": 0.999,
+      "mafia2_p48": 0.994,
+      "mafia_abood": 1.049,
+      "mafia_fakhri": 0.662,
+      "mafia_p106": 2.022,
+      "mafia_p43": 0.82,
+      "mafia_p51": 1.075,
+      "mafia_p64": 1.091,
+      "mafia_p70": 0.922,
+      "mafia_p72": 0.854,
+      "mafia_p85": 0.992
+     },
+     "passed": false,
+     "failed": [
+      "ICC median 0.26 < 0.75",
+      "ICC CI lower -0.45 < 0.50"
+     ]
+    },
+    "peak_prom": {
+     "repetitions": 200,
+     "icc_median": 0.752,
+     "icc_split_p5_p95": [
+      0.355,
+      0.883
+     ],
+     "icc_ci95": [
+      0.17,
+      0.936
+     ],
+     "spearman_brown_from_stage1": 0.764,
+     "ident_mean": 0.1525,
+     "ident_split_p5_p95": [
+      0.0,
+      0.2857
+     ],
+     "ident_ci95": [
+      0.1196,
+      0.1868
+     ],
+     "ident_per_person": {
+      "mafia2_p12": 0.19,
+      "mafia2_p140": 0.24,
+      "mafia2_p152": 0.15,
+      "mafia2_p30": 0.12,
+      "mafia2_p48": 0.1,
+      "mafia_abood": 0.055,
+      "mafia_fakhri": 0.065,
+      "mafia_p106": 0.235,
+      "mafia_p43": 0.255,
+      "mafia_p51": 0.14,
+      "mafia_p64": 0.115,
+      "mafia_p70": 0.165,
+      "mafia_p72": 0.105,
+      "mafia_p85": 0.2
+     },
+     "mean_abs_gap_over_spread": 0.618,
+     "gap_over_spread_per_person": {
+      "mafia2_p12": 0.492,
+      "mafia2_p140": 0.705,
+      "mafia2_p152": 0.495,
+      "mafia2_p30": 0.732,
+      "mafia2_p48": 0.536,
+      "mafia_abood": 1.036,
+      "mafia_fakhri": 0.751,
+      "mafia_p106": 0.822,
+      "mafia_p43": 0.431,
+      "mafia_p51": 0.543,
+      "mafia_p64": 0.699,
+      "mafia_p70": 0.389,
+      "mafia_p72": 0.553,
+      "mafia_p85": 0.469
+     },
+     "passed": false,
+     "failed": [
+      "ICC CI lower 0.17 < 0.50"
+     ]
+    }
+   }
+  },
+  "5": {
+   "n_people": 12,
+   "people": [
+    "mafia2_p12",
+    "mafia2_p140",
+    "mafia2_p152",
+    "mafia2_p30",
+    "mafia2_p48",
+    "mafia_abood",
+    "mafia_fakhri",
+    "mafia_p43",
+    "mafia_p51",
+    "mafia_p64",
+    "mafia_p70",
+    "mafia_p72"
+   ],
+   "excluded": {
+    "mafia_p106": {
+     "clips": 15,
+     "turns": 5,
+     "feasible": 0.42
+    },
+    "mafia_p85": {
+     "clips": 15,
+     "turns": 3,
+     "feasible": 0.0
+    },
+    "mafia_p95": {
+     "clips": 11,
+     "turns": 1,
+     "feasible": 0.0
+    }
+   },
+   "chance": 0.08333333333333333,
+   "features": {
+    "f0_median": {
+     "repetitions": 200,
+     "icc_median": 0.679,
+     "icc_split_p5_p95": [
+      0.428,
+      0.851
+     ],
+     "icc_ci95": [
+      -0.036,
+      0.938
+     ],
+     "spearman_brown_from_stage1": 0.823,
+     "ident_mean": 0.2133,
+     "ident_split_p5_p95": [
+      0.0833,
+      0.4167
+     ],
+     "ident_ci95": [
+      0.1346,
+      0.3246
+     ],
+     "ident_per_person": {
+      "mafia2_p12": 0.125,
+      "mafia2_p140": 0.335,
+      "mafia2_p152": 0.15,
+      "mafia2_p30": 0.76,
+      "mafia2_p48": 0.06,
+      "mafia_abood": 0.265,
+      "mafia_fakhri": 0.12,
+      "mafia_p43": 0.14,
+      "mafia_p51": 0.09,
+      "mafia_p64": 0.14,
+      "mafia_p70": 0.22,
+      "mafia_p72": 0.155
+     },
+     "mean_abs_gap_over_spread": 0.65,
+     "gap_over_spread_per_person": {
+      "mafia2_p12": 0.544,
+      "mafia2_p140": 0.393,
+      "mafia2_p152": 1.374,
+      "mafia2_p30": 0.652,
+      "mafia2_p48": 1.118,
+      "mafia_abood": 0.635,
+      "mafia_fakhri": 0.454,
+      "mafia_p43": 0.637,
+      "mafia_p51": 0.574,
+      "mafia_p64": 0.6,
+      "mafia_p70": 0.463,
+      "mafia_p72": 0.359
+     },
+     "passed": false,
+     "failed": [
+      "ICC median 0.68 < 0.75",
+      "ICC CI lower -0.04 < 0.50"
+     ]
+    },
+    "f0_range": {
+     "repetitions": 200,
+     "icc_median": 0.628,
+     "icc_split_p5_p95": [
+      0.245,
+      0.844
+     ],
+     "icc_ci95": [
+      -0.065,
+      0.909
+     ],
+     "spearman_brown_from_stage1": 0.666,
+     "ident_mean": 0.1517,
+     "ident_split_p5_p95": [
+      0.0,
+      0.3333
+     ],
+     "ident_ci95": [
+      0.1142,
+      0.1983
+     ],
+     "ident_per_person": {
+      "mafia2_p12": 0.085,
+      "mafia2_p140": 0.18,
+      "mafia2_p152": 0.135,
+      "mafia2_p30": 0.12,
+      "mafia2_p48": 0.24,
+      "mafia_abood": 0.085,
+      "mafia_fakhri": 0.345,
+      "mafia_p43": 0.145,
+      "mafia_p51": 0.105,
+      "mafia_p64": 0.065,
+      "mafia_p70": 0.195,
+      "mafia_p72": 0.12
+     },
+     "mean_abs_gap_over_spread": 0.714,
+     "gap_over_spread_per_person": {
+      "mafia2_p12": 1.026,
+      "mafia2_p140": 0.498,
+      "mafia2_p152": 1.189,
+      "mafia2_p30": 0.598,
+      "mafia2_p48": 0.851,
+      "mafia_abood": 0.943,
+      "mafia_fakhri": 0.305,
+      "mafia_p43": 0.551,
+      "mafia_p51": 0.676,
+      "mafia_p64": 0.893,
+      "mafia_p70": 0.551,
+      "mafia_p72": 0.492
+     },
+     "passed": false,
+     "failed": [
+      "ICC median 0.63 < 0.75",
+      "ICC CI lower -0.07 < 0.50"
+     ]
+    },
+    "art_rate": {
+     "repetitions": 200,
+     "icc_median": 0.442,
+     "icc_split_p5_p95": [
+      0.056,
+      0.719
+     ],
+     "icc_ci95": [
+      -0.243,
+      0.825
+     ],
+     "spearman_brown_from_stage1": 0.571,
+     "ident_mean": 0.1258,
+     "ident_split_p5_p95": [
+      0.0,
+      0.25
+     ],
+     "ident_ci95": [
+      0.0917,
+      0.1662
+     ],
+     "ident_per_person": {
+      "mafia2_p12": 0.12,
+      "mafia2_p140": 0.075,
+      "mafia2_p152": 0.105,
+      "mafia2_p30": 0.085,
+      "mafia2_p48": 0.135,
+      "mafia_abood": 0.07,
+      "mafia_fakhri": 0.23,
+      "mafia_p43": 0.1,
+      "mafia_p51": 0.28,
+      "mafia_p64": 0.045,
+      "mafia_p70": 0.105,
+      "mafia_p72": 0.16
+     },
+     "mean_abs_gap_over_spread": 0.87,
+     "gap_over_spread_per_person": {
+      "mafia2_p12": 0.699,
+      "mafia2_p140": 1.039,
+      "mafia2_p152": 1.13,
+      "mafia2_p30": 0.979,
+      "mafia2_p48": 0.787,
+      "mafia_abood": 1.036,
+      "mafia_fakhri": 0.475,
+      "mafia_p43": 0.812,
+      "mafia_p51": 0.985,
+      "mafia_p64": 0.921,
+      "mafia_p70": 0.823,
+      "mafia_p72": 0.749
+     },
+     "passed": false,
+     "failed": [
+      "ICC median 0.44 < 0.75",
+      "ICC CI lower -0.24 < 0.50"
+     ]
+    },
+    "peak_prom": {
+     "repetitions": 200,
+     "icc_median": 0.882,
+     "icc_split_p5_p95": [
+      0.751,
+      0.947
+     ],
+     "icc_ci95": [
+      0.587,
+      0.971
+     ],
+     "spearman_brown_from_stage1": 0.89,
+     "ident_mean": 0.2154,
+     "ident_split_p5_p95": [
+      0.0833,
+      0.4167
+     ],
+     "ident_ci95": [
+      0.1804,
+      0.2508
+     ],
+     "ident_per_person": {
+      "mafia2_p12": 0.235,
+      "mafia2_p140": 0.215,
+      "mafia2_p152": 0.2,
+      "mafia2_p30": 0.135,
+      "mafia2_p48": 0.255,
+      "mafia_abood": 0.21,
+      "mafia_fakhri": 0.105,
+      "mafia_p43": 0.335,
+      "mafia_p51": 0.15,
+      "mafia_p64": 0.25,
+      "mafia_p70": 0.285,
+      "mafia_p72": 0.21
+     },
+     "mean_abs_gap_over_spread": 0.39,
+     "gap_over_spread_per_person": {
+      "mafia2_p12": 0.229,
+      "mafia2_p140": 0.572,
+      "mafia2_p152": 0.324,
+      "mafia2_p30": 0.494,
+      "mafia2_p48": 0.23,
+      "mafia_abood": 0.642,
+      "mafia_fakhri": 0.555,
+      "mafia_p43": 0.251,
+      "mafia_p51": 0.342,
+      "mafia_p64": 0.52,
+      "mafia_p70": 0.189,
+      "mafia_p72": 0.333
+     },
+     "passed": true,
+     "failed": []
+    }
+   }
+  },
+  "10": {
+   "n_people": 7,
+   "people": [
+    "mafia2_p12",
+    "mafia2_p30",
+    "mafia_abood",
+    "mafia_p43",
+    "mafia_p51",
+    "mafia_p70",
+    "mafia_p72"
+   ],
+   "excluded": {
+    "mafia2_p140": {
+     "clips": 20,
+     "turns": 5,
+     "feasible": 0.41
+    },
+    "mafia2_p152": {
+     "clips": 21,
+     "turns": 6,
+     "feasible": 0.41
+    },
+    "mafia2_p48": {
+     "clips": 16,
+     "turns": 7,
+     "feasible": 0.0
+    },
+    "mafia_fakhri": {
+     "clips": 16,
+     "turns": 3,
+     "feasible": 0.0
+    },
+    "mafia_p106": {
+     "clips": 15,
+     "turns": 5,
+     "feasible": 0.0
+    },
+    "mafia_p64": {
+     "clips": 24,
+     "turns": 6,
+     "feasible": 0.49
+    },
+    "mafia_p85": {
+     "clips": 15,
+     "turns": 3,
+     "feasible": 0.0
+    },
+    "mafia_p95": {
+     "clips": 11,
+     "turns": 1,
+     "feasible": 0.0
+    }
+   },
+   "chance": 0.14285714285714285,
+   "features": {
+    "f0_median": {
+     "repetitions": 200,
+     "icc_median": 0.895,
+     "icc_split_p5_p95": [
+      0.784,
+      0.962
+     ],
+     "icc_ci95": [
+      0.177,
+      0.979
+     ],
+     "spearman_brown_from_stage1": 0.903,
+     "ident_mean": 0.4379,
+     "ident_split_p5_p95": [
+      0.1429,
+      0.7143
+     ],
+     "ident_ci95": [
+      0.2857,
+      0.6229
+     ],
+     "ident_per_person": {
+      "mafia2_p12": 0.245,
+      "mafia2_p30": 0.945,
+      "mafia_abood": 0.405,
+      "mafia_p43": 0.18,
+      "mafia_p51": 0.33,
+      "mafia_p70": 0.55,
+      "mafia_p72": 0.41
+     },
+     "mean_abs_gap_over_spread": 0.39,
+     "gap_over_spread_per_person": {
+      "mafia2_p12": 0.325,
+      "mafia2_p30": 0.486,
+      "mafia_abood": 0.488,
+      "mafia_p43": 0.454,
+      "mafia_p51": 0.38,
+      "mafia_p70": 0.37,
+      "mafia_p72": 0.224
+     },
+     "passed": false,
+     "failed": [
+      "ICC CI lower 0.18 < 0.50"
+     ]
+    },
+    "f0_range": {
+     "repetitions": 200,
+     "icc_median": 0.592,
+     "icc_split_p5_p95": [
+      0.164,
+      0.853
+     ],
+     "icc_ci95": [
+      -0.273,
+      0.907
+     ],
+     "spearman_brown_from_stage1": 0.799,
+     "ident_mean": 0.2471,
+     "ident_split_p5_p95": [
+      0.0,
+      0.4286
+     ],
+     "ident_ci95": [
+      0.1978,
+      0.2964
+     ],
+     "ident_per_person": {
+      "mafia2_p12": 0.15,
+      "mafia2_p30": 0.255,
+      "mafia_abood": 0.265,
+      "mafia_p43": 0.245,
+      "mafia_p51": 0.16,
+      "mafia_p70": 0.34,
+      "mafia_p72": 0.315
+     },
+     "mean_abs_gap_over_spread": 0.772,
+     "gap_over_spread_per_person": {
+      "mafia2_p12": 1.47,
+      "mafia2_p30": 0.644,
+      "mafia_abood": 1.013,
+      "mafia_p43": 0.609,
+      "mafia_p51": 0.75,
+      "mafia_p70": 0.528,
+      "mafia_p72": 0.387
+     },
+     "passed": false,
+     "failed": [
+      "ICC median 0.59 < 0.75",
+      "ICC CI lower -0.27 < 0.50"
+     ]
+    },
+    "art_rate": {
+     "repetitions": 200,
+     "icc_median": 0.622,
+     "icc_split_p5_p95": [
+      0.158,
+      0.878
+     ],
+     "icc_ci95": [
+      -0.328,
+      0.916
+     ],
+     "spearman_brown_from_stage1": 0.727,
+     "ident_mean": 0.2629,
+     "ident_split_p5_p95": [
+      0.0,
+      0.5714
+     ],
+     "ident_ci95": [
+      0.1821,
+      0.3536
+     ],
+     "ident_per_person": {
+      "mafia2_p12": 0.245,
+      "mafia2_p30": 0.185,
+      "mafia_abood": 0.115,
+      "mafia_p43": 0.32,
+      "mafia_p51": 0.445,
+      "mafia_p70": 0.145,
+      "mafia_p72": 0.385
+     },
+     "mean_abs_gap_over_spread": 0.749,
+     "gap_over_spread_per_person": {
+      "mafia2_p12": 0.564,
+      "mafia2_p30": 0.659,
+      "mafia_abood": 1.059,
+      "mafia_p43": 0.704,
+      "mafia_p51": 0.871,
+      "mafia_p70": 0.821,
+      "mafia_p72": 0.566
+     },
+     "passed": false,
+     "failed": [
+      "ICC median 0.62 < 0.75",
+      "ICC CI lower -0.33 < 0.50"
+     ]
+    },
+    "peak_prom": {
+     "repetitions": 200,
+     "icc_median": 0.93,
+     "icc_split_p5_p95": [
+      0.8,
+      0.973
+     ],
+     "icc_ci95": [
+      0.467,
+      0.992
+     ],
+     "spearman_brown_from_stage1": 0.942,
+     "ident_mean": 0.4043,
+     "ident_split_p5_p95": [
+      0.1429,
+      0.7143
+     ],
+     "ident_ci95": [
+      0.2986,
+      0.53
+     ],
+     "ident_per_person": {
+      "mafia2_p12": 0.555,
+      "mafia2_p30": 0.28,
+      "mafia_abood": 0.28,
+      "mafia_p43": 0.345,
+      "mafia_p51": 0.275,
+      "mafia_p70": 0.375,
+      "mafia_p72": 0.72
+     },
+     "mean_abs_gap_over_spread": 0.309,
+     "gap_over_spread_per_person": {
+      "mafia2_p12": 0.175,
+      "mafia2_p30": 0.514,
+      "mafia_abood": 0.677,
+      "mafia_p43": 0.171,
+      "mafia_p51": 0.242,
+      "mafia_p70": 0.129,
+      "mafia_p72": 0.252
+     },
+     "passed": false,
+     "failed": [
+      "ICC CI lower 0.47 < 0.50"
+     ]
+    }
+   }
+  }
+ },
+ "with_omar": {
+  "2": {
+   "n_people": 15,
+   "people": [
+    "mafia2_p12",
+    "mafia2_p140",
+    "mafia2_p152",
+    "mafia2_p30",
+    "mafia2_p48",
+    "mafia_abood",
+    "mafia_fakhri",
+    "mafia_p106",
+    "mafia_p43",
+    "mafia_p51",
+    "mafia_p64",
+    "mafia_p70",
+    "mafia_p72",
+    "mafia_p85",
+    "omar"
+   ],
+   "excluded": {
+    "mafia_p95": {
+     "clips": 11,
+     "turns": 1,
+     "feasible": 0.0
+    }
+   },
+   "chance": 0.06666666666666667,
+   "features": {
+    "f0_median": {
+     "repetitions": 200,
+     "icc_median": 0.616,
+     "icc_split_p5_p95": [
+      0.226,
+      0.817
+     ],
+     "icc_ci95": [
+      -0.242,
+      0.906
+     ],
+     "spearman_brown_from_stage1": 0.65,
+     "ident_mean": 0.1397,
+     "ident_split_p5_p95": [
+      0.0,
+      0.2667
+     ],
+     "ident_ci95": [
+      0.0873,
+      0.2057
+     ],
+     "ident_per_person": {
+      "mafia2_p12": 0.12,
+      "mafia2_p140": 0.15,
+      "mafia2_p152": 0.09,
+      "mafia2_p30": 0.35,
+      "mafia2_p48": 0.065,
+      "mafia_abood": 0.095,
+      "mafia_fakhri": 0.09,
+      "mafia_p106": 0.485,
+      "mafia_p43": 0.075,
+      "mafia_p51": 0.06,
+      "mafia_p64": 0.025,
+      "mafia_p70": 0.12,
+      "mafia_p72": 0.105,
+      "mafia_p85": 0.07,
+      "omar": 0.195
+     },
+     "mean_abs_gap_over_spread": 0.716,
+     "gap_over_spread_per_person": {
+      "mafia2_p12": 0.611,
+      "mafia2_p140": 0.479,
+      "mafia2_p152": 1.266,
+      "mafia2_p30": 0.696,
+      "mafia2_p48": 1.073,
+      "mafia_abood": 0.765,
+      "mafia_fakhri": 0.558,
+      "mafia_p106": 0.942,
+      "mafia_p43": 0.822,
+      "mafia_p51": 0.675,
+      "mafia_p64": 0.686,
+      "mafia_p70": 0.567,
+      "mafia_p72": 0.529,
+      "mafia_p85": 0.645,
+      "omar": 0.429
+     }
+    },
+    "f0_range": {
+     "repetitions": 200,
+     "icc_median": 0.424,
+     "icc_split_p5_p95": [
+      -0.039,
+      0.695
+     ],
+     "icc_ci95": [
+      -0.297,
+      0.827
+     ],
+     "spearman_brown_from_stage1": 0.444,
+     "ident_mean": 0.103,
+     "ident_split_p5_p95": [
+      0.0,
+      0.2667
+     ],
+     "ident_ci95": [
+      0.084,
+      0.1237
+     ],
+     "ident_per_person": {
+      "mafia2_p12": 0.09,
+      "mafia2_p140": 0.08,
+      "mafia2_p152": 0.145,
+      "mafia2_p30": 0.065,
+      "mafia2_p48": 0.12,
+      "mafia_abood": 0.075,
+      "mafia_fakhri": 0.15,
+      "mafia_p106": 0.11,
+      "mafia_p43": 0.07,
+      "mafia_p51": 0.055,
+      "mafia_p64": 0.075,
+      "mafia_p70": 0.1,
+      "mafia_p72": 0.135,
+      "mafia_p85": 0.08,
+      "omar": 0.195
+     },
+     "mean_abs_gap_over_spread": 0.901,
+     "gap_over_spread_per_person": {
+      "mafia2_p12": 1.1,
+      "mafia2_p140": 0.755,
+      "mafia2_p152": 1.195,
+      "mafia2_p30": 0.768,
+      "mafia2_p48": 1.257,
+      "mafia_abood": 1.154,
+      "mafia_fakhri": 0.548,
+      "mafia_p106": 1.216,
+      "mafia_p43": 0.821,
+      "mafia_p51": 0.81,
+      "mafia_p64": 1.029,
+      "mafia_p70": 0.737,
+      "mafia_p72": 0.587,
+      "mafia_p85": 0.744,
+      "omar": 0.79
+     }
+    },
+    "art_rate": {
+     "repetitions": 200,
+     "icc_median": 0.373,
+     "icc_split_p5_p95": [
+      -0.067,
+      0.652
+     ],
+     "icc_ci95": [
+      -0.369,
+      0.768
+     ],
+     "spearman_brown_from_stage1": 0.347,
+     "ident_mean": 0.1033,
+     "ident_split_p5_p95": [
+      0.0,
+      0.2033
+     ],
+     "ident_ci95": [
+      0.0683,
+      0.157
+     ],
+     "ident_per_person": {
+      "mafia2_p12": 0.09,
+      "mafia2_p140": 0.045,
+      "mafia2_p152": 0.03,
+      "mafia2_p30": 0.07,
+      "mafia2_p48": 0.05,
+      "mafia_abood": 0.055,
+      "mafia_fakhri": 0.1,
+      "mafia_p106": 0.08,
+      "mafia_p43": 0.11,
+      "mafia_p51": 0.165,
+      "mafia_p64": 0.055,
+      "mafia_p70": 0.08,
+      "mafia_p72": 0.145,
+      "mafia_p85": 0.065,
+      "omar": 0.41
+     },
+     "mean_abs_gap_over_spread": 0.972,
+     "gap_over_spread_per_person": {
+      "mafia2_p12": 0.864,
+      "mafia2_p140": 1.204,
+      "mafia2_p152": 1.228,
+      "mafia2_p30": 0.99,
+      "mafia2_p48": 0.954,
+      "mafia_abood": 1.143,
+      "mafia_fakhri": 0.577,
+      "mafia_p106": 1.704,
+      "mafia_p43": 0.787,
+      "mafia_p51": 1.13,
+      "mafia_p64": 0.987,
+      "mafia_p70": 0.807,
+      "mafia_p72": 0.815,
+      "mafia_p85": 0.835,
+      "omar": 0.558
+     }
+    },
+    "peak_prom": {
+     "repetitions": 200,
+     "icc_median": 0.748,
+     "icc_split_p5_p95": [
+      0.476,
+      0.894
+     ],
+     "icc_ci95": [
+      0.21,
+      0.931
+     ],
+     "spearman_brown_from_stage1": 0.764,
+     "ident_mean": 0.1543,
+     "ident_split_p5_p95": [
+      0.0,
+      0.3333
+     ],
+     "ident_ci95": [
+      0.1323,
+      0.1753
+     ],
+     "ident_per_person": {
+      "mafia2_p12": 0.17,
+      "mafia2_p140": 0.22,
+      "mafia2_p152": 0.15,
+      "mafia2_p30": 0.14,
+      "mafia2_p48": 0.195,
+      "mafia_abood": 0.105,
+      "mafia_fakhri": 0.065,
+      "mafia_p106": 0.155,
+      "mafia_p43": 0.19,
+      "mafia_p51": 0.185,
+      "mafia_p64": 0.085,
+      "mafia_p70": 0.185,
+      "mafia_p72": 0.13,
+      "mafia_p85": 0.155,
+      "omar": 0.185
+     },
+     "mean_abs_gap_over_spread": 0.595,
+     "gap_over_spread_per_person": {
+      "mafia2_p12": 0.485,
+      "mafia2_p140": 0.753,
+      "mafia2_p152": 0.512,
+      "mafia2_p30": 0.708,
+      "mafia2_p48": 0.494,
+      "mafia_abood": 1.031,
+      "mafia_fakhri": 0.735,
+      "mafia_p106": 0.781,
+      "mafia_p43": 0.464,
+      "mafia_p51": 0.515,
+      "mafia_p64": 0.686,
+      "mafia_p70": 0.401,
+      "mafia_p72": 0.505,
+      "mafia_p85": 0.464,
+      "omar": 0.386
+     }
+    }
+   }
+  },
+  "5": {
+   "n_people": 13,
+   "people": [
+    "mafia2_p12",
+    "mafia2_p140",
+    "mafia2_p152",
+    "mafia2_p30",
+    "mafia2_p48",
+    "mafia_abood",
+    "mafia_fakhri",
+    "mafia_p43",
+    "mafia_p51",
+    "mafia_p64",
+    "mafia_p70",
+    "mafia_p72",
+    "omar"
+   ],
+   "excluded": {
+    "mafia_p106": {
+     "clips": 15,
+     "turns": 5,
+     "feasible": 0.43
+    },
+    "mafia_p85": {
+     "clips": 15,
+     "turns": 3,
+     "feasible": 0.0
+    },
+    "mafia_p95": {
+     "clips": 11,
+     "turns": 1,
+     "feasible": 0.0
+    }
+   },
+   "chance": 0.07692307692307693,
+   "features": {
+    "f0_median": {
+     "repetitions": 200,
+     "icc_median": 0.697,
+     "icc_split_p5_p95": [
+      0.495,
+      0.857
+     ],
+     "icc_ci95": [
+      0.104,
+      0.917
+     ],
+     "spearman_brown_from_stage1": 0.823,
+     "ident_mean": 0.2138,
+     "ident_split_p5_p95": [
+      0.0769,
+      0.3846
+     ],
+     "ident_ci95": [
+      0.1458,
+      0.3077
+     ],
+     "ident_per_person": {
+      "mafia2_p12": 0.175,
+      "mafia2_p140": 0.27,
+      "mafia2_p152": 0.18,
+      "mafia2_p30": 0.625,
+      "mafia2_p48": 0.065,
+      "mafia_abood": 0.235,
+      "mafia_fakhri": 0.125,
+      "mafia_p43": 0.11,
+      "mafia_p51": 0.115,
+      "mafia_p64": 0.105,
+      "mafia_p70": 0.24,
+      "mafia_p72": 0.135,
+      "omar": 0.4
+     },
+     "mean_abs_gap_over_spread": 0.609,
+     "gap_over_spread_per_person": {
+      "mafia2_p12": 0.455,
+      "mafia2_p140": 0.355,
+      "mafia2_p152": 1.454,
+      "mafia2_p30": 0.609,
+      "mafia2_p48": 1.012,
+      "mafia_abood": 0.6,
+      "mafia_fakhri": 0.455,
+      "mafia_p43": 0.678,
+      "mafia_p51": 0.516,
+      "mafia_p64": 0.584,
+      "mafia_p70": 0.46,
+      "mafia_p72": 0.383,
+      "omar": 0.352
+     }
+    },
+    "f0_range": {
+     "repetitions": 200,
+     "icc_median": 0.659,
+     "icc_split_p5_p95": [
+      0.356,
+      0.845
+     ],
+     "icc_ci95": [
+      0.099,
+      0.915
+     ],
+     "spearman_brown_from_stage1": 0.666,
+     "ident_mean": 0.1554,
+     "ident_split_p5_p95": [
+      0.0,
+      0.3077
+     ],
+     "ident_ci95": [
+      0.1177,
+      0.195
+     ],
+     "ident_per_person": {
+      "mafia2_p12": 0.08,
+      "mafia2_p140": 0.165,
+      "mafia2_p152": 0.075,
+      "mafia2_p30": 0.12,
+      "mafia2_p48": 0.17,
+      "mafia_abood": 0.065,
+      "mafia_fakhri": 0.28,
+      "mafia_p43": 0.12,
+      "mafia_p51": 0.145,
+      "mafia_p64": 0.09,
+      "mafia_p70": 0.21,
+      "mafia_p72": 0.22,
+      "omar": 0.28
+     },
+     "mean_abs_gap_over_spread": 0.677,
+     "gap_over_spread_per_person": {
+      "mafia2_p12": 0.981,
+      "mafia2_p140": 0.485,
+      "mafia2_p152": 1.222,
+      "mafia2_p30": 0.579,
+      "mafia2_p48": 0.775,
+      "mafia_abood": 0.913,
+      "mafia_fakhri": 0.281,
+      "mafia_p43": 0.589,
+      "mafia_p51": 0.607,
+      "mafia_p64": 0.869,
+      "mafia_p70": 0.522,
+      "mafia_p72": 0.409,
+      "omar": 0.569
+     }
+    },
+    "art_rate": {
+     "repetitions": 200,
+     "icc_median": 0.67,
+     "icc_split_p5_p95": [
+      0.424,
+      0.846
+     ],
+     "icc_ci95": [
+      -0.186,
+      0.908
+     ],
+     "spearman_brown_from_stage1": 0.571,
+     "ident_mean": 0.1812,
+     "ident_split_p5_p95": [
+      0.0769,
+      0.3077
+     ],
+     "ident_ci95": [
+      0.0996,
+      0.3123
+     ],
+     "ident_per_person": {
+      "mafia2_p12": 0.155,
+      "mafia2_p140": 0.06,
+      "mafia2_p152": 0.135,
+      "mafia2_p30": 0.085,
+      "mafia2_p48": 0.095,
+      "mafia_abood": 0.06,
+      "mafia_fakhri": 0.195,
+      "mafia_p43": 0.115,
+      "mafia_p51": 0.245,
+      "mafia_p64": 0.075,
+      "mafia_p70": 0.075,
+      "mafia_p72": 0.175,
+      "omar": 0.885
+     },
+     "mean_abs_gap_over_spread": 0.663,
+     "gap_over_spread_per_person": {
+      "mafia2_p12": 0.513,
+      "mafia2_p140": 0.911,
+      "mafia2_p152": 0.802,
+      "mafia2_p30": 0.702,
+      "mafia2_p48": 0.731,
+      "mafia_abood": 0.791,
+      "mafia_fakhri": 0.355,
+      "mafia_p43": 0.625,
+      "mafia_p51": 0.756,
+      "mafia_p64": 0.769,
+      "mafia_p70": 0.649,
+      "mafia_p72": 0.631,
+      "omar": 0.382
+     }
+    },
+    "peak_prom": {
+     "repetitions": 200,
+     "icc_median": 0.879,
+     "icc_split_p5_p95": [
+      0.766,
+      0.943
+     ],
+     "icc_ci95": [
+      0.529,
+      0.969
+     ],
+     "spearman_brown_from_stage1": 0.89,
+     "ident_mean": 0.2108,
+     "ident_split_p5_p95": [
+      0.0769,
+      0.3846
+     ],
+     "ident_ci95": [
+      0.1735,
+      0.2496
+     ],
+     "ident_per_person": {
+      "mafia2_p12": 0.235,
+      "mafia2_p140": 0.27,
+      "mafia2_p152": 0.135,
+      "mafia2_p30": 0.15,
+      "mafia2_p48": 0.205,
+      "mafia_abood": 0.155,
+      "mafia_fakhri": 0.095,
+      "mafia_p43": 0.34,
+      "mafia_p51": 0.175,
+      "mafia_p64": 0.16,
+      "mafia_p70": 0.23,
+      "mafia_p72": 0.265,
+      "omar": 0.325
+     },
+     "mean_abs_gap_over_spread": 0.391,
+     "gap_over_spread_per_person": {
+      "mafia2_p12": 0.249,
+      "mafia2_p140": 0.54,
+      "mafia2_p152": 0.377,
+      "mafia2_p30": 0.501,
+      "mafia2_p48": 0.239,
+      "mafia_abood": 0.714,
+      "mafia_fakhri": 0.617,
+      "mafia_p43": 0.238,
+      "mafia_p51": 0.344,
+      "mafia_p64": 0.527,
+      "mafia_p70": 0.205,
+      "mafia_p72": 0.32,
+      "omar": 0.22
+     }
+    }
+   }
+  },
+  "10": {
+   "n_people": 8,
+   "people": [
+    "mafia2_p12",
+    "mafia2_p30",
+    "mafia_abood",
+    "mafia_p43",
+    "mafia_p51",
+    "mafia_p70",
+    "mafia_p72",
+    "omar"
+   ],
+   "excluded": {
+    "mafia2_p140": {
+     "clips": 20,
+     "turns": 5,
+     "feasible": 0.46
+    },
+    "mafia2_p152": {
+     "clips": 21,
+     "turns": 6,
+     "feasible": 0.41
+    },
+    "mafia2_p48": {
+     "clips": 16,
+     "turns": 7,
+     "feasible": 0.0
+    },
+    "mafia_fakhri": {
+     "clips": 16,
+     "turns": 3,
+     "feasible": 0.0
+    },
+    "mafia_p106": {
+     "clips": 15,
+     "turns": 5,
+     "feasible": 0.0
+    },
+    "mafia_p64": {
+     "clips": 24,
+     "turns": 6,
+     "feasible": 0.47
+    },
+    "mafia_p85": {
+     "clips": 15,
+     "turns": 3,
+     "feasible": 0.0
+    },
+    "mafia_p95": {
+     "clips": 11,
+     "turns": 1,
+     "feasible": 0.0
+    }
+   },
+   "chance": 0.125,
+   "features": {
+    "f0_median": {
+     "repetitions": 200,
+     "icc_median": 0.915,
+     "icc_split_p5_p95": [
+      0.809,
+      0.968
+     ],
+     "icc_ci95": [
+      0.467,
+      0.986
+     ],
+     "spearman_brown_from_stage1": 0.903,
+     "ident_mean": 0.46,
+     "ident_split_p5_p95": [
+      0.125,
+      0.75
+     ],
+     "ident_ci95": [
+      0.345,
+      0.585
+     ],
+     "ident_per_person": {
+      "mafia2_p12": 0.275,
+      "mafia2_p30": 0.73,
+      "mafia_abood": 0.505,
+      "mafia_p43": 0.255,
+      "mafia_p51": 0.315,
+      "mafia_p70": 0.505,
+      "mafia_p72": 0.375,
+      "omar": 0.72
+     },
+     "mean_abs_gap_over_spread": 0.344,
+     "gap_over_spread_per_person": {
+      "mafia2_p12": 0.337,
+      "mafia2_p30": 0.468,
+      "mafia_abood": 0.391,
+      "mafia_p43": 0.424,
+      "mafia_p51": 0.347,
+      "mafia_p70": 0.344,
+      "mafia_p72": 0.209,
+      "omar": 0.232
+     }
+    },
+    "f0_range": {
+     "repetitions": 200,
+     "icc_median": 0.723,
+     "icc_split_p5_p95": [
+      0.413,
+      0.883
+     ],
+     "icc_ci95": [
+      0.045,
+      0.931
+     ],
+     "spearman_brown_from_stage1": 0.799,
+     "ident_mean": 0.24,
+     "ident_split_p5_p95": [
+      0.0,
+      0.5
+     ],
+     "ident_ci95": [
+      0.1568,
+      0.335
+     ],
+     "ident_per_person": {
+      "mafia2_p12": 0.04,
+      "mafia2_p30": 0.155,
+      "mafia_abood": 0.18,
+      "mafia_p43": 0.245,
+      "mafia_p51": 0.185,
+      "mafia_p70": 0.255,
+      "mafia_p72": 0.37,
+      "omar": 0.49
+     },
+     "mean_abs_gap_over_spread": 0.629,
+     "gap_over_spread_per_person": {
+      "mafia2_p12": 1.2,
+      "mafia2_p30": 0.583,
+      "mafia_abood": 0.832,
+      "mafia_p43": 0.474,
+      "mafia_p51": 0.638,
+      "mafia_p70": 0.463,
+      "mafia_p72": 0.321,
+      "omar": 0.522
+     }
+    },
+    "art_rate": {
+     "repetitions": 200,
+     "icc_median": 0.852,
+     "icc_split_p5_p95": [
+      0.641,
+      0.951
+     ],
+     "icc_ci95": [
+      0.247,
+      0.978
+     ],
+     "spearman_brown_from_stage1": 0.727,
+     "ident_mean": 0.3556,
+     "ident_split_p5_p95": [
+      0.125,
+      0.625
+     ],
+     "ident_ci95": [
+      0.2112,
+      0.5619
+     ],
+     "ident_per_person": {
+      "mafia2_p12": 0.205,
+      "mafia2_p30": 0.2,
+      "mafia_abood": 0.155,
+      "mafia_p43": 0.305,
+      "mafia_p51": 0.505,
+      "mafia_p70": 0.14,
+      "mafia_p72": 0.355,
+      "omar": 0.98
+     },
+     "mean_abs_gap_over_spread": 0.453,
+     "gap_over_spread_per_person": {
+      "mafia2_p12": 0.372,
+      "mafia2_p30": 0.462,
+      "mafia_abood": 0.633,
+      "mafia_p43": 0.404,
+      "mafia_p51": 0.571,
+      "mafia_p70": 0.544,
+      "mafia_p72": 0.395,
+      "omar": 0.241
+     }
+    },
+    "peak_prom": {
+     "repetitions": 200,
+     "icc_median": 0.93,
+     "icc_split_p5_p95": [
+      0.808,
+      0.982
+     ],
+     "icc_ci95": [
+      0.557,
+      0.993
+     ],
+     "spearman_brown_from_stage1": 0.942,
+     "ident_mean": 0.4069,
+     "ident_split_p5_p95": [
+      0.125,
+      0.625
+     ],
+     "ident_ci95": [
+      0.3193,
+      0.4969
+     ],
+     "ident_per_person": {
+      "mafia2_p12": 0.56,
+      "mafia2_p30": 0.355,
+      "mafia_abood": 0.285,
+      "mafia_p43": 0.4,
+      "mafia_p51": 0.215,
+      "mafia_p70": 0.415,
+      "mafia_p72": 0.395,
+      "omar": 0.63
+     },
+     "mean_abs_gap_over_spread": 0.282,
+     "gap_over_spread_per_person": {
+      "mafia2_p12": 0.182,
+      "mafia2_p30": 0.469,
+      "mafia_abood": 0.628,
+      "mafia_p43": 0.162,
+      "mafia_p51": 0.26,
+      "mafia_p70": 0.125,
+      "mafia_p72": 0.264,
+      "omar": 0.169
+     }
+    }
+   }
+  }
+ }
+}
