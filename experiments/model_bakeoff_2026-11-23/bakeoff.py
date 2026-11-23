@@ -259,11 +259,8 @@ def analyze(out_dirs, res_dir):
         return {k: dict(mean=round(float(np.mean(d(k))), 3), ci95=boot_ci(d(k)))
                 for k in ("closeness", "heldout", "heldout_wavlm", "cer", "margin")}
 
-    decisions = {}
-    for name in MODELS:                              # each model's best protocol vs Voise's best (lahgtna P2)
-        if name == "lahgtna" or not best(name) or not current:
-            continue
-        pr = vs(current, best(name))
+    def decide(a, b):
+        pr = vs(a, b)
         fails = []
         if not pr["heldout"]["ci95"][0] > 0:
             fails.append(f"held-out ECAPA gain not established {pr['heldout']}")
@@ -271,9 +268,22 @@ def analyze(out_dirs, res_dir):
             fails.append(f"held-out WavLM-SV gain not established {pr['heldout_wavlm']}")
         if pr["cer"]["mean"] > 1.0:
             fails.append(f"letter error up {pr['cer']['mean']} points")
-        if best(name)["identified"] < current["identified"]:
-            fails.append(f"fewer identified ({best(name)['identified']} vs {current['identified']})")
-        decisions[name] = dict(paired_vs_current=pr, stronger=not fails, failed=fails)
+        if b["identified"] < a["identified"]:
+            fails.append(f"fewer identified ({b['identified']} vs {a['identified']})")
+        for p in ps:
+            if a["per"][p]["margin"] - b["per"][p]["margin"] > 0.05:
+                fails.append(f"{p}: margin -{a['per'][p]['margin'] - b['per'][p]['margin']:.3f}")
+        return dict(paired=pr, stronger=not fails, failed=fails)
+
+    # PRIMARY: fair protocol (same ~10 s reference) vs the Lahgtna base model; SECONDARY: each model's best input
+    decisions = {"primary_fair_p1": {}, "secondary_best_input": {}}
+    for name in MODELS:
+        if name == "lahgtna":
+            continue
+        if f"{name}/p1" in arms and "lahgtna/p1" in arms:
+            decisions["primary_fair_p1"][name] = decide(arms["lahgtna/p1"], arms[f"{name}/p1"])
+        if best(name) and current:
+            decisions["secondary_best_input"][name] = decide(current, best(name))
     fair = {name: vs(arms["lahgtna/p1"], arms[f"{name}/p1"]) for name in MODELS
             if name != "lahgtna" and f"{name}/p1" in arms and "lahgtna/p1" in arms}
     res = dict(protocol=__doc__, people=ps,
