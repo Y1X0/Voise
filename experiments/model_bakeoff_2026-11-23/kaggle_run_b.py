@@ -22,9 +22,13 @@ import types
 try:
     import torchao.dtypes.nf4tensor  # noqa: F401
 except Exception:
-    _m = types.ModuleType("torchao.dtypes.nf4tensor")
-    _m.NF4Tensor = type("NF4Tensor", (), {})
-    _m.to_nf4 = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("nf4 not available"))
+    class _NF4(types.ModuleType):                     # any name torchtune imports from it resolves to a stub
+        def __getattr__(self, name):
+            if name.startswith("__"):
+                raise AttributeError(name)
+            return type(name, (), {}) if name[:1].isupper() else (lambda *a, **k: (_ for _ in ()).throw(
+                RuntimeError("nf4 not available")))
+    _m = _NF4("torchao.dtypes.nf4tensor")
     sys.modules["torchao.dtypes.nf4tensor"] = _m
 # Fix 2: the weekly GPU quota ran out, so Audar runs on Kaggle CPU; bf16 is slow/unsupported on CPU, so the
 # weights are loaded in float32 there. Sampling settings are unchanged.
