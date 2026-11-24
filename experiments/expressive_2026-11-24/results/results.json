@@ -1,0 +1,470 @@
+{
+ "people": [
+  "mafia2_p12",
+  "mafia2_p140",
+  "mafia2_p152",
+  "mafia2_p30",
+  "mafia2_p48",
+  "mafia_abood",
+  "mafia_fakhri",
+  "mafia_p106",
+  "mafia_p43",
+  "mafia_p51",
+  "mafia_p64",
+  "mafia_p70",
+  "mafia_p72",
+  "mafia_p85",
+  "mafia_p95",
+  "omar"
+ ],
+ "means": {
+  "A": {
+   "range_dev": 0.4158,
+   "range_ratio": 0.935,
+   "contour_corr": 0.8323,
+   "time_ratio": 0.9681,
+   "heldout": 70.5043,
+   "heldout_wavlm": 95.9693,
+   "cer": 0.0268,
+   "margin": 0.3476,
+   "identified": 16
+  },
+  "B": {
+   "range_dev": 0.4431,
+   "range_ratio": 0.9113,
+   "contour_corr": 0.8388,
+   "time_ratio": 0.9747,
+   "heldout": 70.4212,
+   "heldout_wavlm": 95.8734,
+   "cer": 0.0315,
+   "margin": 0.3423,
+   "identified": 16
+  }
+ },
+ "paired_B_minus_A": {
+  "range_dev": {
+   "mean": 0.0273,
+   "ci95": [
+    -0.0122,
+    0.0658
+   ]
+  },
+  "range_ratio": {
+   "mean": -0.0237,
+   "ci95": [
+    -0.0699,
+    0.0126
+   ]
+  },
+  "contour_corr": {
+   "mean": 0.0065,
+   "ci95": [
+    -0.0076,
+    0.0245
+   ]
+  },
+  "time_ratio": {
+   "mean": 0.0066,
+   "ci95": [
+    -0.0014,
+    0.0165
+   ]
+  },
+  "heldout": {
+   "mean": -0.0831,
+   "ci95": [
+    -1.3373,
+    1.0873
+   ]
+  },
+  "heldout_wavlm": {
+   "mean": -0.0959,
+   "ci95": [
+    -0.491,
+    0.2528
+   ]
+  },
+  "cer": {
+   "mean": 0.0047,
+   "ci95": [
+    -0.0019,
+    0.0113
+   ]
+  },
+  "margin": {
+   "mean": -0.0054,
+   "ci95": [
+    -0.0177,
+    0.0058
+   ]
+  }
+ },
+ "per_person": {
+  "A": {
+   "mafia2_p12": {
+    "range_dev": 0.24367506977367237,
+    "range_ratio": 1.2061666666666666,
+    "contour_corr": 0.8646666666666666,
+    "time_ratio": 1.1684999999999999,
+    "heldout": 63.65544512975797,
+    "heldout_wavlm": 94.5433948345042,
+    "cer": 0.0387,
+    "margin": 0.3606313402866921,
+    "identified": true
+   },
+   "mafia2_p140": {
+    "range_dev": 0.7429082034592677,
+    "range_ratio": 0.6056666666666667,
+    "contour_corr": 0.8475,
+    "time_ratio": 1.0566666666666666,
+    "heldout": 67.1550155697203,
+    "heldout_wavlm": 97.97812433733812,
+    "cer": 0.0234,
+    "margin": 0.4534146877704481,
+    "identified": true
+   },
+   "mafia2_p152": {
+    "range_dev": 1.056765443436803,
+    "range_ratio": 0.48849999999999993,
+    "contour_corr": 0.7556666666666666,
+    "time_ratio": 1.0938333333333332,
+    "heldout": 58.82791592001367,
+    "heldout_wavlm": 92.55293211250378,
+    "cer": 0.0082,
+    "margin": 0.38902461184426557,
+    "identified": true
+   },
+   "mafia2_p30": {
+    "range_dev": 0.2736095753883914,
+    "range_ratio": 1.2248333333333334,
+    "contour_corr": 0.6861666666666667,
+    "time_ratio": 1.1866666666666665,
+    "heldout": 71.79672956264092,
+    "heldout_wavlm": 97.1329113025353,
+    "cer": 0.012183333333333332,
+    "margin": 0.4854282274330018,
+    "identified": true
+   },
+   "mafia2_p48": {
+    "range_dev": 0.28805782059800844,
+    "range_ratio": 1.2411666666666668,
+    "contour_corr": 0.8906666666666666,
+    "time_ratio": 1.1751666666666667,
+    "heldout": 72.95650681834626,
+    "heldout_wavlm": 97.0378697678457,
+    "cer": 0.043750000000000004,
+    "margin": 0.2820464205546461,
+    "identified": true
+   },
+   "mafia_abood": {
+    "range_dev": 0.507647260316411,
+    "range_ratio": 0.7198333333333334,
+    "contour_corr": 0.8011666666666667,
+    "time_ratio": 0.7863333333333333,
+    "heldout": 67.35792452577763,
+    "heldout_wavlm": 95.71842603177836,
+    "cer": 0.031683333333333334,
+    "margin": 0.14829382229058807,
+    "identified": true
+   },
+   "mafia_fakhri": {
+    "range_dev": 0.2874042033716551,
+    "range_ratio": 0.9400000000000001,
+    "contour_corr": 0.8815000000000001,
+    "time_ratio": 0.9153333333333333,
+    "heldout": 67.11625613316752,
+    "heldout_wavlm": 95.81668931930932,
+    "cer": 0.02388333333333333,
+    "margin": 0.4924876518304842,
+    "identified": true
+   },
+   "mafia_p106": {
+    "range_dev": 0.4981866414327302,
+    "range_ratio": 0.8574999999999999,
+    "contour_corr": 0.8895,
+    "time_ratio": 0.8296666666666667,
+    "heldout": 57.11250136953861,
+    "heldout_wavlm": 90.46858734629835,
+    "cer": 0.05201666666666666,
+    "margin": 0.14001303407269938,
+    "identified": true
+   },
+   "mafia_p43": {
+    "range_dev": 0.17397728697331657,
+    "range_ratio": 1.0043333333333333,
+    "contour_corr": 0.8949999999999999,
+    "time_ratio": 0.914,
+    "heldout": 79.70356839645353,
+    "heldout_wavlm": 97.7300448417238,
+    "cer": 0.0143,
+    "margin": 0.3562344613364713,
+    "identified": true
+   },
+   "mafia_p51": {
+    "range_dev": 0.3601856412164531,
+    "range_ratio": 1.1043333333333336,
+    "contour_corr": 0.8534999999999999,
+    "time_ratio": 0.8860000000000001,
+    "heldout": 71.5116639241006,
+    "heldout_wavlm": 96.64703069319349,
+    "cer": 0.0297,
+    "margin": 0.33419296532656817,
+    "identified": true
+   },
+   "mafia_p64": {
+    "range_dev": 0.7424706345527983,
+    "range_ratio": 0.6216666666666666,
+    "contour_corr": 0.7988333333333334,
+    "time_ratio": 0.7073333333333333,
+    "heldout": 71.03965603079855,
+    "heldout_wavlm": 95.32617958421969,
+    "cer": 0.05473333333333332,
+    "margin": 0.3175731088784285,
+    "identified": true
+   },
+   "mafia_p70": {
+    "range_dev": 0.2850143700108115,
+    "range_ratio": 1.0988333333333333,
+    "contour_corr": 0.7875000000000001,
+    "time_ratio": 0.9421666666666667,
+    "heldout": 77.31753263580573,
+    "heldout_wavlm": 97.59061159348849,
+    "cer": 0.018866666666666667,
+    "margin": 0.37965500658222456,
+    "identified": true
+   },
+   "mafia_p72": {
+    "range_dev": 0.33488501870020443,
+    "range_ratio": 0.8711666666666668,
+    "contour_corr": 0.8481666666666667,
+    "time_ratio": 0.8475,
+    "heldout": 81.67084125564521,
+    "heldout_wavlm": 97.87696162125647,
+    "cer": 0.026983333333333335,
+    "margin": 0.4053742084046402,
+    "identified": true
+   },
+   "mafia_p85": {
+    "range_dev": 0.2678626661190929,
+    "range_ratio": 1.1146666666666667,
+    "contour_corr": 0.824,
+    "time_ratio": 0.9301666666666666,
+    "heldout": 69.92511784526582,
+    "heldout_wavlm": 95.20287832503796,
+    "cer": 0.024616666666666665,
+    "margin": 0.3283858381077432,
+    "identified": true
+   },
+   "mafia_p95": {
+    "range_dev": 0.21189666482798072,
+    "range_ratio": 1.0895000000000001,
+    "contour_corr": 0.8143333333333332,
+    "time_ratio": 0.9838333333333332,
+    "heldout": 74.4828302735888,
+    "heldout_wavlm": 96.9715147590917,
+    "cer": 0.018016666666666667,
+    "margin": 0.2786609424850669,
+    "identified": true
+   },
+   "omar": {
+    "range_dev": 0.37764364569434955,
+    "range_ratio": 0.7723333333333332,
+    "contour_corr": 0.8788333333333332,
+    "time_ratio": 1.0671666666666668,
+    "heldout": 76.43903451882358,
+    "heldout_wavlm": 96.91531847874214,
+    "cer": 0.007583333333333333,
+    "margin": 0.4109596236122336,
+    "identified": true
+   }
+  },
+  "B": {
+   "mafia2_p12": {
+    "range_dev": 0.25388939296047586,
+    "range_ratio": 1.1949999999999998,
+    "contour_corr": 0.8659999999999998,
+    "time_ratio": 1.1728333333333332,
+    "heldout": 64.79383117574423,
+    "heldout_wavlm": 95.77978471647776,
+    "cer": 0.023566666666666666,
+    "margin": 0.38197941741276664,
+    "identified": true
+   },
+   "mafia2_p140": {
+    "range_dev": 0.7838592878331526,
+    "range_ratio": 0.5830000000000001,
+    "contour_corr": 0.8473333333333334,
+    "time_ratio": 1.0506666666666666,
+    "heldout": 68.36519095355658,
+    "heldout_wavlm": 97.61891745576578,
+    "cer": 0.04118333333333333,
+    "margin": 0.4597943580898553,
+    "identified": true
+   },
+   "mafia2_p152": {
+    "range_dev": 0.9836966453187914,
+    "range_ratio": 0.5178333333333334,
+    "contour_corr": 0.7275,
+    "time_ratio": 1.0816666666666668,
+    "heldout": 55.28926694210109,
+    "heldout_wavlm": 92.52366900327544,
+    "cer": 0.010933333333333335,
+    "margin": 0.355677815384477,
+    "identified": true
+   },
+   "mafia2_p30": {
+    "range_dev": 0.3553194347537256,
+    "range_ratio": 0.9288333333333334,
+    "contour_corr": 0.799,
+    "time_ratio": 1.189,
+    "heldout": 70.70677381686838,
+    "heldout_wavlm": 96.75405210950231,
+    "cer": 0.014150000000000001,
+    "margin": 0.4773695084690041,
+    "identified": true
+   },
+   "mafia2_p48": {
+    "range_dev": 0.3262599594752606,
+    "range_ratio": 1.2678333333333334,
+    "contour_corr": 0.8863333333333334,
+    "time_ratio": 1.1621666666666666,
+    "heldout": 72.38645886254952,
+    "heldout_wavlm": 95.35084279144762,
+    "cer": 0.026066666666666665,
+    "margin": 0.24860308950368926,
+    "identified": true
+   },
+   "mafia_abood": {
+    "range_dev": 0.5060612508002446,
+    "range_ratio": 0.7074999999999999,
+    "contour_corr": 0.8169999999999998,
+    "time_ratio": 0.8338333333333333,
+    "heldout": 71.01338046882732,
+    "heldout_wavlm": 96.3211051678487,
+    "cer": 0.038483333333333335,
+    "margin": 0.1824070827828994,
+    "identified": true
+   },
+   "mafia_fakhri": {
+    "range_dev": 0.2235577931253969,
+    "range_ratio": 0.8895,
+    "contour_corr": 0.8765000000000001,
+    "time_ratio": 0.922,
+    "heldout": 65.65656529831504,
+    "heldout_wavlm": 95.8443979454117,
+    "cer": 0.028016666666666672,
+    "margin": 0.47226548394940615,
+    "identified": true
+   },
+   "mafia_p106": {
+    "range_dev": 0.5832116229056846,
+    "range_ratio": 0.8201666666666666,
+    "contour_corr": 0.8631666666666667,
+    "time_ratio": 0.8848333333333332,
+    "heldout": 50.683451894918186,
+    "heldout_wavlm": 88.43595055674184,
+    "cer": 0.04906666666666667,
+    "margin": 0.11839361809476134,
+    "identified": true
+   },
+   "mafia_p43": {
+    "range_dev": 0.23426912486524584,
+    "range_ratio": 1.0246666666666668,
+    "contour_corr": 0.8938333333333334,
+    "time_ratio": 0.9245000000000001,
+    "heldout": 79.76798587024797,
+    "heldout_wavlm": 97.58497848143094,
+    "cer": 0.022449999999999998,
+    "margin": 0.3703406359200593,
+    "identified": true
+   },
+   "mafia_p51": {
+    "range_dev": 0.2211247026072313,
+    "range_ratio": 0.9779999999999999,
+    "contour_corr": 0.8713333333333333,
+    "time_ratio": 0.8928333333333334,
+    "heldout": 70.01363048930746,
+    "heldout_wavlm": 96.85873007971408,
+    "cer": 0.041699999999999994,
+    "margin": 0.32771774039312207,
+    "identified": true
+   },
+   "mafia_p64": {
+    "range_dev": 0.8907597941898993,
+    "range_ratio": 0.5671666666666667,
+    "contour_corr": 0.7791666666666667,
+    "time_ratio": 0.7066666666666667,
+    "heldout": 71.99321219723377,
+    "heldout_wavlm": 95.30404385451769,
+    "cer": 0.07698333333333333,
+    "margin": 0.2544638018740474,
+    "identified": true
+   },
+   "mafia_p70": {
+    "range_dev": 0.4656021468838248,
+    "range_ratio": 1.1413333333333333,
+    "contour_corr": 0.8208333333333333,
+    "time_ratio": 0.9398333333333334,
+    "heldout": 79.52796639913934,
+    "heldout_wavlm": 97.80785432434811,
+    "cer": 0.04771666666666668,
+    "margin": 0.3725523593632023,
+    "identified": true
+   },
+   "mafia_p72": {
+    "range_dev": 0.29540576525921153,
+    "range_ratio": 0.8671666666666668,
+    "contour_corr": 0.8606666666666666,
+    "time_ratio": 0.8454999999999999,
+    "heldout": 82.20886631934412,
+    "heldout_wavlm": 97.82618112847632,
+    "cer": 0.04741666666666666,
+    "margin": 0.41246826038170226,
+    "identified": true
+   },
+   "mafia_p85": {
+    "range_dev": 0.3413154734164749,
+    "range_ratio": 1.1631666666666667,
+    "contour_corr": 0.8471666666666667,
+    "time_ratio": 0.9239999999999999,
+    "heldout": 73.69061330176812,
+    "heldout_wavlm": 95.45739623811855,
+    "cer": 0.032183333333333335,
+    "margin": 0.3280302324617066,
+    "identified": true
+   },
+   "mafia_p95": {
+    "range_dev": 0.23668461158402823,
+    "range_ratio": 1.065,
+    "contour_corr": 0.8178333333333333,
+    "time_ratio": 0.9838333333333332,
+    "heldout": 73.28051996682542,
+    "heldout_wavlm": 97.30009700013666,
+    "cer": 0.0,
+    "margin": 0.2909873163302076,
+    "identified": true
+   },
+   "omar": {
+    "range_dev": 0.3880890522427501,
+    "range_ratio": 0.8648333333333333,
+    "contour_corr": 0.8473333333333334,
+    "time_ratio": 1.0815000000000001,
+    "heldout": 77.36130664841122,
+    "heldout_wavlm": 97.20694020678216,
+    "cer": 0.0041,
+    "margin": 0.4233665364356195,
+    "identified": true
+   }
+  }
+ },
+ "decision": {
+  "B_passes": false,
+  "failed": [
+   "pitch range not closer to the real clip {'mean': 0.0273, 'ci95': [-0.0122, 0.0658]}",
+   "mafia_p64: letter error +2.2 points",
+   "mafia_p64: margin -0.063",
+   "mafia_p70: letter error +2.9 points",
+   "mafia_p72: letter error +2.0 points"
+  ]
+ }
+}
