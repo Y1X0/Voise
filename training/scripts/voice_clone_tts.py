@@ -608,6 +608,7 @@ class Engine:
             prompt = self.model.create_voice_clone_prompt(ref_audio=wav_p, ref_text=meta["reference_transcript"])
             prompt.save(prompt_p)
             json.dump(meta, open(meta_p, "w", encoding="utf-8"), ensure_ascii=False)
+        meta["reference_quality"] = reference_quality(ref)     # advice only: never blocks or changes the reference
         v = dict(prompt=prompt, ref=ref, emb=speaker_embedding(self.enc, ref) if self.enc else None, strategy=strategy,
                  **meta)
         self.voices[key] = v
@@ -775,6 +776,7 @@ class Engine:
                        consent_record=consent_path, consent_sha256=consent_sha, consent_scope=consent["scope"],
                        reference=v["reference"], reference_choice=v.get("reference_choice"),
                        reference_transcript=v["reference_transcript"],
+                       reference_quality=v.get("reference_quality"),
                        model="oddadmix/lahgtna-omnivoice-v2 (no licence stated)", adapter=self.adapter if version == "adapter" else None,
                        version_used=version, language=self.language, created_utc=stamp, watermark=wm, class_temperature=self.temperature,
                        take_target=getattr(self, "take_target", "reference"),
@@ -823,6 +825,9 @@ def main(argv=None):
     eng = Engine(a.model_dir, a.asr_dir, a.adapter, a.sv_dir, a.language, a.mos, a.temperature,
                  a.reference_strategy, a.take_target, tuple(a.reference_pool))
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    q = eng.voice(a.ref_dir, a.ref_text).get("reference_quality") or {}
+    for line in q.get("advice", []):                   # advice only: cloning goes ahead either way
+        print(f"reference check ({q['level']}): {line}", file=sys.stderr, flush=True)
     for n, text in enumerate(texts):
         wav_path, best, cands = eng.say(a.consent, a.ref_dir, text, a.out, a.ref_text, a.candidates,
                                         16 if a.fast else a.steps, a.speed, n, stamp, a.person)

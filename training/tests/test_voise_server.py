@@ -21,6 +21,9 @@ class FakeEngine:
     def say(self, consent, ref_dir, text, out, **k):
         return "/x/SYNTHETIC_test.wav", {"heard": text}, [1]
 
+    def voice(self, ref_dir, ref_text=None, strategy=None):
+        return {"reference_quality": {"level": "good", "advice": []}}
+
 
 def free_port():
     s = socket.socket(); s.bind(("127.0.0.1", 0)); p = s.getsockname()[1]; s.close(); return p

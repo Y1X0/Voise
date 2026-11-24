@@ -463,5 +463,54 @@ class TestSimilarityFirst(unittest.TestCase):
         self.assertEqual(seen["args"], ("dir", None, 19.0))
 
 
+class ReferenceQualityTest(unittest.TestCase):
+    """The reference check only advises; these pin what it reports for short and noisy references."""
+
+    def speechlike(self, seconds, seed=0):
+        import numpy as np
+        rng = np.random.default_rng(seed)
+        t = np.arange(int(seconds * V.SR)) / V.SR
+        env = (np.sin(2 * np.pi * 3 * t) > -0.3).astype(np.float32)          # syllable-like on/off
+        y = sum(np.sin(2 * np.pi * f * t) / k for k, f in enumerate((140, 280, 420), 1)) * env
+        return (0.5 * y + 0.001 * rng.standard_normal(len(t))).astype(np.float32)
+
+    def noisy(self, y, snr_db, seed=1):
+        import numpy as np
+        n = np.random.default_rng(seed).standard_normal(len(y)).astype(np.float32)
+        return y + n * np.sqrt(np.mean(y ** 2) / 10 ** (snr_db / 10))
+
+    def test_noise_lowers_the_estimate(self):
+        y = self.speechlike(12)
+        a, b, c = (V.estimate_snr(x) for x in (y, self.noisy(y, 20), self.noisy(y, 5)))
+        self.assertGreater(a, b)
+        self.assertGreater(b, c)
+
+    def test_digital_silence_is_ignored(self):
+        import numpy as np
+        y = self.noisy(self.speechlike(6), 15)
+        joined = np.concatenate([y, np.zeros(int(0.3 * V.SR), np.float32), y])
+        self.assertAlmostEqual(V.estimate_snr(joined), V.estimate_snr(np.concatenate([y, y])), delta=1.0)
+
+    def test_too_little_audio(self):
+        import numpy as np
+        self.assertIsNone(V.estimate_snr(np.zeros(100, np.float32)))
+
+    def test_levels_and_advice(self):
+        gate = dict(V.GATE, snr_warn=20.0, snr_bad=15.0)
+        good = V.reference_quality(self.speechlike(15), gate)
+        self.assertEqual(good["level"], "good")
+        self.assertEqual(good["advice"], [])
+        self.assertEqual(V.reference_quality(self.speechlike(7), gate)["level"], "warn")
+        self.assertEqual(V.reference_quality(self.speechlike(3), gate)["level"], "bad")
+        noisy = V.reference_quality(self.noisy(self.speechlike(15), 3), gate)
+        self.assertEqual(noisy["level"], "bad")
+        self.assertTrue(any("quiet room" in a for a in noisy["advice"]))
+
+    def test_noise_advice_off_until_calibrated(self):
+        gate = dict(V.GATE, snr_warn=None, snr_bad=None)
+        q = V.reference_quality(self.noisy(self.speechlike(15), 3), gate)
+        self.assertEqual(q["level"], "good")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -152,8 +152,9 @@ def main(argv=None):
                                                os.path.join(V.RUNS, "voices", person, "output"),
                                                candidates=int(req.get("candidates", 3)),
                                                steps=16 if req.get("fast") else 32, who=person)
+                    quality = eng.voice(os.path.join(V.RUNS, "voices", person)).get("reference_quality")
                 self.reply(200, {"wav": wav, "heard": best["heard"], "takes": len(cands), "seconds": round(time.time() - t),
-                                 "naturalness": best.get("mos")})
+                                 "naturalness": best.get("mos"), "reference_quality": quality})
             except SystemExit as e:                     # consent refused, missing recordings, ...
                 self.reply(403, {"error": str(e)})
             except Exception as e:                       # keep serving after a bad request
