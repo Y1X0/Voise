@@ -195,7 +195,8 @@ def estimate_snr(y, frame_s=0.02):
 
 # Advice thresholds, set by experiments/quality_gate_2026-11-24 (noise) and ref_duration_2026-11-15 (length).
 # The check only warns: it never blocks, and never changes which recordings are used.
-GATE = dict(snr_warn=None, snr_bad=None, seconds_warn=10.0, seconds_bad=5.0)
+GATE = dict(snr_warn=23.9, snr_bad=19.1,  # experiments/quality_gate_2026-11-24
+            seconds_warn=10.0, seconds_bad=5.0)
 
 
 def reference_quality(ref, gate=GATE):
