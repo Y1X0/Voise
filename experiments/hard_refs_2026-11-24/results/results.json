@@ -1,0 +1,136 @@
+{
+ "people": [
+  "mafia_p106",
+  "mafia2_p152",
+  "mafia_p43"
+ ],
+ "per": {
+  "mafia_p106|5|clean": {
+   "ecapa": 57.69059364244543,
+   "wavlm": 88.22409466809812,
+   "cer": 0.05176666666666666,
+   "ref_sim_to_clean": 1.0
+  },
+  "mafia_p106|5|noisy": {
+   "ecapa": 33.68803132556547,
+   "wavlm": 87.60294269371994,
+   "cer": 0.17243333333333333,
+   "ref_sim_to_clean": 0.7076
+  },
+  "mafia_p106|5|cleaned": {
+   "ecapa": 43.83117675163099,
+   "wavlm": 78.37265565012036,
+   "cer": 0.1336,
+   "ref_sim_to_clean": 0.6098
+  },
+  "mafia_p106|19|clean": {
+   "ecapa": 50.47011907919165,
+   "wavlm": 91.66987247087027,
+   "cer": 0.054700000000000006,
+   "ref_sim_to_clean": 1.0
+  },
+  "mafia_p106|19|noisy": {
+   "ecapa": 35.33226934931812,
+   "wavlm": 85.47787208018171,
+   "cer": 0.17793333333333336,
+   "ref_sim_to_clean": 0.785
+  },
+  "mafia_p106|19|cleaned": {
+   "ecapa": 46.31522371433241,
+   "wavlm": 85.9931716696064,
+   "cer": 0.10129999999999999,
+   "ref_sim_to_clean": 0.6846
+  },
+  "mafia2_p152|5|clean": {
+   "ecapa": 55.36752391141226,
+   "wavlm": 93.82381732352604,
+   "cer": 0.043199999999999995,
+   "ref_sim_to_clean": 1.0
+  },
+  "mafia2_p152|5|noisy": {
+   "ecapa": 50.47872111022671,
+   "wavlm": 91.87381153119175,
+   "cer": 0.09963333333333334,
+   "ref_sim_to_clean": 0.8819
+  },
+  "mafia2_p152|5|cleaned": {
+   "ecapa": 44.630080614513275,
+   "wavlm": 86.18783730183068,
+   "cer": 0.05603333333333333,
+   "ref_sim_to_clean": 0.6627
+  },
+  "mafia2_p152|19|clean": {
+   "ecapa": 59.504657316252676,
+   "wavlm": 92.23754295895056,
+   "cer": 0.005466666666666667,
+   "ref_sim_to_clean": 1.0
+  },
+  "mafia2_p152|19|noisy": {
+   "ecapa": 46.72291326730636,
+   "wavlm": 91.45498505860834,
+   "cer": 0.027333333333333334,
+   "ref_sim_to_clean": 0.9105
+  },
+  "mafia2_p152|19|cleaned": {
+   "ecapa": 43.11406702102339,
+   "wavlm": 93.13422462116564,
+   "cer": 0.029800000000000004,
+   "ref_sim_to_clean": 0.6926
+  },
+  "mafia_p43|5|clean": {
+   "ecapa": 76.100341866641,
+   "wavlm": 97.96486917074381,
+   "cer": 0.026833333333333334,
+   "ref_sim_to_clean": 1.0
+  },
+  "mafia_p43|5|noisy": {
+   "ecapa": 46.68032644003235,
+   "wavlm": 95.56196985262456,
+   "cer": 0.0041,
+   "ref_sim_to_clean": 0.8274
+  },
+  "mafia_p43|5|cleaned": {
+   "ecapa": 49.18068507191941,
+   "wavlm": 95.53205314105476,
+   "cer": 0.0,
+   "ref_sim_to_clean": 0.6367
+  },
+  "mafia_p43|19|clean": {
+   "ecapa": 81.11347397182071,
+   "wavlm": 96.95288494349202,
+   "cer": 0.025366666666666666,
+   "ref_sim_to_clean": 1.0
+  },
+  "mafia_p43|19|noisy": {
+   "ecapa": 57.016094749271176,
+   "wavlm": 94.40479691950573,
+   "cer": 0.030466666666666666,
+   "ref_sim_to_clean": 0.8611
+  },
+  "mafia_p43|19|cleaned": {
+   "ecapa": 53.08550114552092,
+   "wavlm": 97.4137851129972,
+   "cer": 0.0,
+   "ref_sim_to_clean": 0.6567
+  }
+ },
+ "verdict": {
+  "5": {
+   "gain_mean": 2.26,
+   "voices_up": 2,
+   "cer_change": -0.0288
+  },
+  "19": {
+   "gain_mean": 1.15,
+   "voices_up": 1,
+   "cer_change": -0.0349
+  }
+ },
+ "decision": {
+  "confirm_on_16": false,
+  "failed": [
+   "19 s: cleaning gain +1.15 < +2.0",
+   "19 s: cleaning helped only 1 of 3 voices"
+  ]
+ }
+}

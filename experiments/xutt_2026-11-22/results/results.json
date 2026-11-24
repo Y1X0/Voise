@@ -1,0 +1,400 @@
+{
+ "protocol": "Roadmap step 5: cross-utterance training. Does it make the model clone people it has NEVER heard better?\n\nGoal of the project: a model that clones any new consenting voice; the 16 pool voices are training material. So the\ntest is on unseen people only. Two folds; in each, 4 people are left out completely and the model learns from the other\n12. Two adapters are trained from the BASE model with the same layers, steps, learning rate and seed:\n  same   the current recipe (voise_learn.py): the prompt is the start of the same clip the model must continue\n  cross  cross-utterance: the prompt is ANOTHER clip of the same person, and the model must say clip B's words in\n         that voice (what zero-shot cloning asks of it)\nThen base, same and cross each clone the 4 unseen people: reference = their most typical whole clips up to ~10 s,\n3 held-out sentences (as in steps 2/3; no held-out text in any reference), seeds 0 and 1, 32 steps,\nclass_temperature 0.5. Criteria are fixed in README.md before the run.\n\nUsage: python xutt.py run OUT_DIR       (Kaggle GPU; resumable per fold and arm)\n       python xutt.py analyze OUT_DIR RESULTS_DIR\n",
+ "unseen_people": [
+  "mafia2_p140",
+  "mafia2_p152",
+  "mafia2_p30",
+  "mafia_abood",
+  "mafia_p51",
+  "mafia_p64",
+  "mafia_p70",
+  "mafia_p95"
+ ],
+ "folds": {
+  "fold0": [
+   "mafia_p64",
+   "mafia_p95",
+   "mafia_abood",
+   "mafia2_p140"
+  ],
+  "fold1": [
+   "mafia_p51",
+   "mafia2_p152",
+   "mafia2_p30",
+   "mafia_p70"
+  ]
+ },
+ "per_person": {
+  "base": {
+   "mafia2_p140": {
+    "closeness": 90.517,
+    "heldout": 69.294,
+    "heldout_wavlm": 97.732,
+    "cer": 1.382,
+    "margin": 0.408,
+    "identified": true,
+    "wavlm_identified": true
+   },
+   "mafia2_p152": {
+    "closeness": 100.185,
+    "heldout": 60.471,
+    "heldout_wavlm": 92.115,
+    "cer": 3.418,
+    "margin": 0.427,
+    "identified": true,
+    "wavlm_identified": true
+   },
+   "mafia2_p30": {
+    "closeness": 104.656,
+    "heldout": 72.942,
+    "heldout_wavlm": 97.414,
+    "cer": 0.818,
+    "margin": 0.552,
+    "identified": true,
+    "wavlm_identified": true
+   },
+   "mafia_abood": {
+    "closeness": 105.755,
+    "heldout": 65.68,
+    "heldout_wavlm": 97.057,
+    "cer": 3.652,
+    "margin": 0.256,
+    "identified": true,
+    "wavlm_identified": true
+   },
+   "mafia_p51": {
+    "closeness": 111.926,
+    "heldout": 70.131,
+    "heldout_wavlm": 97.128,
+    "cer": 5.645,
+    "margin": 0.354,
+    "identified": true,
+    "wavlm_identified": true
+   },
+   "mafia_p64": {
+    "closeness": 103.447,
+    "heldout": 69.92,
+    "heldout_wavlm": 94.715,
+    "cer": 10.87,
+    "margin": 0.232,
+    "identified": true,
+    "wavlm_identified": true
+   },
+   "mafia_p70": {
+    "closeness": 93.514,
+    "heldout": 79.889,
+    "heldout_wavlm": 96.719,
+    "cer": 1.642,
+    "margin": 0.29,
+    "identified": true,
+    "wavlm_identified": true
+   },
+   "mafia_p95": {
+    "closeness": 92.613,
+    "heldout": 70.846,
+    "heldout_wavlm": 97.424,
+    "cer": 1.893,
+    "margin": 0.272,
+    "identified": true,
+    "wavlm_identified": true
+   }
+  },
+  "same": {
+   "mafia2_p140": {
+    "closeness": 88.035,
+    "heldout": 69.004,
+    "heldout_wavlm": 97.44,
+    "cer": 2.498,
+    "margin": 0.387,
+    "identified": true,
+    "wavlm_identified": true
+   },
+   "mafia2_p152": {
+    "closeness": 99.273,
+    "heldout": 60.29,
+    "heldout_wavlm": 91.106,
+    "cer": 4.69,
+    "margin": 0.409,
+    "identified": true,
+    "wavlm_identified": true
+   },
+   "mafia2_p30": {
+    "closeness": 104.12,
+    "heldout": 72.649,
+    "heldout_wavlm": 97.664,
+    "cer": 1.61,
+    "margin": 0.537,
+    "identified": true,
+    "wavlm_identified": true
+   },
+   "mafia_abood": {
+    "closeness": 93.958,
+    "heldout": 57.932,
+    "heldout_wavlm": 91.404,
+    "cer": 2.803,
+    "margin": 0.199,
+    "identified": true,
+    "wavlm_identified": true
+   },
+   "mafia_p51": {
+    "closeness": 110.315,
+    "heldout": 69.253,
+    "heldout_wavlm": 97.436,
+    "cer": 4.645,
+    "margin": 0.325,
+    "identified": true,
+    "wavlm_identified": true
+   },
+   "mafia_p64": {
+    "closeness": 107.54,
+    "heldout": 70.866,
+    "heldout_wavlm": 94.286,
+    "cer": 10.117,
+    "margin": 0.271,
+    "identified": true,
+    "wavlm_identified": true
+   },
+   "mafia_p70": {
+    "closeness": 91.978,
+    "heldout": 77.864,
+    "heldout_wavlm": 97.174,
+    "cer": 1.047,
+    "margin": 0.312,
+    "identified": true,
+    "wavlm_identified": true
+   },
+   "mafia_p95": {
+    "closeness": 92.627,
+    "heldout": 71.725,
+    "heldout_wavlm": 97.579,
+    "cer": 0.378,
+    "margin": 0.28,
+    "identified": true,
+    "wavlm_identified": true
+   }
+  },
+  "cross": {
+   "mafia2_p140": {
+    "closeness": 88.381,
+    "heldout": 68.282,
+    "heldout_wavlm": 97.188,
+    "cer": 2.15,
+    "margin": 0.43,
+    "identified": true,
+    "wavlm_identified": true
+   },
+   "mafia2_p152": {
+    "closeness": 97.693,
+    "heldout": 59.581,
+    "heldout_wavlm": 92.731,
+    "cer": 3.72,
+    "margin": 0.374,
+    "identified": true,
+    "wavlm_identified": true
+   },
+   "mafia2_p30": {
+    "closeness": 104.353,
+    "heldout": 73.801,
+    "heldout_wavlm": 97.816,
+    "cer": 1.233,
+    "margin": 0.525,
+    "identified": true,
+    "wavlm_identified": true
+   },
+   "mafia_abood": {
+    "closeness": 106.012,
+    "heldout": 66.253,
+    "heldout_wavlm": 96.582,
+    "cer": 2.477,
+    "margin": 0.231,
+    "identified": true,
+    "wavlm_identified": true
+   },
+   "mafia_p51": {
+    "closeness": 111.413,
+    "heldout": 69.935,
+    "heldout_wavlm": 96.378,
+    "cer": 3.485,
+    "margin": 0.358,
+    "identified": true,
+    "wavlm_identified": true
+   },
+   "mafia_p64": {
+    "closeness": 103.89,
+    "heldout": 68.799,
+    "heldout_wavlm": 94.367,
+    "cer": 9.097,
+    "margin": 0.258,
+    "identified": true,
+    "wavlm_identified": true
+   },
+   "mafia_p70": {
+    "closeness": 89.124,
+    "heldout": 75.617,
+    "heldout_wavlm": 97.321,
+    "cer": 3.483,
+    "margin": 0.271,
+    "identified": true,
+    "wavlm_identified": true
+   },
+   "mafia_p95": {
+    "closeness": 90.028,
+    "heldout": 68.418,
+    "heldout_wavlm": 97.417,
+    "cer": 1.092,
+    "margin": 0.268,
+    "identified": true,
+    "wavlm_identified": true
+   }
+  }
+ },
+ "mean": {
+  "base": {
+   "closeness": 100.327,
+   "heldout": 69.897,
+   "heldout_wavlm": 96.288,
+   "cer": 3.665,
+   "margin": 0.349,
+   "identified": 8,
+   "wavlm_identified": 8
+  },
+  "same": {
+   "closeness": 98.481,
+   "heldout": 68.698,
+   "heldout_wavlm": 95.511,
+   "cer": 3.474,
+   "margin": 0.34,
+   "identified": 8,
+   "wavlm_identified": 8
+  },
+  "cross": {
+   "closeness": 98.862,
+   "heldout": 68.836,
+   "heldout_wavlm": 96.225,
+   "cer": 3.342,
+   "margin": 0.34,
+   "identified": 8,
+   "wavlm_identified": 8
+  }
+ },
+ "paired": {
+  "cross-same": {
+   "closeness": {
+    "mean": 0.381,
+    "ci95": [
+     -2.1132,
+     4.096
+    ]
+   },
+   "heldout": {
+    "mean": 0.138,
+    "ci95": [
+     -1.79,
+     2.8313
+    ]
+   },
+   "heldout_wavlm": {
+    "mean": 0.714,
+    "ci95": [
+     -0.2997,
+     2.1338
+    ]
+   },
+   "cer": {
+    "mean": -0.131,
+    "ci95": [
+     -0.7915,
+     0.7404
+    ]
+   },
+   "margin": {
+    "mean": -0.0,
+    "ci95": [
+     -0.0202,
+     0.0206
+    ]
+   }
+  },
+  "cross-base": {
+   "closeness": {
+    "mean": -1.465,
+    "ci95": [
+     -2.5973,
+     -0.3776
+    ]
+   },
+   "heldout": {
+    "mean": -1.061,
+    "ci95": [
+     -2.197,
+     -0.0576
+    ]
+   },
+   "heldout_wavlm": {
+    "mean": -0.063,
+    "ci95": [
+     -0.4038,
+     0.2881
+    ]
+   },
+   "cer": {
+    "mean": -0.323,
+    "ci95": [
+     -1.2182,
+     0.5723
+    ]
+   },
+   "margin": {
+    "mean": -0.009,
+    "ci95": [
+     -0.0266,
+     0.0072
+    ]
+   }
+  },
+  "same-base": {
+   "closeness": {
+    "mean": -1.846,
+    "ci95": [
+     -5.1365,
+     0.6503
+    ]
+   },
+   "heldout": {
+    "mean": -1.199,
+    "ci95": [
+     -3.2314,
+     0.2053
+    ]
+   },
+   "heldout_wavlm": {
+    "mean": -0.777,
+    "ci95": [
+     -2.2689,
+     0.1621
+    ]
+   },
+   "cer": {
+    "mean": -0.191,
+    "ci95": [
+     -0.8598,
+     0.5352
+    ]
+   },
+   "margin": {
+    "mean": -0.009,
+    "ci95": [
+     -0.0288,
+     0.0101
+    ]
+   }
+  }
+ },
+ "decision": {
+  "accepted": false,
+  "failed": [
+   "no gain over the current recipe against the unseen people's held-out clips {'mean': 0.138, 'ci95': [-1.79, 2.8313]}",
+   "not better than the base model"
+  ]
+ }
+}

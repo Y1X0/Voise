@@ -1,0 +1,472 @@
+{
+ "clips": 429,
+ "people": [
+  "mafia2_p12",
+  "mafia2_p140",
+  "mafia2_p152",
+  "mafia2_p30",
+  "mafia2_p48",
+  "mafia_abood",
+  "mafia_fakhri",
+  "mafia_p106",
+  "mafia_p43",
+  "mafia_p51",
+  "mafia_p64",
+  "mafia_p70",
+  "mafia_p72",
+  "mafia_p85",
+  "mafia_p95",
+  "omar"
+ ],
+ "clips_per_person": {
+  "mafia2_p12": 27,
+  "mafia2_p140": 20,
+  "mafia2_p152": 21,
+  "mafia2_p30": 31,
+  "mafia2_p48": 16,
+  "mafia_abood": 40,
+  "mafia_fakhri": 16,
+  "mafia_p106": 15,
+  "mafia_p43": 40,
+  "mafia_p51": 40,
+  "mafia_p64": 24,
+  "mafia_p70": 33,
+  "mafia_p72": 40,
+  "mafia_p85": 15,
+  "mafia_p95": 11,
+  "omar": 40
+ },
+ "questions": 76,
+ "features": {
+  "f0_median": {
+   "dimension": "pitch",
+   "coverage": 1.0,
+   "icc": 0.481,
+   "icc_ci95": [
+    0.211,
+    0.646
+   ],
+   "icc_without_omar": 0.442,
+   "icc_raw_unadjusted": 0.457,
+   "within_person_r2_covariates": 0.021,
+   "covariate_effects": {
+    "question": 0.0735,
+    "log_letters": 0.9182,
+    "breaks": -0.0373,
+    "snr": -0.008
+   },
+   "question_minus_statement": 0.792,
+   "ident_balanced_acc": 0.1582,
+   "ident_ci95": [
+    0.0655,
+    0.2839
+   ],
+   "passed": false,
+   "failed": [
+    "ICC 0.48 < 0.50",
+    "ICC CI lower 0.21 < 0.30",
+    "ICC without omar 0.44 < 0.50"
+   ]
+  },
+  "f0_range": {
+   "dimension": "pitch",
+   "coverage": 1.0,
+   "icc": 0.285,
+   "icc_ci95": [
+    0.151,
+    0.433
+   ],
+   "icc_without_omar": 0.244,
+   "icc_raw_unadjusted": 0.258,
+   "within_person_r2_covariates": 0.027,
+   "covariate_effects": {
+    "question": 0.3232,
+    "log_letters": 0.8389,
+    "breaks": -0.013,
+    "snr": 0.0689
+   },
+   "question_minus_statement": 0.726,
+   "ident_balanced_acc": 0.0868,
+   "ident_ci95": [
+    0.0391,
+    0.143
+   ],
+   "passed": false,
+   "failed": [
+    "ICC 0.29 < 0.50",
+    "ICC CI lower 0.15 < 0.30",
+    "ICC without omar 0.24 < 0.50",
+    "identification CI lower 3.9% not above 6.25%"
+   ]
+  },
+  "declination": {
+   "dimension": "pitch",
+   "coverage": 1.0,
+   "icc": 0.037,
+   "icc_ci95": [
+    0.004,
+    0.159
+   ],
+   "icc_without_omar": 0.037,
+   "icc_raw_unadjusted": 0.062,
+   "within_person_r2_covariates": 0.117,
+   "covariate_effects": {
+    "question": 0.3501,
+    "log_letters": 1.0607,
+    "breaks": 0.0116,
+    "snr": -0.0004
+   },
+   "question_minus_statement": 0.487,
+   "ident_balanced_acc": 0.0711,
+   "ident_ci95": [
+    0.0182,
+    0.1427
+   ],
+   "passed": false,
+   "failed": [
+    "ICC 0.04 < 0.50",
+    "ICC CI lower 0.00 < 0.30",
+    "ICC without omar 0.04 < 0.50",
+    "identification CI lower 1.8% not above 6.25%"
+   ]
+  },
+  "final_slope": {
+   "dimension": "pitch",
+   "coverage": 0.998,
+   "icc": 0.064,
+   "icc_ci95": [
+    0.02,
+    0.197
+   ],
+   "icc_without_omar": 0.059,
+   "icc_raw_unadjusted": 0.069,
+   "within_person_r2_covariates": 0.015,
+   "covariate_effects": {
+    "question": 0.7999,
+    "log_letters": -0.2451,
+    "breaks": -0.0023,
+    "snr": -0.3677
+   },
+   "question_minus_statement": 0.186,
+   "ident_balanced_acc": 0.09,
+   "ident_ci95": [
+    0.0324,
+    0.1677
+   ],
+   "passed": false,
+   "failed": [
+    "ICC 0.06 < 0.50",
+    "ICC CI lower 0.02 < 0.30",
+    "ICC without omar 0.06 < 0.50",
+    "identification CI lower 3.2% not above 6.25%"
+   ]
+  },
+  "final_level": {
+   "dimension": "pitch",
+   "coverage": 1.0,
+   "icc": 0.139,
+   "icc_ci95": [
+    0.053,
+    0.286
+   ],
+   "icc_without_omar": 0.139,
+   "icc_raw_unadjusted": 0.142,
+   "within_person_r2_covariates": 0.007,
+   "covariate_effects": {
+    "question": 0.7727,
+    "log_letters": -0.048,
+    "breaks": 0.0723,
+    "snr": 0.0197
+   },
+   "question_minus_statement": 0.786,
+   "ident_balanced_acc": 0.0931,
+   "ident_ci95": [
+    0.0343,
+    0.1732
+   ],
+   "passed": false,
+   "failed": [
+    "ICC 0.14 < 0.50",
+    "ICC CI lower 0.05 < 0.30",
+    "ICC without omar 0.14 < 0.50",
+    "identification CI lower 3.4% not above 6.25%"
+   ]
+  },
+  "art_rate": {
+   "dimension": "rhythm",
+   "coverage": 1.0,
+   "icc": 0.21,
+   "icc_ci95": [
+    0.036,
+    0.511
+   ],
+   "icc_without_omar": 0.07,
+   "icc_raw_unadjusted": 0.167,
+   "within_person_r2_covariates": 0.33,
+   "covariate_effects": {
+    "question": -0.0165,
+    "log_letters": 2.3488,
+    "breaks": 0.0923,
+    "snr": 0.026
+   },
+   "question_minus_statement": 0.099,
+   "ident_balanced_acc": 0.1413,
+   "ident_ci95": [
+    0.0505,
+    0.2626
+   ],
+   "passed": false,
+   "failed": [
+    "ICC 0.21 < 0.50",
+    "ICC CI lower 0.04 < 0.30",
+    "ICC without omar 0.07 < 0.50",
+    "identification CI lower 5.1% not above 6.25%"
+   ]
+  },
+  "nuclei_rate": {
+   "dimension": "rhythm",
+   "coverage": 1.0,
+   "icc": 0.1,
+   "icc_ci95": [
+    0.041,
+    0.217
+   ],
+   "icc_without_omar": 0.086,
+   "icc_raw_unadjusted": 0.111,
+   "within_person_r2_covariates": 0.077,
+   "covariate_effects": {
+    "question": 0.0214,
+    "log_letters": 0.4105,
+    "breaks": -0.0128,
+    "snr": 0.004
+   },
+   "question_minus_statement": 0.065,
+   "ident_balanced_acc": 0.1009,
+   "ident_ci95": [
+    0.0299,
+    0.197
+   ],
+   "passed": false,
+   "failed": [
+    "ICC 0.10 < 0.50",
+    "ICC CI lower 0.04 < 0.30",
+    "ICC without omar 0.09 < 0.50",
+    "identification CI lower 3.0% not above 6.25%"
+   ]
+  },
+  "npvi": {
+   "dimension": "rhythm",
+   "coverage": 0.998,
+   "icc": 0.045,
+   "icc_ci95": [
+    0.016,
+    0.156
+   ],
+   "icc_without_omar": 0.04,
+   "icc_raw_unadjusted": 0.057,
+   "within_person_r2_covariates": 0.005,
+   "covariate_effects": {
+    "question": -1.2071,
+    "log_letters": -0.4701,
+    "breaks": 0.155,
+    "snr": -0.0562
+   },
+   "question_minus_statement": -1.615,
+   "ident_balanced_acc": 0.0682,
+   "ident_ci95": [
+    0.0203,
+    0.1338
+   ],
+   "passed": false,
+   "failed": [
+    "ICC 0.05 < 0.50",
+    "ICC CI lower 0.02 < 0.30",
+    "ICC without omar 0.04 < 0.50",
+    "identification CI lower 2.0% not above 6.25%"
+   ]
+  },
+  "pause_rate": {
+   "dimension": "pauses",
+   "coverage": 1.0,
+   "icc": 0.075,
+   "icc_ci95": [
+    0.032,
+    0.195
+   ],
+   "icc_without_omar": 0.075,
+   "icc_raw_unadjusted": 0.009,
+   "within_person_r2_covariates": 0.148,
+   "covariate_effects": {
+    "question": 0.0008,
+    "log_letters": 0.0259,
+    "breaks": 0.0006,
+    "snr": 0.0075
+   },
+   "question_minus_statement": 0.002,
+   "ident_balanced_acc": 0.1038,
+   "ident_ci95": [
+    0.0277,
+    0.2061
+   ],
+   "passed": false,
+   "failed": [
+    "ICC 0.07 < 0.50",
+    "ICC CI lower 0.03 < 0.30",
+    "ICC without omar 0.08 < 0.50",
+    "identification CI lower 2.8% not above 6.25%"
+   ]
+  },
+  "pause_ratio": {
+   "dimension": "pauses",
+   "coverage": 1.0,
+   "icc": 0.064,
+   "icc_ci95": [
+    0.026,
+    0.189
+   ],
+   "icc_without_omar": 0.064,
+   "icc_raw_unadjusted": 0.013,
+   "within_person_r2_covariates": 0.153,
+   "covariate_effects": {
+    "question": 0.0008,
+    "log_letters": 0.0075,
+    "breaks": 0.0001,
+    "snr": 0.0016
+   },
+   "question_minus_statement": 0.001,
+   "ident_balanced_acc": 0.1012,
+   "ident_ci95": [
+    0.0327,
+    0.1892
+   ],
+   "passed": false,
+   "failed": [
+    "ICC 0.06 < 0.50",
+    "ICC CI lower 0.03 < 0.30",
+    "ICC without omar 0.06 < 0.50",
+    "identification CI lower 3.3% not above 6.25%"
+   ]
+  },
+  "pause_dur": {
+   "dimension": "pauses",
+   "coverage": 0.245,
+   "icc": 0.011,
+   "icc_ci95": [
+    -0.025,
+    0.354
+   ],
+   "icc_without_omar": -0.003,
+   "icc_raw_unadjusted": 0.043,
+   "within_person_r2_covariates": 0.057,
+   "covariate_effects": {
+    "question": 0.0306,
+    "log_letters": 0.126,
+    "breaks": -0.0043,
+    "snr": -0.0013
+   },
+   "question_minus_statement": 0.028,
+   "ident_balanced_acc": 0.0104,
+   "ident_ci95": [
+    0.0,
+    0.0417
+   ],
+   "passed": false,
+   "failed": [
+    "measurable on 24% of clips (< 80%)",
+    "ICC 0.01 < 0.50",
+    "ICC CI lower -0.02 < 0.30",
+    "ICC without omar -0.00 < 0.50",
+    "identification CI lower 0.0% not above 6.25%"
+   ]
+  },
+  "energy_std": {
+   "dimension": "energy",
+   "coverage": 1.0,
+   "icc": 0.222,
+   "icc_ci95": [
+    0.106,
+    0.397
+   ],
+   "icc_without_omar": 0.229,
+   "icc_raw_unadjusted": 0.451,
+   "within_person_r2_covariates": 0.655,
+   "covariate_effects": {
+    "question": -0.0878,
+    "log_letters": -0.034,
+    "breaks": -0.008,
+    "snr": 0.2468
+   },
+   "question_minus_statement": 0.139,
+   "ident_balanced_acc": 0.1228,
+   "ident_ci95": [
+    0.0519,
+    0.2047
+   ],
+   "passed": false,
+   "failed": [
+    "ICC 0.22 < 0.50",
+    "ICC CI lower 0.11 < 0.30",
+    "ICC without omar 0.23 < 0.50",
+    "identification CI lower 5.2% not above 6.25%"
+   ]
+  },
+  "peak_prom": {
+   "dimension": "energy",
+   "coverage": 1.0,
+   "icc": 0.618,
+   "icc_ci95": [
+    0.41,
+    0.761
+   ],
+   "icc_without_omar": 0.628,
+   "icc_raw_unadjusted": 0.537,
+   "within_person_r2_covariates": 0.113,
+   "covariate_effects": {
+    "question": 0.1725,
+    "log_letters": 0.1962,
+    "breaks": 0.0435,
+    "snr": 0.1247
+   },
+   "question_minus_statement": 0.148,
+   "ident_balanced_acc": 0.137,
+   "ident_ci95": [
+    0.0651,
+    0.2306
+   ],
+   "passed": true,
+   "failed": []
+  }
+ },
+ "dimensions": {
+  "pitch": {
+   "passing_features": [],
+   "excluded": true
+  },
+  "rhythm": {
+   "passing_features": [],
+   "excluded": true
+  },
+  "pauses": {
+   "passing_features": [],
+   "excluded": true
+  },
+  "energy": {
+   "passing_features": [
+    "peak_prom"
+   ],
+   "excluded": false,
+   "ident_balanced_acc": 0.137,
+   "ident_ci95": [
+    0.0632,
+    0.2303
+   ]
+  }
+ },
+ "ecapa_context": {
+  "ident_balanced_acc": 0.9849,
+  "ident_ci95": [
+   0.9635,
+   1.0
+  ]
+ }
+}

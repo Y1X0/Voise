@@ -104,3 +104,95 @@ def multi_session_enrollment(emb_by_session: Dict[str, Dict[str, np.ndarray]]) -
         for spk, e in sess.items():
             acc.setdefault(spk, []).append(e / np.linalg.norm(e))
     return {s: np.mean(v, 0) / np.linalg.norm(np.mean(v, 0)) for s, v in acc.items()}
+
+
+# ----------------------------------------------------------------- tie-aware ROC, fast bootstrap
+# roc_auc_eer / speaker_bootstrap above are kept byte-for-byte: earlier reports were computed with
+# them. roc_auc_eer orders tied scores target-first (stable sort of [targets, nontargets]), so tied
+# scores count in favour of the system (all-tied scores give EER 0, AUC 1). The functions below
+# collapse each distinct score into ONE ROC point, which is the definition used by
+# sklearn.metrics.roc_curve and by the Mann-Whitney AUC (a tie counts 1/2).
+
+def _roc_weighted(scores, labels, weights):
+    """Sorted-by-score ROC with one point per distinct score. -> (fpr, tpr), both starting at 0."""
+    order = np.argsort(-scores, kind="mergesort")
+    s, lab, w = scores[order], labels[order], weights[order]
+    last = np.r_[np.nonzero(np.diff(s))[0], len(s) - 1]          # end index of each tie group
+    tp, fp = np.cumsum(w * lab)[last], np.cumsum(w * (1 - lab))[last]
+    P, N = tp[-1], fp[-1]
+    return np.r_[0.0, fp / N], np.r_[0.0, tp / P]
+
+
+def _auc_eer_from_roc(fpr, tpr):
+    auc = float(np.sum(np.diff(fpr) * (tpr[1:] + tpr[:-1]) / 2))
+    d = (1 - tpr) - fpr                                          # FNR - FPR: +1 at the start, -1 at the end
+    k = int(np.argmax(d <= 0))
+    if d[k] == 0:
+        return auc, float(fpr[k])
+    a = d[k - 1] / (d[k - 1] - d[k])                             # linear interpolation on the ROC segment
+    return auc, float(fpr[k - 1] + a * (fpr[k] - fpr[k - 1]))
+
+
+def roc_auc_eer_ties(target: Sequence[float], nontarget: Sequence[float], w_target=None, w_nontarget=None):
+    """-> (AUC, EER). Tied scores form one ROC point (no ordering of targets before non-targets);
+    the EER is where FNR = FPR on the piecewise-linear ROC. Optional non-negative weights per trial
+    (speaker-bootstrap multiplicities). NaN if either class is empty or has zero weight."""
+    t, n = np.asarray(target, float), np.asarray(nontarget, float)
+    wt = np.ones(len(t)) if w_target is None else np.asarray(w_target, float)
+    wn = np.ones(len(n)) if w_nontarget is None else np.asarray(w_nontarget, float)
+    if not len(t) or not len(n) or wt.sum() <= 0 or wn.sum() <= 0:
+        return float("nan"), float("nan")
+    s = np.concatenate([t, n])
+    lab = np.concatenate([np.ones(len(t)), np.zeros(len(n))])
+    return _auc_eer_from_roc(*_roc_weighted(s, lab, np.concatenate([wt, wn])))
+
+
+class SpeakerBootstrap:
+    """Speaker-level bootstrap of tie-aware EER/AUC, vectorised over one fixed trial list.
+
+    Same resampling as speaker_bootstrap(): each round draws len(speakers) speakers with
+    replacement (rng.choice on the sorted speaker list, same seed -> same draws) and a trial
+    (a, b) counts m_a * m_b times, m = how often each speaker was drawn. Trials stay grouped by
+    their speakers, so the dependence between trials sharing a speaker or an utterance is kept;
+    target trials (a == b) count m_a ** 2 times (copies of a speaker are treated as distinct
+    draws of that speaker, as in speaker_bootstrap and experiments/llvc_vs_dsp_48spk/evaluate.py).
+    Scores are sorted once; each round is O(trials)."""
+
+    def __init__(self, spk_a, spk_b, scores):
+        a, b = np.asarray(spk_a), np.asarray(spk_b)
+        self.speakers = sorted(set(a.tolist()) | set(b.tolist()))
+        idx = {s: i for i, s in enumerate(self.speakers)}
+        ia, ib = np.array([idx[x] for x in a.tolist()]), np.array([idx[x] for x in b.tolist()])
+        s = np.asarray(scores, float)
+        order = np.argsort(-s, kind="mergesort")
+        self.ia, self.ib, self.lab = ia[order], ib[order], (ia == ib)[order].astype(float)
+        self.last = np.r_[np.nonzero(np.diff(s[order]))[0], len(s) - 1]
+
+    def _stat(self, m):
+        w = m[self.ia] * m[self.ib]
+        tp, fp = np.cumsum(w * self.lab)[self.last], np.cumsum(w * (1 - self.lab))[self.last]
+        if tp[-1] <= 0 or fp[-1] <= 0:
+            return float("nan"), float("nan")
+        return _auc_eer_from_roc(np.r_[0.0, fp / fp[-1]], np.r_[0.0, tp / tp[-1]])
+
+    def draws(self, n_boot=1000, seed=7):
+        """-> array [n_boot, 2] of (AUC, EER); rows with an empty class are NaN."""
+        rng = np.random.default_rng(seed)
+        k = len(self.speakers)
+        out = np.empty((n_boot, 2))
+        for r in range(n_boot):
+            m = np.bincount(rng.choice(k, k, replace=True), minlength=k).astype(float)
+            out[r] = self._stat(m)
+        return out
+
+    def point(self):
+        return self._stat(np.ones(len(self.speakers)))
+
+
+def percentile_ci(values, level=0.95):
+    v = np.asarray(values, float)
+    v = v[~np.isnan(v)]
+    if not len(v):
+        return float("nan"), float("nan")
+    lo, hi = np.percentile(v, [50 * (1 - level), 50 * (1 + level)])
+    return float(lo), float(hi)

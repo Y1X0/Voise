@@ -1,0 +1,96 @@
+{
+ "protocol": "Per-person training: does fine-tuning on ONE person's own recordings make the clone closer to that person?\n\nStep 5 showed that training on many people's clips does not improve cloning of people the model has not heard. This\ntests the other way to make the model improve with training: a small adapter per person, trained only on that person's\nrecordings (cross-utterance samples: hear clip A of the person, say clip B's words in their voice), and judged on that\nperson's 3 held-out sentences (never trained on; same split as steps 2/3/5). The 5 people with the most recordings.\nArms: base (no training) vs personal (600 steps, top 6 layers, lr 1e-5, seed 0). Same reference (~10 s of their most\ntypical clips), seeds 0 and 1. Criteria in README.md, fixed before the run.\n\nUsage: python personal.py run OUT_DIR ; python personal.py analyze OUT_DIR RESULTS_DIR\n",
+ "people": [
+  "mafia_abood",
+  "omar",
+  "mafia_p51",
+  "mafia_p43"
+ ],
+ "per_person": {
+  "base": {
+   "mafia_abood": {
+    "closeness": 105.75,
+    "heldout": 65.68,
+    "heldout_wavlm": 97.06,
+    "cer": 3.65,
+    "margin": 0.2563
+   },
+   "omar": {
+    "closeness": 86.23,
+    "heldout": 71.94,
+    "heldout_wavlm": 97.15,
+    "cer": 0.94,
+    "margin": 0.3502
+   },
+   "mafia_p51": {
+    "closeness": 111.93,
+    "heldout": 70.13,
+    "heldout_wavlm": 97.13,
+    "cer": 5.64,
+    "margin": 0.3544
+   },
+   "mafia_p43": {
+    "closeness": 98.54,
+    "heldout": 78.52,
+    "heldout_wavlm": 97.2,
+    "cer": 1.27,
+    "margin": 0.3291
+   }
+  },
+  "personal": {
+   "mafia_abood": {
+    "closeness": 104.98,
+    "heldout": 65.51,
+    "heldout_wavlm": 95.07,
+    "cer": 3.08,
+    "margin": 0.253
+   },
+   "omar": {
+    "closeness": 86.38,
+    "heldout": 73.48,
+    "heldout_wavlm": 97.58,
+    "cer": 1.08,
+    "margin": 0.3512
+   },
+   "mafia_p51": {
+    "closeness": 111.85,
+    "heldout": 69.93,
+    "heldout_wavlm": 97.58,
+    "cer": 4.0,
+    "margin": 0.3512
+   },
+   "mafia_p43": {
+    "closeness": 98.7,
+    "heldout": 77.52,
+    "heldout_wavlm": 97.43,
+    "cer": 1.52,
+    "margin": 0.3188
+   }
+  }
+ },
+ "paired": {
+  "heldout": {
+   "mean": 0.041,
+   "ci95": [
+    -1.38,
+    1.4279
+   ]
+  },
+  "heldout_wavlm": {
+   "mean": -0.221,
+   "ci95": [
+    -0.9921,
+    0.3888
+   ]
+  },
+  "cer": -0.455
+ },
+ "people_closer": 1,
+ "decision": {
+  "accepted": false,
+  "failed": [
+   "no gain against held-out real clips {'mean': 0.041, 'ci95': [-1.38, 1.4279]}",
+   "only 1 of 4 people closer"
+  ]
+ }
+}
