@@ -177,6 +177,53 @@ def select_reference_similarity_first(ref_dir, asr_dir, enc, long_s=19.0, min_cl
     return chosen[0]["path"], ref, " ".join(c["text"] for c in chosen), report
 
 
+def estimate_snr(y, frame_s=0.02):
+    """Rough background-noise estimate of a recording, in dB: loud frames (95th percentile) minus quiet frames (10th
+    percentile). Digital silence (the 0.3 s gaps the tool inserts between joined clips) is ignored. Works without
+    pauses: inside continuous speech the quietest frames sit near the noise floor. None if too little audio."""
+    y = np.asarray(y, np.float32)
+    n = int(frame_s * SR)
+    if len(y) < 10 * n:
+        return None
+    fr = y[:len(y) // n * n].reshape(-1, n)
+    e = 10 * np.log10(np.mean(fr ** 2, axis=1) + 1e-12)
+    e = e[e > -90]
+    if len(e) < 10:
+        return None
+    return float(np.percentile(e, 95) - np.percentile(e, 10))
+
+
+# Advice thresholds, set by experiments/quality_gate_2026-11-24 (noise) and ref_duration_2026-11-15 (length).
+# The check only warns: it never blocks, and never changes which recordings are used.
+GATE = dict(snr_warn=None, snr_bad=None, seconds_warn=10.0, seconds_bad=5.0)
+
+
+def reference_quality(ref, gate=GATE):
+    """Check the reference the voice will be copied from. Returns dict(seconds, snr, level, advice[]), where level is
+    "good", "warn" or "bad" and advice is plain-language guidance for the person recording."""
+    import librosa
+    y = np.asarray(ref, np.float32)
+    iv = librosa.effects.split(y, top_db=35) if len(y) else []
+    seconds = float(sum(b - a for a, b in iv)) / SR
+    snr = estimate_snr(y)
+    level, advice = "good", []
+    if seconds < gate["seconds_bad"]:
+        level = "bad"
+        advice.append(f"only {seconds:.1f} s of speech: record at least 10 s (ideally 20 s); "
+                      "under 5 s the clone is clearly less like the person")
+    elif seconds < gate["seconds_warn"]:
+        level = "warn"
+        advice.append(f"{seconds:.1f} s of speech: 10-20 s gives a closer voice")
+    if snr is not None and gate["snr_bad"] is not None and snr < gate["snr_bad"]:
+        level = "bad"
+        advice.append(f"strong background noise (about {snr:.0f} dB): record again in a quiet room, phone ~30 cm "
+                      "away, no fan, AC, TV or street; cleaning it afterwards does not bring the voice back")
+    elif snr is not None and gate["snr_warn"] is not None and snr < gate["snr_warn"]:
+        level = "warn" if level == "good" else level
+        advice.append(f"some background noise (about {snr:.0f} dB): a quieter recording gives a closer voice")
+    return dict(seconds=round(seconds, 1), snr=None if snr is None else round(snr, 1), level=level, advice=advice)
+
+
 def select_reference(ref_dir, asr_dir, enc=None, min_s=7.0, max_s=12.0, max_candidates=12, long_s=19.0,
                      strategy="quality"):
     """Choose the reference by quality instead of taking the first clip of the right length.
